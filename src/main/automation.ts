@@ -159,21 +159,31 @@ export class AutomationServer {
       reply(401, { error: 'unauthorized' });
       return;
     }
+    // A client that gives up (an MCP call that timed out) closes the connection; its
+    // kernel request is cancelled then, so it cannot block the user's next edits.
+    const abandoned = new AbortController();
+    response.on('close', () => {
+      if (!response.writableFinished) abandoned.abort();
+    });
     try {
       const { method, params = {} } = JSON.parse(await readBody(request)) as RpcRequest;
-      reply(200, { ok: true, result: await this.dispatch(method, params) });
+      reply(200, { ok: true, result: await this.dispatch(method, params, abandoned.signal) });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       reply(200, { ok: false, error: message });
     }
   }
 
-  private async dispatch(method: string, params: Record<string, unknown>): Promise<unknown> {
+  private async dispatch(
+    method: string,
+    params: Record<string, unknown>,
+    abandoned: AbortSignal,
+  ): Promise<unknown> {
     switch (method) {
       case 'ping':
         return { version: this.options.version, kernel: this.options.kernel.status };
       case 'kernel.call':
-        return this.kernelCall(params);
+        return this.kernelCall(params, abandoned);
       case 'ui':
         return this.ui(params.action as AutomationAction);
       case 'screenshot':
@@ -183,16 +193,20 @@ export class AutomationServer {
     }
   }
 
-  private async kernelCall(params: Record<string, unknown>): Promise<unknown> {
+  private async kernelCall(
+    params: Record<string, unknown>,
+    abandoned: AbortSignal,
+  ): Promise<unknown> {
     if (typeof params.method !== 'string') throw new RpcError('kernel.call needs a method');
     const { json, buffers } = encodeBuffers(toTyped(params.params ?? {}));
-    const { response } = this.options.kernel.request({
+    const { id, response } = this.options.kernel.request({
       method: params.method,
       params: json,
       buffers: buffers.map((buffer) => new Uint8Array(buffer)),
       lane: typeof params.lane === 'string' ? params.lane : undefined,
       origin: 'main',
     });
+    abandoned.addEventListener('abort', () => this.options.kernel.cancel(id), { once: true });
     const raw = await response;
     if (!raw.ok) return { ok: false, error: raw.error };
     return { ok: true, result: fromTyped(decodeBuffers(raw.result, raw.buffers)) };

@@ -10,6 +10,7 @@
 // Coordinates are part coordinates in millimetres (after the alignment), the
 // same as the application shows.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -67,6 +68,13 @@ function connection() {
   return live[0].info;
 }
 
+/**
+ * The abort signal of the running tool call. When the client gives up (its request
+ * timeout), the request to the app is aborted too, and the app cancels the kernel job
+ * instead of letting it block every later edit.
+ */
+const callSignal = new AsyncLocalStorage();
+
 /** One request to the application's automation interface. */
 async function rpc(method, params = {}) {
   const { port, token } = connection();
@@ -74,6 +82,7 @@ async function rpc(method, params = {}) {
     method: 'POST',
     headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: JSON.stringify({ method, params }),
+    signal: callSignal.getStore(),
   });
   const body = await response.json();
   if (!body.ok) throw new Error(body.error ?? `request failed (${response.status})`);
@@ -162,7 +171,17 @@ const region = {
 
 const server = new McpServer({ name: 'mesh-to-cad', version: '0.1.0' });
 
-server.registerTool(
+/** Register a tool whose requests to the app follow the call's abort signal. */
+function tool(name, config, handler) {
+  const run = (args, extra) => callSignal.run(extra?.signal, () => handler(args));
+  server.registerTool(
+    name,
+    config,
+    config.inputSchema ? (args, extra) => run(args, extra) : (extra) => run({}, extra),
+  );
+}
+
+tool(
   'app_status',
   {
     description:
@@ -179,7 +198,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'import_scan',
   {
     description: 'Load a scan (STL, OBJ, PLY) from a file path. Replaces the current scan.',
@@ -212,7 +231,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'align_auto',
   {
     description:
@@ -233,13 +252,13 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'scan_bounds',
   { description: 'Bounding box of the aligned scan in part coordinates (mm), to choose regions.' },
   async () => text(await kernel('automation.bounds')),
 );
 
-server.registerTool(
+tool(
   'select_region',
   {
     description:
@@ -254,7 +273,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'fit_shape',
   {
     description:
@@ -294,7 +313,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'auto_surface',
   {
     description:
@@ -315,7 +334,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'export_step',
   {
     description: 'Export bodies as a STEP file (all bodies unless ids are given).',
@@ -333,7 +352,7 @@ server.registerTool(
   },
 );
 
-server.registerTool(
+tool(
   'apply_ops',
   {
     description:
@@ -348,7 +367,7 @@ server.registerTool(
   async ({ ops, label }) => text(await applyOps(ops, label)),
 );
 
-server.registerTool(
+tool(
   'kernel_call',
   {
     description:
@@ -363,13 +382,13 @@ server.registerTool(
   async ({ method, params, lane }) => text(await kernel(method, params, lane)),
 );
 
-server.registerTool(
+tool(
   'list_commands',
   { description: 'Commands of the app (menus, views, tools) with their ids and availability.' },
   async () => text(await ui({ type: 'listCommands' })),
 );
 
-server.registerTool(
+tool(
   'run_command',
   {
     description: 'Run an app command by id, e.g. a standard view, undo, or opening a tool.',
@@ -378,7 +397,7 @@ server.registerTool(
   async ({ id }) => text(await ui({ type: 'runCommand', id })),
 );
 
-server.registerTool(
+tool(
   'screenshot',
   { description: 'Screenshot of the Mesh-to-CAD window as the user sees it.' },
   async () => {

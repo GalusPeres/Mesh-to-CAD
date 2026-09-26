@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import itertools
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -387,29 +387,107 @@ def solve(
     constraints: Sequence[Constraint],
     fixed: Sequence[FixedValue] = (),
 ) -> None:
-    """Refit the carriers of all fitted entities jointly, keeping constraints and fixed values."""
+    """Refit the carriers of all fitted entities, keeping constraints and fixed values.
+
+    Entities that no constraint or fixed length ties together are independent, so each
+    connected group is solved on its own: a section through a part with twenty buttons
+    is twenty small problems instead of one large one.
+    """
     fixed = [*fixed, *_pinned_points(sketch)]
     variable = _variable_entities(sketch, fixed)
     if not variable:
         return
-    layout = _Layout(sketch, variable)
     signs = _tangent_signs(sketch, constraints)
+    variable_set = set(variable)
     active = [
         c
         for c in constraints
-        if all(r in sketch.entities for r in c.refs) and any(r in layout.slices for r in c.refs)
+        if all(r in sketch.entities for r in c.refs) and variable_set.intersection(c.refs)
     ]
+    for group in _solve_groups(sketch, variable, active, fixed):
+        _solve_group(sketch, group, active, fixed, constraints, signs)
+
+
+def _solve_groups(
+    sketch: WorkSketch,
+    variable: Sequence[str],
+    active: Sequence[Constraint],
+    fixed: Sequence[FixedValue],
+) -> list[list[str]]:
+    """Variable entities grouped by the constraints and fixed lengths that couple them."""
+    parent = {eid: eid for eid in variable}
+
+    def find(eid: str) -> str:
+        while parent[eid] != eid:
+            parent[eid] = parent[parent[eid]]
+            eid = parent[eid]
+        return eid
+
+    def unite(ids: Iterable[str]) -> None:
+        roots = [find(eid) for eid in ids if eid in parent]
+        for root in roots[1:]:
+            parent[root] = roots[0]
+
+    for c in active:
+        unite(c.refs)
+    incidence = sketch.incidence()
+    for value in fixed:
+        entity = sketch.entities.get(value.entity)
+        if value.kind != "length" or entity is None or isinstance(entity, Circle):
+            continue
+        # A length is measured between corner points, which depend on the neighbours.
+        ends = (entity.start, entity.end)
+        unite([entity.id, *(other.id for pid in ends for other, _ in incidence[pid])])
+    groups: dict[str, list[str]] = {}
+    for eid in variable:
+        groups.setdefault(find(eid), []).append(eid)
+    return list(groups.values())
+
+
+type _Rows = Callable[[FloatArray], list[float]]
+
+
+def _solve_group(
+    sketch: WorkSketch,
+    variable: Sequence[str],
+    active: Sequence[Constraint],
+    fixed: Sequence[FixedValue],
+    all_constraints: Sequence[Constraint],
+    signs: dict[tuple[str, ...], float],
+) -> None:
+    """Joint least-squares refit of one coupled group of entities."""
+    layout = _Layout(sketch, variable)
+    members = set(variable)
     samples = {}
     for eid in variable:
         points = sketch.samples_of(eid)
         if len(points) > MAX_POINTS_PER_ENTITY:
             points = points[np.linspace(0, len(points) - 1, MAX_POINTS_PER_ENTITY).astype(int)]
         samples[eid] = points
-    point_fixed = [f for f in fixed if f.entity in layout.slices and f.kind != "length"]
-    lengths = [f for f in fixed if f.kind == "length" and f.entity in sketch.entities]
-    tangent_pairs = {frozenset(c.refs) for c in constraints if c.kind == "tangent"}
+    tangent_pairs = {frozenset(c.refs) for c in all_constraints if c.kind == "tangent"}
     pinned = {pid for pid, p in sketch.points.items() if p.fixed}
     incidence = sketch.incidence()
+
+    def columns(refs: Iterable[str]) -> list[int]:
+        return [i for r in refs if r in layout.slices for i in _indices(layout.slices[r])]
+
+    # Weighted rows (constraints, fixed values, lengths), each with the parameters it
+    # reads, so the Jacobian differentiates every row only by its own columns.
+    rows: list[tuple[_Rows, list[int]]] = []
+    for c in active:
+        if members.intersection(c.refs):
+            rows.append((_constraint_rows(c, layout, sketch, signs), columns(c.refs)))
+    for value in fixed:
+        if value.entity in members and value.kind != "length":
+            rows.append((_fixed_rows(value, layout, sketch), columns([value.entity])))
+    for value in fixed:
+        if value.entity in members and value.kind == "length":
+            rows.append(
+                (
+                    _length_rows(value, layout, sketch, incidence, tangent_pairs, pinned),
+                    list(range(len(layout.x0))),
+                )
+            )
 
     def point_residuals(x: FloatArray) -> list[FloatArray]:
         out = []
@@ -422,33 +500,17 @@ def solve(
         return out
 
     def weighted_residuals(x: FloatArray) -> FloatArray:
-        out: list[float] = []
-        for c in active:
-            carriers = [layout.params(x, r) for r in c.refs]
-            out += _constraint_residual(c.kind, carriers, c.refs, sketch, signs)
-        for f in point_fixed:
-            is_line = isinstance(sketch.entities[f.entity], Line)
-            out.append(_fixed_residual(f, layout.params(x, f.entity), is_line))
-        if lengths:
-            trial = {eid: _carrier(e, layout.params(x, eid)) for eid, e in sketch.entities.items()}
-            for f in lengths:
-                entity = trial[f.entity]
-                assert not isinstance(entity, Circle)
-                ends = [
-                    point_position(sketch, pid, trial, incidence, tangent_pairs, pinned)
-                    for pid in (entity.start, entity.end)
-                ]
-                out.append(float(np.linalg.norm(ends[1] - ends[0])) - f.value)
-        return WEIGHT * np.asarray(out, dtype=np.float64)
+        return WEIGHT * np.asarray([r for evaluate, _ in rows for r in evaluate(x)], np.float64)
 
     def residuals(x: FloatArray) -> FloatArray:
         return np.concatenate([*point_residuals(x), weighted_residuals(x)])
 
+    point_rows = sum(len(p) for p in samples.values())
+
     def jacobian(x: FloatArray) -> FloatArray:
-        """Point rows analytically; the few weighted rows by forward differences."""
-        rows = sum(len(p) for p in samples.values())
-        extra = weighted_residuals(x)
-        jac = np.zeros((rows + len(extra), len(x)))
+        """Point rows analytically, weighted rows by forward differences over their columns."""
+        bases = [np.asarray(evaluate(x), np.float64) for evaluate, _ in rows]
+        jac = np.zeros((point_rows + sum(len(b) for b in bases), len(x)))
         row = 0
         for eid, points in samples.items():
             part = layout.slices[eid]
@@ -464,12 +526,14 @@ def solve(
                 block[:, part.start + 1] = -delta[:, 1] / rho
                 block[:, part.start + 2] = -1.0
             row += len(points)
-        if len(extra):
-            for column in range(len(x)):
+        for (evaluate, cols), base in zip(rows, bases, strict=True):
+            for column in cols:
                 step = 1e-7 * max(1.0, abs(float(x[column])))
                 shifted = x.copy()
                 shifted[column] += step
-                jac[rows:, column] = (weighted_residuals(shifted) - extra) / step
+                change = np.asarray(evaluate(shifted), np.float64) - base
+                jac[row : row + len(base), column] = WEIGHT * change / step
+            row += len(base)
         return jac
 
     count = len(residuals(layout.x0))
@@ -478,6 +542,50 @@ def solve(
         residuals, layout.x0, jac=jacobian, method=method, xtol=1e-12, ftol=1e-12, gtol=1e-12
     )
     layout.write_back(result.x)
+
+
+def _indices(part: slice) -> range:
+    return range(part.start, part.stop)
+
+
+def _constraint_rows(
+    c: Constraint, layout: _Layout, sketch: WorkSketch, signs: dict[tuple[str, ...], float]
+) -> _Rows:
+    def rows(x: FloatArray) -> list[float]:
+        carriers = [layout.params(x, r) for r in c.refs]
+        return _constraint_residual(c.kind, carriers, c.refs, sketch, signs)
+
+    return rows
+
+
+def _fixed_rows(value: FixedValue, layout: _Layout, sketch: WorkSketch) -> _Rows:
+    is_line = isinstance(sketch.entities[value.entity], Line)
+
+    def rows(x: FloatArray) -> list[float]:
+        return [_fixed_residual(value, layout.params(x, value.entity), is_line)]
+
+    return rows
+
+
+def _length_rows(
+    value: FixedValue,
+    layout: _Layout,
+    sketch: WorkSketch,
+    incidence: dict[str, list[tuple[Entity, str]]],
+    tangent_pairs: set[frozenset[str]],
+    pinned: set[str],
+) -> _Rows:
+    def rows(x: FloatArray) -> list[float]:
+        trial = {eid: _carrier(e, layout.params(x, eid)) for eid, e in sketch.entities.items()}
+        entity = trial[value.entity]
+        assert not isinstance(entity, Circle)
+        ends = [
+            point_position(sketch, pid, trial, incidence, tangent_pairs, pinned)
+            for pid in (entity.start, entity.end)
+        ]
+        return [float(np.linalg.norm(ends[1] - ends[0])) - value.value]
+
+    return rows
 
 
 def _pinned_points(sketch: WorkSketch) -> list[FixedValue]:
