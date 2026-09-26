@@ -6,6 +6,7 @@ import { useJobs } from '../../state/jobStore';
 import { Button } from '../../ui/Button/Button';
 import { IconButton } from '../../ui/IconButton/IconButton';
 import { ProgressBar } from '../../ui/ProgressBar/ProgressBar';
+import styles from './KernelStatus.module.css';
 import type { StatusItem } from './types';
 
 /** Short previews finish before this and never flash a progress bar. */
@@ -36,7 +37,7 @@ function KernelState() {
 
   if (kernel.state === 'stopped' || kernel.state === 'unresponsive') {
     return (
-      <span data-testid="status-kernel">
+      <span className={styles.state} data-testid="status-kernel">
         {t(kernel.state === 'stopped' ? 'status.kernelStopped' : 'status.kernelUnresponsive')}
         <Button variant="ghost" onClick={() => void window.m2c.kernel.restart()}>
           {t('actions.restart')}
@@ -45,12 +46,16 @@ function KernelState() {
     );
   }
   if (kernel.state === 'starting')
-    return <span data-testid="status-kernel">{t('status.kernelStarting')}</span>;
+    return (
+      <span className={styles.state} data-testid="status-kernel">
+        {t('status.kernelStarting')}
+      </span>
+    );
   if (!job) return null;
 
   const elapsed = now - job.startedAt;
   return (
-    <span data-testid="status-kernel">
+    <span className={styles.state} data-testid="status-kernel">
       {job.stage ? t(`progress:${job.stage}`) : t('status.computing')}
       <ProgressBar fraction={job.fraction} label={t('status.computing')} />
       {elapsed > ELAPSED_AFTER_MS && t('status.elapsed', { seconds: Math.round(elapsed / 1000) })}

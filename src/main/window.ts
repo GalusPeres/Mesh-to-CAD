@@ -1,4 +1,4 @@
-import { BrowserWindow, app, nativeTheme } from 'electron';
+import { BrowserWindow, app, nativeTheme, screen } from 'electron';
 
 import type { Settings } from '@shared/settings';
 import { TITLE_BAR_COLORS, type ThemeName } from '@shared/theme';
@@ -10,14 +10,20 @@ export function resolvedTheme(settings: Settings): ThemeName {
   return settings.theme;
 }
 
+const PREFERRED_SIZE = { width: 1600, height: 960 };
+const MIN_SIZE = { width: 960, height: 600 };
+
 /** Frameless window with native caption buttons drawn over the 32 px title bar. */
 export function createMainWindow(settings: Settings, url: string): BrowserWindow {
   const colors = TITLE_BAR_COLORS[resolvedTheme(settings)];
+  // Laptops at 150 % scaling offer about 1280 x 670 logical pixels; the window must fit.
+  const workArea = screen.getPrimaryDisplay().workAreaSize;
   const window = new BrowserWindow({
-    width: 1600,
-    height: 960,
-    minWidth: 1280,
-    minHeight: 720,
+    width: Math.min(PREFERRED_SIZE.width, workArea.width),
+    height: Math.min(PREFERRED_SIZE.height, workArea.height),
+    minWidth: Math.min(MIN_SIZE.width, workArea.width),
+    minHeight: Math.min(MIN_SIZE.height, workArea.height),
+    center: true,
     show: false,
     title: 'Mesh-to-CAD',
     titleBarStyle: 'hidden',

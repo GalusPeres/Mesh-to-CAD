@@ -1,8 +1,8 @@
 .shell {
   display: grid;
   grid-template-rows: var(--title-bar-height) var(--tool-row-height) 1fr var(--status-bar-height);
-  height: 100vh;
-  min-width: 1280px;
+  height: 100%;
+  min-width: 960px;
 }
 
 .workspace {
