@@ -2,10 +2,6 @@
 
 import type { BodyOperation, StandardAxis } from './features-common';
 
-export type RevolveAxis = SketchLineAxis | FeatureAxis | GlobalAxis;
-
-export type RevolveAxisInput = SketchLineAxisInput | FeatureAxisInput | GlobalAxisInput;
-
 export interface SketchLineAxis {
   type: 'sketchLine';
   entity: string;
@@ -38,6 +34,10 @@ export interface GlobalAxisInput {
   type: 'globalAxis';
   axis: StandardAxis;
 }
+
+export type RevolveAxis = SketchLineAxis | FeatureAxis | GlobalAxis;
+
+export type RevolveAxisInput = SketchLineAxisInput | FeatureAxisInput | GlobalAxisInput;
 
 export interface RevolveParams {
   sketch: string;

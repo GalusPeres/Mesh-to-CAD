@@ -3,26 +3,6 @@
 import type { StandardAxis, StandardPlane } from './features-common';
 import type { Vec3 } from './geometry';
 
-export type SketchSection = PlanarSection | RotationalSection;
-
-export type SketchSectionInput = PlanarSectionInput | RotationalSectionInput;
-
-export type PlaneSource = StandardPlaneSource | FeaturePlaneSource | AxisNormalSource;
-
-export type PlaneSourceInput = StandardPlaneSourceInput | FeaturePlaneSourceInput | AxisNormalSourceInput;
-
-export type SketchEntity = LineEntity | ArcEntity | CircleEntity;
-
-export type SketchEntityInput = LineEntityInput | ArcEntityInput | CircleEntityInput;
-
-export type EntityOrigin = 'fit' | 'drawn' | 'axis';
-
-export type ConstraintKind = 'horizontal' | 'vertical' | 'parallel' | 'perpendicular' | 'collinear' | 'equalRadius' | 'concentric' | 'tangent';
-
-export type SnapKind = 'radius' | 'x' | 'y' | 'angle' | 'centerX' | 'centerY' | 'junction' | 'boltCircle';
-
-export type DimensionKind = 'length' | 'angle' | 'radius' | 'centerX' | 'centerY';
-
 export interface StandardPlaneSource {
   type: 'standard';
   plane: StandardPlane;
@@ -57,6 +37,10 @@ export interface AxisNormalSourceInput {
   type: 'axisNormal';
   axis: StandardAxis | string;
 }
+
+export type PlaneSource = StandardPlaneSource | FeaturePlaneSource | AxisNormalSource;
+
+export type PlaneSourceInput = StandardPlaneSourceInput | FeaturePlaneSourceInput | AxisNormalSourceInput;
 
 /** A sketch on a plane; the scan is cut parallel to it and projected onto it. */
 export interface PlanarSection {
@@ -95,6 +79,12 @@ export interface RotationalSectionInput {
   axis: StandardAxis | string;
   angleDeg?: number;
 }
+
+export type SketchSection = PlanarSection | RotationalSection;
+
+export type SketchSectionInput = PlanarSectionInput | RotationalSectionInput;
+
+export type EntityOrigin = 'fit' | 'drawn' | 'axis';
 
 export interface SketchPoint {
   id: string;
@@ -168,10 +158,18 @@ export interface CircleEntityInput {
   origin?: EntityOrigin;
 }
 
+export type SketchEntity = LineEntity | ArcEntity | CircleEntity;
+
+export type SketchEntityInput = LineEntityInput | ArcEntityInput | CircleEntityInput;
+
+export type ConstraintKind = 'horizontal' | 'vertical' | 'parallel' | 'perpendicular' | 'collinear' | 'equalRadius' | 'concentric' | 'tangent';
+
 export interface SketchConstraint {
   kind: ConstraintKind;
   refs: string[];
 }
+
+export type SnapKind = 'radius' | 'x' | 'y' | 'angle' | 'centerX' | 'centerY' | 'junction' | 'boltCircle';
 
 /**
  * A design value applied by snapping, with the measurement it replaced.
@@ -209,6 +207,8 @@ export interface SketchSnapInput {
   pitchDeg?: number | null;
   startDeg?: number | null;
 }
+
+export type DimensionKind = 'length' | 'angle' | 'radius' | 'centerX' | 'centerY';
 
 /** A value typed by the user; refits keep it exactly (angle in degrees). */
 export interface SketchDimension {

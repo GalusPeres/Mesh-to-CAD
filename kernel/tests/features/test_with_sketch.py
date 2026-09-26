@@ -157,3 +157,32 @@ def test_preview_of_a_real_extrusion_is_fast(
     elapsed = time.perf_counter() - started
     assert preview.status is not None and preview.status.state == "ok"
     assert elapsed < 0.5
+
+
+def test_preview_items_carry_the_result_key_for_the_deviation(
+    plate: tuple[Session, str, str], job: JobContext
+) -> None:
+    """The solid panels read the result key from the preview's body item keys
+    (`body:<resultKey>:…`) and ask `inspection.previewDeviation` with it."""
+    from m2c_kernel.commands.inspection import (
+        PreviewDeviationParams,
+        inspection_preview_deviation,
+    )
+
+    session, sketch, extrude = plate
+    params = {"sketch": sketch, "extent": {"type": "distance", "forward": 10.0}}
+    preview = doc_preview(
+        job,
+        PreviewParams(
+            base_revision=session.document.revision,
+            ops=[UpdateFeature(id=extrude, params=RawObject(params))],
+        ),
+    )
+    keys = [item.key for item in preview.items if item.owner == preview.feature_id]
+    assert keys and all(key.startswith(("body:r:", "src:r:")) for key in keys)
+    result_key = keys[0].split(":")[1] + ":" + keys[0].split(":")[2]
+
+    deviation = inspection_preview_deviation(job, PreviewDeviationParams(result_key=result_key))
+    assert deviation.bodies == [extrude]
+    assert deviation.points > 1000
+    assert deviation.stats.passed

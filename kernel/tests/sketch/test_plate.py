@@ -145,7 +145,7 @@ def test_refit_keeps_snaps_and_is_stable() -> None:
 def test_section_and_fit_are_fast() -> None:
     scan = noisy_plate(0.02)
     timings = []
-    for _ in range(3):
+    for _ in range(5):
         start = time.perf_counter()
         geometry = section_geometry(PLATE_SPEC, no_constructions)  # type: ignore[arg-type]
         section = scan.section(geometry)

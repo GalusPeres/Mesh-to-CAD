@@ -7,13 +7,13 @@ import type { FacesInput, FeatureInput, RegionInput } from './alignment-params';
 import type { AlignmentAdjustInput } from './document-model';
 import type { Matrix4 } from './geometry';
 
-export type AlignmentSlot = FeatureInput | RegionInput | FacesInput | SelectionInput;
-
 /** The working selection; the preview stores it as a face set. */
 export interface SelectionInput {
   type: 'selection';
   faces: Uint32Array;
 }
+
+export type AlignmentSlot = FeatureInput | RegionInput | FacesInput | SelectionInput;
 
 export interface AlignmentPreviewParams {
   method: 'none' | 'auto' | 'faces';

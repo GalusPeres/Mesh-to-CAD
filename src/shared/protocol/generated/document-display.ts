@@ -3,8 +3,6 @@
 import type { DisplayKind, DisplayStyle } from './document-results';
 import type { Matrix4, Vec3 } from './geometry';
 
-export type ScenePayload = ScanPayload | MeshPayload | LinesPayload | PointsPayload | RegionsPayload;
-
 export interface SceneItem {
   key: string;
   kind: DisplayKind;
@@ -79,3 +77,5 @@ export interface RegionsPayload {
   labels: Uint16Array;
   colorIndex: Uint8Array;
 }
+
+export type ScenePayload = ScanPayload | MeshPayload | LinesPayload | PointsPayload | RegionsPayload;

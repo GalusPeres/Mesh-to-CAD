@@ -10,9 +10,12 @@ cancelled, so a cancel takes effect within one polling interval.
 
 from __future__ import annotations
 
+import contextlib
 import multiprocessing
 import os
-from collections.abc import Callable
+import sys
+import threading
+from collections.abc import Callable, Iterator
 from multiprocessing.connection import Connection
 
 import numpy as np
@@ -68,7 +71,8 @@ def _run_in_child(
     child = context.Process(
         target=_child_main, args=(sender, vertices, faces, target_faces), daemon=True
     )
-    child.start()
+    with _stdin_detached():
+        child.start()
     sender.close()
     try:
         while not receiver.poll(_POLL_S):
@@ -91,6 +95,39 @@ def _run_in_child(
     if isinstance(result, str):
         raise DecimationError(result)
     return result
+
+
+_std_handle_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def _stdin_detached() -> Iterator[None]:
+    """Start children with NUL as standard input (Windows).
+
+    The kernel's reader thread keeps a synchronous read pending on the stdin pipe.
+    A console child that receives a duplicate of that handle blocks in its startup
+    (Python queries the handle) until the read completes, which can be forever.
+    The process-wide standard input handle is therefore swapped for NUL while the
+    child is created; the C runtime keeps its own handle for fd 0, so the reader
+    thread is not affected.
+    """
+    if sys.platform != "win32":
+        yield
+        return
+    import ctypes
+    import msvcrt
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.GetStdHandle.restype = ctypes.c_void_p
+    kernel32.SetStdHandle.argtypes = (ctypes.c_uint32, ctypes.c_void_p)
+    std_input = ctypes.c_uint32(-10 & 0xFFFFFFFF)
+    with _std_handle_lock, open(os.devnull, "rb") as null:
+        previous = kernel32.GetStdHandle(std_input)
+        kernel32.SetStdHandle(std_input, msvcrt.get_osfhandle(null.fileno()))
+        try:
+            yield
+        finally:
+            kernel32.SetStdHandle(std_input, previous)
 
 
 def _child_main(

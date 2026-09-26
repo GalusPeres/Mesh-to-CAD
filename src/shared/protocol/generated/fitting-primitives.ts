@@ -4,8 +4,6 @@ import type { Vec3 } from './geometry';
 
 export type PrimitiveKind = 'plane' | 'cylinder' | 'cone' | 'sphere' | 'torus';
 
-export type Primitive = Plane | Cylinder | Cone | Sphere | Torus;
-
 export interface Plane {
   type: 'plane';
   origin: Vec3;
@@ -39,3 +37,5 @@ export interface Torus {
   majorRadius: number;
   minorRadius: number;
 }
+
+export type Primitive = Plane | Cylinder | Cone | Sphere | Torus;

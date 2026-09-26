@@ -420,7 +420,9 @@ def _hole_centre(mesh: RawMesh, incidence: sp.csr_matrix, loop: IntArray) -> Flo
 
 
 def _kept(mesh: RawMesh, keep: IntArray, counts: dict[str, int]) -> MeshChange:
-    removed = np.setdiff1d(np.arange(len(mesh.faces), dtype=np.int64), keep)
+    dropped = np.ones(len(mesh.faces), dtype=bool)
+    dropped[keep] = False
+    removed = np.flatnonzero(dropped).astype(np.int64)
     kept = RawMesh(mesh.vertices, mesh.faces[keep])
     return MeshChange(kept, keep, np.zeros(len(keep), dtype=bool), counts, removed)
 

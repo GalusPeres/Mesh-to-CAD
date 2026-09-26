@@ -2,10 +2,6 @@
 
 import type { BodyOperation } from './features-common';
 
-export type PrimitiveExtent = RegionExtent | ManualExtent;
-
-export type PrimitiveExtentInput = RegionExtentInput | ManualExtentInput;
-
 /** Extent along the axis from the scan surface of the fit, plus a margin at both ends. */
 export interface RegionExtent {
   type: 'region';
@@ -34,6 +30,10 @@ export interface ManualExtentInput {
 }
 
 export const MANUAL_EXTENT_RANGES = { length: { min: 0, max: null } } as const;
+
+export type PrimitiveExtent = RegionExtent | ManualExtent;
+
+export type PrimitiveExtentInput = RegionExtentInput | ManualExtentInput;
 
 export interface PrimitiveBodyParams {
   fit: string;

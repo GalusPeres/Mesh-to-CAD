@@ -386,14 +386,26 @@ def generate() -> dict[str, str]:
     return dict(sorted(output.items()))
 
 
-def _definition_order(obj: Any) -> int:
-    """Keep the order of definition in the source module (line number)."""
-    try:
-        import inspect
+def _definition_order(obj: Any) -> tuple[int, str]:
+    """Keep the order of definition in the source module (line number, then name).
 
-        return inspect.getsourcelines(obj)[1]
-    except (OSError, TypeError):
-        return 0
+    `inspect` cannot locate `type X = ...` aliases, so their `type X` line is looked up in the
+    module source; otherwise their order would depend on which command visited them first.
+    """
+    import inspect
+    import re
+    import sys
+
+    name = str(getattr(obj, "__name__", ""))
+    try:
+        if isinstance(obj, TypeAliasType):
+            source = inspect.getsource(sys.modules[str(obj.__module__)])
+            match = re.search(rf"^type {re.escape(name)}\b", source, flags=re.MULTILINE)
+            line = source.count("\n", 0, match.start()) + 1 if match else 0
+            return (line, name)
+        return (inspect.getsourcelines(obj)[1], name)
+    except (OSError, TypeError, KeyError):
+        return (0, name)
 
 
 def _module_of(spec: CommandSpec) -> str:

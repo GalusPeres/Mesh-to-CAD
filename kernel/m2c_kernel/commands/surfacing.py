@@ -11,12 +11,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+
+from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.codes.surfacing import ErrorCode
 from m2c_kernel.commands.doc import PreviewParams as DocPreviewParams
 from m2c_kernel.commands.doc import PreviewResult, doc_preview
 from m2c_kernel.document.ops import AddFeature, DocOp, UpdateFeature
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
+from m2c_kernel.protocol.wire import U32Array
 from m2c_kernel.session.jobs import JobContext
 
 AUTO_SURFACE = "autoSurface"
@@ -38,7 +42,10 @@ def surfacing_preview(ctx: JobContext, params: PreviewParams) -> PreviewResult:
     """
     if len(params.ops) != 1 or not _targets_auto_surface(ctx, params.ops[0]):
         raise KernelError(ErrorCode.NOT_AUTO_SURFACE)
-    return doc_preview(ctx, DocPreviewParams(base_revision=params.base_revision, ops=params.ops))
+    result: PreviewResult = doc_preview(
+        ctx, DocPreviewParams(base_revision=params.base_revision, ops=params.ops)
+    )
+    return result
 
 
 def _targets_auto_surface(ctx: JobContext, op: DocOp) -> bool:
@@ -49,3 +56,29 @@ def _targets_auto_surface(ctx: JobContext, op: DocOp) -> bool:
             existing = ctx.session.document.feature(feature_id)
             return existing is not None and existing.type == AUTO_SURFACE
     return False
+
+
+@dataclass(frozen=True)
+class FeatureFacesParams:
+    feature_id: str
+
+
+@dataclass(frozen=True)
+class FeatureFacesResult:
+    faces: U32Array | None
+    """The stored triangles; None when the feature surfaces the whole scan."""
+    scan_key: str
+
+
+@command("surfacing.featureFaces")
+def surfacing_feature_faces(ctx: JobContext, params: FeatureFacesParams) -> FeatureFacesResult:
+    """The stored triangles of an `autoSurface` feature, for editing it with the selection."""
+    document = ctx.session.document
+    feature = document.feature(params.feature_id)
+    if feature is None or document.scan is None:
+        raise KernelError(DocumentError.UNKNOWN_FEATURE, {"feature": params.feature_id})
+    if feature.type != AUTO_SURFACE or not isinstance(feature.params, dict):
+        raise KernelError(ErrorCode.NOT_AUTO_SURFACE)
+    faces = feature.params.get("faces")
+    stored = ctx.session.blobs.get(faces).astype(np.uint32) if isinstance(faces, str) else None
+    return FeatureFacesResult(faces=stored, scan_key=document.scan.key)

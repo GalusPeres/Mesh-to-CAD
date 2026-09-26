@@ -154,11 +154,29 @@ def probe_regions(scanned: Scanned) -> None:
 
 
 def probe_freeform(scanned: Scanned) -> None:
+    # Vertices on the sharp box edges carry normals of both sides, which a height
+    # field rejects as too curved; the probe uses the inner part of the top side.
     top = scanned.faces_facing((0.0, 0.0, 1.0))
-    params = {"faces": buffer_ref(0, top)}
-    result = ok(scanned.kernel.call("freeform.preview", params, buffers=[top], timeout=120))
-    assert result["faceCount"] == len(top)
+    centres = scanned.positions[scanned.indices[top]].mean(axis=1)[:, :2]
+    low = scanned.positions.min(axis=0)[:2] + 5.0
+    high = scanned.positions.max(axis=0)[:2] - 5.0
+    inner = top[np.all((centres > low) & (centres < high), axis=1)]
+    params = {"faces": buffer_ref(0, inner)}
+    result = ok(scanned.kernel.call("freeform.preview", params, buffers=[inner], timeout=120))
+    assert result["faceCount"] == len(inner)
     assert result["rms"] < 0.1
+
+
+def probe_surfacing(scanned: Scanned) -> None:
+    # A full automatic surfacing run takes minutes even on the small box, too long
+    # for the release gate; the command and its operation parsing still run frozen.
+    # The lazily imported m2c_kernel.surfacing package is bundled through
+    # collect_submodules("m2c_kernel") in kernel/m2c-kernel.spec.
+    kernel = scanned.kernel
+    revision = ok(kernel.call("doc.get"))["revision"]
+    ops = [{"type": "renameFeature", "id": "missing", "name": "x"}]
+    response = kernel.call("surfacing.preview", {"baseRevision": revision, "ops": ops})
+    assert response.error_code == "surfacing.notAutoSurface"
 
 
 PROBES: dict[str, Callable[[Scanned], None]] = {
@@ -174,6 +192,7 @@ PROBES: dict[str, Callable[[Scanned], None]] = {
     "export": probe_export,
     "regions": probe_regions,
     "freeform": probe_freeform,
+    "surfacing": probe_surfacing,
 }
 
 REGISTERED_GROUPS = sorted(
@@ -190,14 +209,6 @@ def test_method_group_works_frozen(group: str, scanned: Scanned) -> None:
     PROBES[group](scanned)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "the kernel's protocol reader keeps a synchronous read pending on stdin, which "
-        "blocks the start of every multiprocessing child (dev and frozen); fix requested "
-        "in .work/interface-requests/T9.md (protect stdin in m2c_kernel/main.py)"
-    ),
-)
 def test_decimation_runs_in_a_frozen_child_process(scanned: Scanned) -> None:
     """Reduction starts the frozen executable again (`--multiprocessing-fork`)."""
     before = len(scanned.indices)

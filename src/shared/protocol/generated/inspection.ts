@@ -4,8 +4,6 @@ import type { MethodInfo } from '../wireTypes';
 import type { DistanceKind, GeometryKind, OriginItem } from './inspection-measure';
 import type { DeviationStats, FaceDeviation } from './inspection-stats';
 
-export type MeasureItem = FeatureItem | BodyFaceItem | OriginPartItem;
-
 export interface DeviationParams {
   bodies: string[];
   maxDistance: number;
@@ -57,6 +55,8 @@ export interface OriginPartItem {
   type: 'origin';
   item: OriginItem;
 }
+
+export type MeasureItem = FeatureItem | BodyFaceItem | OriginPartItem;
 
 export interface MeasureParams {
   a: MeasureItem;

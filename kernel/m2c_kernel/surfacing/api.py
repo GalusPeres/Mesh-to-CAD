@@ -4,7 +4,8 @@
 B-spline patches, sewn by construction into a closed solid, or an open shell when the
 scan is open. Stages and the measurements behind the constants:
 
-1. Cage: quadric decimation to `SurfacingOptions.cage_triangles` triangles.
+1. Cage: quadric decimation to an intermediate size, then a manifold-preserving edge
+   collapse to `SurfacingOptions.cage_triangles` triangles (`cage.py`, `collapse.py`).
 2. One Catmull-Clark step makes the cage all-quad (three quads per triangle).
 3. Fit: `FIT_ITERATIONS` rounds of sparse least squares on the limit surface sampled on
    a 5 x 5 grid per quad (`fitting.py`). On the Armadillo (346 k triangles) the RMS
@@ -35,6 +36,7 @@ from scipy.spatial import cKDTree
 from m2c_kernel.cad.occ_compat import BRepCheck_Analyzer
 from m2c_kernel.codes.surfacing import ErrorCode, ProgressStage
 from m2c_kernel.geometry import FloatArray
+from m2c_kernel.limits import MIN_FIT_FACES
 from m2c_kernel.mesh.normals import vertex_normals
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.surfacing.brep import build_shape
@@ -66,7 +68,8 @@ CAGE_TRIANGLES: dict[str, int] = {"coarse": 400, "medium": 1000, "fine": 2500}
 SMOOTHING_WEIGHT: dict[str, float] = {"low": 0.002, "medium": 0.01, "high": 0.05}
 """Fairness weight per smoothing level (see `fitting.fit_cage`)."""
 
-MIN_FACES = 200
+MIN_FACES = MIN_FIT_FACES
+"""Smallest scan part or selection (the same limit as for shape fitting)."""
 FIT_LEVEL = 2
 PATCH_LEVEL = 3
 FIT_ITERATIONS = 6

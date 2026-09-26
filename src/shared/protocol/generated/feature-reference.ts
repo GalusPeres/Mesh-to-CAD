@@ -2,10 +2,6 @@
 
 import type { StandardAxis, StandardPlane } from './features-common';
 
-export type ReferenceDefinition = OffsetPlane | PlaneThroughAxis | MidPlane | AxisFromPlanes;
-
-export type ReferenceDefinitionInput = OffsetPlaneInput | PlaneThroughAxisInput | MidPlaneInput | AxisFromPlanesInput;
-
 /** A plane parallel to `plane`, shifted by `distance` along its normal. */
 export interface OffsetPlane {
   type: 'offsetPlane';
@@ -61,6 +57,10 @@ export interface AxisFromPlanesInput {
   a: StandardPlane | string;
   b: StandardPlane | string;
 }
+
+export type ReferenceDefinition = OffsetPlane | PlaneThroughAxis | MidPlane | AxisFromPlanes;
+
+export type ReferenceDefinitionInput = OffsetPlaneInput | PlaneThroughAxisInput | MidPlaneInput | AxisFromPlanesInput;
 
 export interface ReferenceParams {
   definition: ReferenceDefinition;

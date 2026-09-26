@@ -12,6 +12,7 @@ import { type ProjectMethods, PROJECT_METHODS } from './project';
 import { type RegionsMethods, REGIONS_METHODS } from './regions';
 import { type SceneMethods, SCENE_METHODS } from './scene';
 import { type SketchMethods, SKETCH_METHODS } from './sketch';
+import { type SurfacingMethods, SURFACING_METHODS } from './surfacing';
 import { type SystemMethods, SYSTEM_METHODS } from './system';
 import { ALIGNMENT_ERROR_CODES, ALIGNMENT_ISSUE_CODES, ALIGNMENT_PROGRESS_STAGES } from './codes-alignment';
 import { CAD_ERROR_CODES, CAD_ISSUE_CODES, CAD_PROGRESS_STAGES } from './codes-cad';
@@ -26,6 +27,8 @@ import { PROJECT_ERROR_CODES, PROJECT_ISSUE_CODES, PROJECT_PROGRESS_STAGES } fro
 import { REFERENCE_ERROR_CODES, REFERENCE_ISSUE_CODES, REFERENCE_PROGRESS_STAGES } from './codes-reference';
 import { REGIONS_ERROR_CODES, REGIONS_ISSUE_CODES, REGIONS_PROGRESS_STAGES } from './codes-regions';
 import { SKETCH_ERROR_CODES, SKETCH_ISSUE_CODES, SKETCH_PROGRESS_STAGES } from './codes-sketch';
+import { SURFACING_ERROR_CODES, SURFACING_ISSUE_CODES, SURFACING_PROGRESS_STAGES } from './codes-surfacing';
+import type { AutoSurfaceFeatureType } from './feature-auto-surface';
 import type { CombineFeatureType } from './feature-combine';
 import type { ExtrudeFeatureType } from './feature-extrude';
 import type { FilletFeatureType } from './feature-fillet';
@@ -38,7 +41,7 @@ import type { RevolveFeatureType } from './feature-revolve';
 import type { SketchFeatureType } from './feature-sketch';
 import type { TrimFeatureType } from './feature-trim';
 
-export type KernelMethods = AlignmentMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & ProjectMethods & RegionsMethods & SceneMethods & SketchMethods & SystemMethods;
+export type KernelMethods = AlignmentMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & ProjectMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
 
 export const METHOD_TABLE = {
   ...ALIGNMENT_METHODS,
@@ -53,6 +56,7 @@ export const METHOD_TABLE = {
   ...REGIONS_METHODS,
   ...SCENE_METHODS,
   ...SKETCH_METHODS,
+  ...SURFACING_METHODS,
   ...SYSTEM_METHODS,
 };
 
@@ -72,6 +76,7 @@ export const ERROR_CODES: readonly string[] = [
   ...REFERENCE_ERROR_CODES,
   ...REGIONS_ERROR_CODES,
   ...SKETCH_ERROR_CODES,
+  ...SURFACING_ERROR_CODES,
 ];
 
 export const ISSUE_CODES: readonly string[] = [
@@ -88,6 +93,7 @@ export const ISSUE_CODES: readonly string[] = [
   ...REFERENCE_ISSUE_CODES,
   ...REGIONS_ISSUE_CODES,
   ...SKETCH_ISSUE_CODES,
+  ...SURFACING_ISSUE_CODES,
 ];
 
 export const PROGRESS_STAGES: readonly string[] = [
@@ -104,9 +110,11 @@ export const PROGRESS_STAGES: readonly string[] = [
   ...REFERENCE_PROGRESS_STAGES,
   ...REGIONS_PROGRESS_STAGES,
   ...SKETCH_PROGRESS_STAGES,
+  ...SURFACING_PROGRESS_STAGES,
 ];
 
 export interface FeatureTypes {
+  autoSurface: AutoSurfaceFeatureType;
   combine: CombineFeatureType;
   extrude: ExtrudeFeatureType;
   fillet: FilletFeatureType;
@@ -123,6 +131,7 @@ export interface FeatureTypes {
 export type FeatureTypeId = keyof FeatureTypes;
 
 export const FEATURE_TYPE_IDS = [
+  'autoSurface',
   'combine',
   'extrude',
   'fillet',

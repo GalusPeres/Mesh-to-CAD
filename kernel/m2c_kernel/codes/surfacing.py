@@ -11,7 +11,7 @@ class ErrorCode(StrEnum):
     SHAPE_INVALID = "surfacing.shapeInvalid"
     """The assembled patches do not form a valid shell."""
     NOT_AUTO_SURFACE = "surfacing.notAutoSurface"
-    """`surfacing.preview` was called for another feature type."""
+    """`surfacing.preview` or `surfacing.featureFaces` was called for another feature type."""
 
 
 class IssueCode(StrEnum):

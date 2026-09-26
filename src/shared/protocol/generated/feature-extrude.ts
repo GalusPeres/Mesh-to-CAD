@@ -2,10 +2,6 @@
 
 import type { BodyOperation } from './features-common';
 
-export type ExtrudeExtent = DistanceExtent | ToPlaneExtent;
-
-export type ExtrudeExtentInput = DistanceExtentInput | ToPlaneExtentInput;
-
 export interface DistanceExtent {
   type: 'distance';
   forward: number;
@@ -33,6 +29,10 @@ export interface ToPlaneExtentInput {
   feature: string;
   offset?: number;
 }
+
+export type ExtrudeExtent = DistanceExtent | ToPlaneExtent;
+
+export type ExtrudeExtentInput = DistanceExtentInput | ToPlaneExtentInput;
 
 export interface ExtrudeParams {
   sketch: string;

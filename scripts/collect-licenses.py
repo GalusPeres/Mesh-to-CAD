@@ -11,12 +11,12 @@ released without its notice.
 from __future__ import annotations
 
 import html
-import importlib.metadata as metadata
 import json
 import re
 import shutil
 import sys
 from dataclasses import dataclass, field
+from importlib import metadata
 from pathlib import Path
 
 from packaging.requirements import Requirement

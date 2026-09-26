@@ -1,9 +1,11 @@
 """The coarse triangle cage the freeform surface is built on.
 
-The scan is reduced with quadric decimation to the requested triangle count. The
-decimated mesh must be an oriented 2-manifold with a single fan around every vertex
-and the same closedness as the scan; decimation very rarely breaks that, so a failed
-result is retried with slightly different target counts.
+The scan is reduced with quadric decimation (fast_simplification) to an intermediate
+size and from there to the requested triangle count by a manifold-preserving edge
+collapse (`collapse.py`); fast_simplification alone folds thin parts into
+non-manifold edges at cage sizes. The cage must be an oriented 2-manifold with a
+single fan around every vertex and the same closedness as the scan; a failed
+intermediate mesh is retried with other sizes.
 
 The decimated triangles are used as they are. Quadric decimation places more vertices
 where the scan is curved and aligns long edges with flat directions; measured on the
@@ -22,6 +24,7 @@ import scipy.sparse as sp
 from scipy.sparse.csgraph import connected_components
 
 from m2c_kernel.geometry import FloatArray
+from m2c_kernel.surfacing.collapse import collapse_to
 from m2c_kernel.surfacing.subdivision import EdgeTopology, TopologyError, edge_topology
 
 type IntArray = npt.NDArray[np.int64]
@@ -29,7 +32,11 @@ type Decimator = Callable[[FloatArray, IntArray, int], tuple[FloatArray, IntArra
 """Reduces (vertices, faces) to about `target` faces."""
 
 MAX_PASSES = 4
-RETRY_FACTORS = (1.0, 1.07, 0.93, 1.15, 0.87)
+RETRY_FACTORS = (1.0, 1.5, 2.2, 0.8)
+"""Size factors of the intermediate cage for retries when it is not manifold."""
+INTERMEDIATE_FACTOR = 6
+INTERMEDIATE_MIN = 6000
+"""fast_simplification reduces to max(6 x target, 6000) faces, the collapse does the rest."""
 
 
 class CageError(ValueError):
@@ -137,13 +144,18 @@ def decimated_cage(
 ) -> TriangleCage:
     """A manifold triangle cage of about `target` faces for one connected scan component."""
     closed = not bool(np.any(edge_boundary_mask(faces, len(vertices))))
+    intermediate = max(INTERMEDIATE_FACTOR * target, INTERMEDIATE_MIN)
     for factor in RETRY_FACTORS:
         check_cancelled()
         cage_vertices, cage_faces = _decimate_to(
-            vertices, faces, max(round(target * factor), 8), decimate
+            vertices, faces, max(round(intermediate * factor), 8), decimate
         )
         cage_vertices, cage_faces, _ = largest_component(cage_vertices, cage_faces)
         try:
+            validate_cage(cage_vertices, cage_faces)
+            cage_vertices, cage_faces = collapse_to(
+                cage_vertices, cage_faces, target, check_cancelled
+            )
             topology = validate_cage(cage_vertices, cage_faces)
         except TopologyError:
             continue
