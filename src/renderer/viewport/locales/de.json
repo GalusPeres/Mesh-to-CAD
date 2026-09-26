@@ -1,9 +1,26 @@
 {
   "commands": {
     "fitAll": "Alles zeigen",
+    "fitSelection": "Auswahl zeigen",
     "standardViews": "Standardansichten",
     "perspective": "Perspektive",
-    "cycleVisibility": "Scan / Körper / beide"
+    "cycleVisibility": "Sichtbarkeit wechseln",
+    "sectionPlane": "Schnittebene"
+  },
+  "visibility": {
+    "label": "Sichtbarkeit",
+    "both": "Scan und Körper",
+    "scan": "Nur Scan",
+    "bodies": "Nur Körper"
+  },
+  "display": {
+    "label": "Darstellung",
+    "shaded": "Schattiert",
+    "shadedEdges": "Schattiert + Kanten",
+    "flat": "Flach",
+    "xray": "Röntgen",
+    "regions": "Bereiche",
+    "deviation": "Abweichung"
   },
   "views": {
     "front": "Vorne",
@@ -13,5 +30,10 @@
     "top": "Oben",
     "bottom": "Unten",
     "iso": "Isometrisch"
+  },
+  "viewCube": {
+    "home": "Isometrische Ansicht",
+    "rollLeft": "Ansicht um 90° nach links drehen",
+    "rollRight": "Ansicht um 90° nach rechts drehen"
   }
 }

@@ -1,11 +1,13 @@
 // Document edits started from the project tree: rename, suppress and delete.
 // Each is one `doc.apply` call, so each is one undo step.
 
+import type { TFunction } from 'i18next';
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 
 import type { DocOp } from '@shared/protocol/generated/document-ops';
 
+import type { Formatter } from '../i18n/format';
 import { i18n } from '../i18n';
 import { KernelFailure } from '../kernel/KernelFailure';
 import { describeError } from '../kernel/describeError';
@@ -18,7 +20,7 @@ import { toolStore } from '../state/toolStore';
 
 export interface TreeDialogState {
   rename: { featureId: string; name: string } | null;
-  /** Delete confirmation, shown only when the feature has dependents. */
+  /** Delete confirmation, shown only when other features use the one to delete. */
   remove: { featureId: string; dependents: string[] } | null;
 }
 
@@ -32,9 +34,14 @@ export function closeTreeDialogs(): void {
   treeDialogStore.setState({ rename: null, remove: null });
 }
 
-/** Tree edits are blocked while a tool is open or a long job runs (docs/DESIGN.md 5.1, 5.7). */
+/** Tree edits wait while a tool is open or a long job runs (docs/DESIGN.md 5.1, 5.7). */
 export function canEditDocument(): boolean {
   return !toolStore.getState().activeToolId && !exclusiveJobRunning();
+}
+
+function reportFailure(error: unknown): void {
+  if (!(error instanceof KernelFailure)) throw error;
+  showMessage('error', describeError(error, i18n.t), error.details);
 }
 
 async function apply(ops: DocOp[], label: string): Promise<boolean> {
@@ -44,26 +51,25 @@ async function apply(ops: DocOp[], label: string): Promise<boolean> {
     await kernel().call('doc.apply', { baseRevision, ops, label }).result;
     return true;
   } catch (error) {
-    if (error instanceof KernelFailure) {
-      showMessage('error', describeError(error, i18n.t), error.details);
-      return false;
-    }
-    throw error;
+    reportFailure(error);
+    return false;
   }
 }
 
-function feature(featureId: string) {
+function findFeature(featureId: string) {
   return documentStore.getState().snapshot?.document.features.find((f) => f.id === featureId);
 }
 
 export function startRename(featureId: string, displayName: string): void {
-  if (!canEditDocument() || !feature(featureId)) return;
+  if (!canEditDocument() || !findFeature(featureId)) return;
   treeDialogStore.setState({ rename: { featureId, name: displayName } });
 }
 
 /** An empty name restores the default name ("Zylinder 2"). */
 export async function renameFeature(featureId: string, name: string): Promise<boolean> {
   const trimmed = name.trim();
+  const current = findFeature(featureId);
+  if (!current || (current.name ?? '') === trimmed) return false;
   return apply(
     [{ type: 'renameFeature', id: featureId, name: trimmed === '' ? null : trimmed }],
     i18n.t('panels:undo.rename'),
@@ -71,7 +77,7 @@ export async function renameFeature(featureId: string, name: string): Promise<bo
 }
 
 export async function toggleSuppressed(featureId: string): Promise<boolean> {
-  const current = feature(featureId);
+  const current = findFeature(featureId);
   if (!current || !canEditDocument()) return false;
   const suppressed = !current.suppressed;
   return apply(
@@ -80,11 +86,17 @@ export async function toggleSuppressed(featureId: string): Promise<boolean> {
   );
 }
 
-/** Delete at once when nothing depends on the feature, otherwise ask first. */
+/** Delete at once when nothing uses the feature, otherwise ask first. */
 export async function requestDelete(featureId: string): Promise<void> {
-  if (!feature(featureId) || !canEditDocument()) return;
-  const { featureIds } = await kernel().call('doc.dependents', { featureId }).result;
-  const dependents = featureIds.filter((id) => id !== featureId);
+  if (!findFeature(featureId) || !canEditDocument()) return;
+  let dependents: string[];
+  try {
+    const { featureIds } = await kernel().call('doc.dependents', { featureId }).result;
+    dependents = featureIds.filter((id) => id !== featureId);
+  } catch (error) {
+    reportFailure(error);
+    return;
+  }
   if (dependents.length) {
     treeDialogStore.setState({ remove: { featureId, dependents } });
     return;
@@ -99,4 +111,20 @@ export async function deleteFeature(featureId: string, cascade: boolean): Promis
   );
   if (done) selectObjects([]);
   return done;
+}
+
+/** "Skizze 1 wird von Extrusion 1 und Verrundung 1 verwendet. Alle 3 löschen?" */
+export function dependentsQuestion(
+  featureId: string,
+  dependents: readonly string[],
+  names: ReadonlyMap<string, string>,
+  format: Formatter,
+  t: TFunction,
+): string {
+  const name = (id: string) => names.get(id) ?? id;
+  return t('panels:delete.withDependents', {
+    name: name(featureId),
+    dependents: format.list(dependents.map(name)),
+    count: dependents.length + 1,
+  });
 }

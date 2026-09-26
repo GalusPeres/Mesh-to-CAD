@@ -6,5 +6,13 @@
     "cone": "Kegel",
     "sphere": "Kugel",
     "torus": "Torus"
+  },
+  "summary": {
+    "distance": "Abstand {{value}}",
+    "diameter": "⌀ {{value}}",
+    "angle": "Öffnungswinkel {{value}}",
+    "radii": "R {{major}}, r {{minor}}",
+    "parallel": "parallel zu {{axis}}",
+    "perpendicular": "senkrecht zu {{axis}}"
   }
 }

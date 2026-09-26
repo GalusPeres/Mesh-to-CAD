@@ -1,162 +1,146 @@
-// Scan-face queries that do not need the renderer: polygon picking, face
-// adjacency and the ScanView proxy used before a scan is loaded.
+// Scan-face queries on the UI thread: the brush circle (BVH candidates, then the
+// visibility test of scanVisibility.ts), the nearest face under a ray, and
+// centroids in part coordinates for scanTopology().
 
 import * as THREE from 'three';
+import { CONTAINED, INTERSECTED, NOT_INTERSECTED } from 'three-mesh-bvh';
 
-import type { DeviationDisplay, ScanTopology, ScanView } from './api';
+import type { FaceIdImage } from './faceIds';
 import type { ScanMesh } from './scanMesh';
+import {
+  type PickView,
+  type ScreenPosition,
+  isClipped,
+  isFaceVisible,
+  projectToScreen,
+} from './scanVisibility';
 
-/** Delegates to the current scan mesh; does nothing while no scan is loaded. */
-export class ScanProxy implements ScanView {
-  constructor(private readonly current: () => ScanMesh | null) {}
+const corner = new THREE.Vector3();
+const screen: ScreenPosition = { x: 0, y: 0 };
 
-  get faceCount(): number {
-    return this.current()?.faceCount ?? 0;
+/** Screen rectangle of a box, or null when part of it lies behind the camera. */
+function screenRect(view: PickView, box: THREE.Box3): [number, number, number, number] | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < 8; i += 1) {
+    corner.set(
+      i & 1 ? box.max.x : box.min.x,
+      i & 2 ? box.max.y : box.min.y,
+      i & 4 ? box.max.z : box.min.z,
+    );
+    if (!projectToScreen(view, corner.x, corner.y, corner.z, screen)) return null;
+    minX = Math.min(minX, screen.x);
+    maxX = Math.max(maxX, screen.x);
+    minY = Math.min(minY, screen.y);
+    maxY = Math.max(maxY, screen.y);
   }
-
-  get scanKey(): string | null {
-    return this.current()?.scanKey ?? null;
-  }
-
-  setSelection(mask: Uint8Array): void {
-    this.current()?.setSelection(mask);
-  }
-
-  updateSelection(faces: Uint32Array, selected: boolean): void {
-    this.current()?.updateSelection(faces, selected);
-  }
-
-  setHover(faces: Uint32Array | null): void {
-    this.current()?.setHover(faces);
-  }
-
-  setHidden(mask: Uint8Array | null): void {
-    this.current()?.setHidden(mask);
-  }
-
-  setFaceStates(faces: Uint32Array | null, states?: Uint8Array): void {
-    this.current()?.setFaceStates(faces, states);
-  }
-
-  setRegions(labels: Uint16Array | null, colorIndex: Uint8Array | null): void {
-    this.current()?.setRegions(labels, colorIndex);
-  }
-
-  setDeviation(values: Float32Array | null, display?: DeviationDisplay): void {
-    this.current()?.setDeviation(values, display);
-  }
-
-  setOpacity(opacity: number): void {
-    this.current()?.setOpacity(opacity);
-  }
-}
-
-function insidePolygon(x: number, y: number, polygon: Float32Array): boolean {
-  let inside = false;
-  const count = polygon.length / 2;
-  for (let i = 0, j = count - 1; i < count; j = i, i += 1) {
-    const xi = polygon[i * 2] ?? 0;
-    const yi = polygon[i * 2 + 1] ?? 0;
-    const xj = polygon[j * 2] ?? 0;
-    const yj = polygon[j * 2 + 1] ?? 0;
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
+  return [minX, minY, maxX, maxY];
 }
 
 /**
- * Faces whose centroid projects within `radius` pixels of a screen point (brush).
- * With `toView`, faces turned away from the camera are skipped; faces hidden
- * behind other geometry are not detected here (a face-id render pass does that).
+ * Faces whose centroid projects within `radius` CSS pixels of `at`; with an id
+ * image only the visible ones. Hidden and clipped faces never count.
  */
-export function facesInCircle(
-  mesh: ScanMesh,
+export function pickFacesInCircle(
+  scan: ScanMesh,
+  view: PickView,
   at: { x: number; y: number },
   radius: number,
-  size: { width: number; height: number },
-  toClip: THREE.Matrix4,
-  toView: THREE.Matrix3 | null,
+  image: FaceIdImage | null,
 ): Uint32Array {
-  const point = new THREE.Vector3();
-  const normal = new THREE.Vector3();
+  const topology = scan.topology;
+  if (!topology) return new Uint32Array();
+  const { bvh, centroids, faceNormals } = topology;
   const radiusSquared = radius * radius;
-  const result: number[] = [];
-  for (let face = 0; face < mesh.faceCount; face += 1) {
-    point.fromArray(mesh.centroids, face * 3).applyMatrix4(toClip);
-    const dx = ((point.x + 1) / 2) * size.width - at.x;
-    const dy = ((1 - point.y) / 2) * size.height - at.y;
-    if (dx * dx + dy * dy > radiusSquared || mesh.isHidden(face)) continue;
-    if (toView && normal.fromArray(mesh.faceNormals, face * 3).applyMatrix3(toView).z <= 0)
-      continue;
-    result.push(face);
-  }
-  return Uint32Array.from(result);
+  const picked: number[] = [];
+  const position: ScreenPosition = { x: 0, y: 0 };
+  bvh.shapecast({
+    intersectsBounds: (box) => {
+      const rect = screenRect(view, box);
+      if (!rect) return INTERSECTED;
+      const [minX, minY, maxX, maxY] = rect;
+      const dx = Math.max(minX - at.x, 0, at.x - maxX);
+      const dy = Math.max(minY - at.y, 0, at.y - maxY);
+      if (dx * dx + dy * dy > radiusSquared) return NOT_INTERSECTED;
+      const far = Math.max(
+        Math.hypot(minX - at.x, minY - at.y),
+        Math.hypot(maxX - at.x, minY - at.y),
+        Math.hypot(minX - at.x, maxY - at.y),
+        Math.hypot(maxX - at.x, maxY - at.y),
+      );
+      return far <= radius ? CONTAINED : INTERSECTED;
+    },
+    intersectsRange: (offset, count) => {
+      for (let i = offset; i < offset + count; i += 1) {
+        const face = bvh.resolveTriangleIndex(i);
+        if (scan.isHidden(face) || isClipped(view, centroids, face)) continue;
+        const o = face * 3;
+        const inView = projectToScreen(
+          view,
+          centroids[o] ?? 0,
+          centroids[o + 1] ?? 0,
+          centroids[o + 2] ?? 0,
+          position,
+        );
+        if (!inView) continue;
+        const dx = position.x - at.x;
+        const dy = position.y - at.y;
+        if (dx * dx + dy * dy > radiusSquared) continue;
+        if (
+          image &&
+          !isFaceVisible(face, position.x, position.y, centroids, faceNormals, view, image)
+        )
+          continue;
+        picked.push(face);
+      }
+      return false;
+    },
+  });
+  return Uint32Array.from(picked);
+}
+
+export interface ScanRayHit {
+  face: number;
+  /** Scan-local hit point. */
+  point: THREE.Vector3;
+  distance: number;
 }
 
 /**
- * Faces whose centroid projects inside a screen polygon (x, y pairs in CSS px).
- * With `toView`, faces turned away from the camera are skipped.
+ * The nearest face a scan-local ray hits that is neither hidden nor cut away by
+ * the section plane (scan-local, the side the normal points to is removed).
  */
-export function facesInPolygon(
-  mesh: ScanMesh,
-  polygon: Float32Array,
-  size: { width: number; height: number },
-  toClip: THREE.Matrix4,
-  toView: THREE.Matrix3 | null,
-): Uint32Array {
-  const point = new THREE.Vector3();
-  const normal = new THREE.Vector3();
-  const result: number[] = [];
-  for (let face = 0; face < mesh.faceCount; face += 1) {
-    if (mesh.isHidden(face)) continue;
-    if (toView && normal.fromArray(mesh.faceNormals, face * 3).applyMatrix3(toView).z <= 0)
-      continue;
-    point.fromArray(mesh.centroids, face * 3).applyMatrix4(toClip);
-    const x = ((point.x + 1) / 2) * size.width;
-    const y = ((1 - point.y) / 2) * size.height;
-    if (insidePolygon(x, y, polygon)) result.push(face);
+export function raycastScan(
+  scan: ScanMesh,
+  ray: THREE.Ray,
+  clip: THREE.Plane | null,
+): ScanRayHit | null {
+  const bvh = scan.topology?.bvh;
+  if (!bvh) return null;
+  const hits = bvh.raycast(ray, THREE.DoubleSide);
+  hits.sort((a, b) => a.distance - b.distance);
+  for (const hit of hits) {
+    const face = hit.faceIndex ?? -1;
+    if (face < 0 || scan.isHidden(face)) continue;
+    if (clip && clip.distanceToPoint(hit.point) > 0) continue;
+    return { face, point: hit.point.clone(), distance: hit.distance };
   }
-  return Uint32Array.from(result);
+  return null;
 }
 
-/** Face adjacency across shared edges and centroids in part coordinates. */
-export function computeScanTopology(mesh: ScanMesh, scanToPart: THREE.Matrix4): ScanTopology {
-  const positions = mesh.mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-  const neighbours = new Int32Array(mesh.faceCount * 3).fill(-1);
-  const vertexIds = new Map<string, number>();
-  const vertexId = (corner: number) => {
-    const key = `${positions.getX(corner)},${positions.getY(corner)},${positions.getZ(corner)}`;
-    let id = vertexIds.get(key);
-    if (id === undefined) {
-      id = vertexIds.size;
-      vertexIds.set(key, id);
-    }
-    return id;
-  };
-  const edges = new Map<string, number>();
-  for (let face = 0; face < mesh.faceCount; face += 1) {
-    const ids = [vertexId(face * 3), vertexId(face * 3 + 1), vertexId(face * 3 + 2)];
-    for (let slot = 0; slot < 3; slot += 1) {
-      const a = ids[slot] ?? 0;
-      const b = ids[(slot + 1) % 3] ?? 0;
-      const key = a < b ? `${a}:${b}` : `${b}:${a}`;
-      const other = edges.get(key);
-      if (other === undefined) {
-        edges.set(key, face * 3 + slot);
-      } else if (other >= 0) {
-        neighbours[face * 3 + slot] = Math.floor(other / 3);
-        neighbours[other] = face;
-        edges.set(key, -1);
-      }
-    }
+/** Face centroids moved from scan-local to part coordinates. */
+export function partCentroids(centroids: Float32Array, scanToPart: THREE.Matrix4): Float32Array {
+  const result = new Float32Array(centroids.length);
+  const e = scanToPart.elements;
+  for (let o = 0; o < centroids.length; o += 3) {
+    const x = centroids[o] ?? 0;
+    const y = centroids[o + 1] ?? 0;
+    const z = centroids[o + 2] ?? 0;
+    result[o] = e[0] * x + e[4] * y + e[8] * z + e[12];
+    result[o + 1] = e[1] * x + e[5] * y + e[9] * z + e[13];
+    result[o + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
   }
-  const centroids = new Float32Array(mesh.centroids.length);
-  const point = new THREE.Vector3();
-  for (let face = 0; face < mesh.faceCount; face += 1) {
-    point
-      .fromArray(mesh.centroids, face * 3)
-      .applyMatrix4(scanToPart)
-      .toArray(centroids, face * 3);
-  }
-  return { neighbours, centroids };
+  return result;
 }

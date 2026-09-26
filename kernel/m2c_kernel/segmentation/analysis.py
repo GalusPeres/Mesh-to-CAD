@@ -9,6 +9,7 @@ residual rises well above the noise within the fit radius of one
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -20,6 +21,7 @@ import scipy.sparse as sp
 from scipy.spatial import cKDTree
 
 from m2c_kernel.geometry import FloatArray
+from m2c_kernel.mesh.normals import voxel_subsample
 
 if TYPE_CHECKING:
     from m2c_kernel.document.rebuild import EvalMesh
@@ -34,6 +36,11 @@ CREASE_MIN_AREA = 0.5
 """Crease-zone fragments below this area (mm^2) are noise."""
 MIN_NOISE = 1e-3
 """Lower bound of the noise estimate (mm), for noise-free synthetic meshes."""
+CURVATURE_RADIUS_MM = 1.0
+"""Curvatures are averaged over this radius before faces are compared."""
+_CURVATURE_CELL_MM = 0.5
+_CURVATURE_NEIGHBOURS = 32
+"""Upper bound of samples within the radius (about 13 on a surface with 0.5 mm cells)."""
 
 
 @dataclass
@@ -66,10 +73,28 @@ class MeshAnalysis:
 
     @cached_property
     def dominant_curvature(self) -> FloatArray:
-        """Mean over the face's vertices of the principal curvature with the larger magnitude."""
-        jet = self.mesh.jet
-        dominant = np.where(np.abs(jet.k1) >= np.abs(jet.k2), jet.k1, jet.k2)
-        result: FloatArray = dominant[self.mesh.faces].mean(axis=1)
+        """Per face: the principal curvature with the larger magnitude, averaged over 1 mm.
+
+        Jet curvatures of a noisy scan scatter by about 0.035 / mm from vertex to
+        vertex, as much as the curvature of an R30 cylinder. Averaging over a fixed
+        spatial radius (not a number of rings, which depends on the triangle size)
+        halves the scatter, so curvature-homogeneous patches stay connected.
+        """
+        jet, vertices = self.mesh.jet, self.mesh.vertices
+        per_vertex = np.where(np.abs(jet.k1) >= np.abs(jet.k2), jet.k1, jet.k2)
+        sample = voxel_subsample(vertices, _CURVATURE_CELL_MM)
+        points = vertices[sample]
+        tree = cKDTree(points)
+        k = min(_CURVATURE_NEIGHBOURS, len(points))
+        distance, neighbour = tree.query(
+            points, k=k, distance_upper_bound=CURVATURE_RADIUS_MM, workers=-1
+        )
+        found = np.isfinite(distance.reshape(len(points), k))
+        neighbour = np.minimum(neighbour.reshape(len(points), k), len(points) - 1)
+        values = np.where(found, per_vertex[sample][neighbour], 0.0)
+        averaged = values.sum(axis=1) / found.sum(axis=1)
+        _, nearest = tree.query(vertices, workers=-1)
+        result: FloatArray = averaged[nearest][self.mesh.faces].mean(axis=1)
         return result
 
     @cached_property
@@ -100,6 +125,13 @@ class MeshAnalysis:
         result: BoolArray = ~self.mesh.synthetic
         return result
 
+    def warm_up(self, check: Callable[[], None] = lambda: None) -> None:
+        """Compute everything region growing needs, calling `check` between the steps."""
+        for step in ("face_normals", "dominant_curvature", "crease", "centroid_tree"):
+            check()
+            getattr(self, step)
+        check()
+
 
 def _vertex_ring_mean(faces: IntArray, vertex_count: int) -> sp.csr_matrix:
     """Row-normalised vertex adjacency (mean over the 1-ring including the vertex)."""
@@ -126,3 +158,10 @@ def analyse(mesh: EvalMesh) -> MeshAnalysis:
             analysis = MeshAnalysis(mesh)
             _CACHE[mesh] = analysis
         return analysis
+
+
+def is_analysed(mesh: EvalMesh) -> bool:
+    """True when the expensive per-mesh data already exists (no progress bar needed)."""
+    with _LOCK:
+        analysis = _CACHE.get(mesh)
+    return analysis is not None and "centroid_tree" in analysis.__dict__

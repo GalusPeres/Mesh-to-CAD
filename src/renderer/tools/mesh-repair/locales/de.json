@@ -1,3 +1,19 @@
 {
-  "label": "Reparieren"
+  "label": "Reparieren",
+  "tooltip": "Verbindet doppelte Eckpunkte, entfernt fehlerhafte Dreiecke und vereinheitlicht die Orientierung.",
+  "steps": {
+    "weld": "Doppelte Eckpunkte verbinden",
+    "degenerate": "Dreiecke ohne Fläche entfernen",
+    "duplicates": "Doppelte Dreiecke entfernen",
+    "winding": "Orientierung vereinheitlichen",
+    "orientation": "Nach außen richten"
+  },
+  "nothingToDo": "Der Scan hat keine Fehler, die diese Schritte beheben.",
+  "nonOrientable_one": "{{count, count}} Dreieck liegt an einer nicht orientierbaren Stelle und bleibt unverändert.",
+  "nonOrientable_other": "{{count, count}} Dreiecke liegen an nicht orientierbaren Stellen und bleiben unverändert.",
+  "shared": {
+    "scan": "Scan",
+    "facesAfter": "Dreiecke danach"
+  },
+  "help": "Die Zahlen neben den Schritten zeigen, was die Reparatur am aktuellen Scan ändert; betroffene Dreiecke sind rot markiert. Jeder Schritt lässt sich einzeln abwählen. Nach außen richten dreht nur Teile um, deren Innenseite eindeutig ist."
 }

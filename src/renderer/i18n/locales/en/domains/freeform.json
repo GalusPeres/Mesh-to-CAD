@@ -1,5 +1,21 @@
 {
   "errors": {
-    "tooCurved": "Cannot create a freeform patch: the region is curved too much."
+    "tooCurved": "Cannot create the freeform patch: the normals of the region spread over {{spreadDeg, angle}} (at most {{maxDeg, angle}}). Split the region or use a loft.",
+    "tooFewFaces": "Cannot create the freeform patch: selection too small ({{count, count}} triangles, at least {{min, count}}).",
+    "fitFailed": "Cannot create the freeform patch: the computation finds no solution. Check the selection.",
+    "invalidSurface": "Cannot create the freeform patch: the surface is geometrically invalid. Use fewer spans or more smoothing.",
+    "invalidRange": "Cannot loft: the end ({{end, length}}) must lie beyond the start ({{start, length}}).",
+    "notAnAxis": "Cannot loft: the chosen element has no axis. Choose an axis, a cylinder, a cone or a plane.",
+    "noSection": "Cannot loft: at {{position, length}} the scan gives no closed contour. Place start and end inside the scan or fill holes.",
+    "loftFailed": "Loft failed: the sections cannot be joined into a body. Change the section count or the range.",
+    "notAFreeformFeature": "The element is neither a freeform patch nor a loft."
+  },
+  "issues": {
+    "poorFit": "Only {{share, percent}} of the triangles are within the tolerance of ±{{tolerance, length}}. Use more spans, less smoothing or a smaller selection."
+  },
+  "progress": {
+    "fittingPatch": "Fitting the freeform patch",
+    "sectioning": "Sectioning the scan",
+    "lofting": "Building the loft"
   }
 }

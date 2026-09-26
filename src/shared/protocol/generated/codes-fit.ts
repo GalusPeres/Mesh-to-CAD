@@ -4,6 +4,10 @@ export const FIT_ERROR_CODES = [
   'fit.tooFewFaces',
   'fit.didNotConverge',
   'fit.invalidRelation',
+  'fit.fixedNotApplicable',
+  'fit.invalidValue',
+  'fit.staleSelection',
+  'fit.notAFit',
 ] as const;
 export type FitErrorCode = (typeof FIT_ERROR_CODES)[number];
 

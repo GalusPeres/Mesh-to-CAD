@@ -2,11 +2,25 @@
 
 export const FREEFORM_ERROR_CODES = [
   'freeform.tooCurved',
+  'freeform.tooFewFaces',
+  'freeform.fitFailed',
+  'freeform.invalidSurface',
+  'freeform.invalidRange',
+  'freeform.notAnAxis',
+  'freeform.noSection',
+  'freeform.loftFailed',
+  'freeform.notAFreeformFeature',
 ] as const;
 export type FreeformErrorCode = (typeof FREEFORM_ERROR_CODES)[number];
 
-export const FREEFORM_ISSUE_CODES = [] as const;
+export const FREEFORM_ISSUE_CODES = [
+  'freeform.poorFit',
+] as const;
 export type FreeformIssueCode = (typeof FREEFORM_ISSUE_CODES)[number];
 
-export const FREEFORM_PROGRESS_STAGES = [] as const;
+export const FREEFORM_PROGRESS_STAGES = [
+  'freeform.fittingPatch',
+  'freeform.sectioning',
+  'freeform.lofting',
+] as const;
 export type FreeformProgressStage = (typeof FREEFORM_PROGRESS_STAGES)[number];

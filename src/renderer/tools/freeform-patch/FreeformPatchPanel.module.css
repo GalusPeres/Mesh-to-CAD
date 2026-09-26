@@ -1,0 +1,27 @@
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.pass {
+  color: var(--success);
+}
+
+.fail {
+  flex: none;
+  color: var(--warning);
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  margin: var(--space-4) 0 0;
+}
+
+.hint {
+  margin: var(--space-4) 0;
+  color: var(--text-secondary);
+}

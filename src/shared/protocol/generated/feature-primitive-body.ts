@@ -2,21 +2,23 @@
 
 import type { BodyOperation } from './features-common';
 
-export type PrimitiveExtent = FacesExtent | ManualExtent;
+export type PrimitiveExtent = RegionExtent | ManualExtent;
 
-export type PrimitiveExtentInput = FacesExtentInput | ManualExtentInput;
+export type PrimitiveExtentInput = RegionExtentInput | ManualExtentInput;
 
-/** Extent along the axis from the fit's own triangles, plus a margin. */
-export interface FacesExtent {
-  type: 'fromFaces';
+/** Extent along the axis from the scan surface of the fit, plus a margin at both ends. */
+export interface RegionExtent {
+  type: 'region';
   margin: number;
 }
 
-/** Input form of `FacesExtent`: fields with defaults may be omitted. */
-export interface FacesExtentInput {
-  type: 'fromFaces';
+/** Input form of `RegionExtent`: fields with defaults may be omitted. */
+export interface RegionExtentInput {
+  type: 'region';
   margin?: number;
 }
+
+export const REGION_EXTENT_RANGES = { margin: { min: 0, max: null } } as const;
 
 export interface ManualExtent {
   type: 'manual';
@@ -30,6 +32,8 @@ export interface ManualExtentInput {
   start: number;
   length: number;
 }
+
+export const MANUAL_EXTENT_RANGES = { length: { min: 0, max: null } } as const;
 
 export interface PrimitiveBodyParams {
   fit: string;

@@ -1,5 +1,59 @@
 {
   "title": "Settings",
+  "general": "General",
   "language": "Language",
-  "theme": "Theme"
+  "theme": "Theme",
+  "navigation": "Navigation",
+  "invertWheel": "Invert mouse wheel",
+  "selection": "Selection",
+  "clearAfterFit": "Clear the selection after fitting",
+  "tools": "Tools",
+  "toolOptionsHint": "Tools remember options such as the brush size and open sections.",
+  "resetToolOptions": "Reset tool options",
+  "toolOptionsReset": "Tool options reset.",
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "scopeHint": "Keys without Ctrl work while the viewport or the project tree has focus, never in input fields.",
+    "or": " or ",
+    "sections": {
+      "file": "File",
+      "edit": "Edit",
+      "view": "View",
+      "tools": "Tools",
+      "selection": "Selection",
+      "sketch": "Sketch",
+      "toolPanel": "Open tool",
+      "tree": "Project tree",
+      "help": "Help",
+      "application": "Application",
+      "other": "Other"
+    },
+    "toolPanel": {
+      "commit": "OK",
+      "apply": "Apply",
+      "cancel": "Cancel"
+    },
+    "tree": {
+      "edit": "Edit",
+      "rename": "Rename",
+      "hide": "Hide or show",
+      "delete": "Delete"
+    }
+  },
+  "about": {
+    "description": "Turns 3D scans into editable CAD solids. Open source under the MIT licence.",
+    "version": "Version",
+    "kernel": "Computing process",
+    "occt": "Open CASCADE",
+    "python": "Python",
+    "electron": "Electron",
+    "chrome": "Chromium",
+    "node": "Node.js",
+    "platform": "Platform",
+    "unavailable": "Not available",
+    "licenses": "Licences",
+    "licenseText": "Mesh-to-CAD is licensed under the MIT licence. The bundled components are licensed under their own terms.",
+    "showLicenses": "Show licences",
+    "logs": "Log folder"
+  }
 }

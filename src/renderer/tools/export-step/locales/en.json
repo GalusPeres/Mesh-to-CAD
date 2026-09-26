@@ -1,3 +1,14 @@
 {
-  "label": "Export STEP …"
+  "label": "Export STEP …",
+  "tooltip": "Save bodies as a STEP file",
+  "help": "The chosen bodies are saved in millimetres, each as its own part named after the project. After writing, the file is read back and compared with the model; only then does it replace an existing file. All common CAD programs read AP214; AP242 is the newer standard.",
+  "noBody": "No body to export.",
+  "schema": "Format",
+  "schemas": {
+    "AP214": "AP214 (default)",
+    "AP242": "AP242"
+  },
+  "dialogTitle": "Export STEP",
+  "filterName": "STEP files",
+  "saved": "STEP saved: {{file}} ({{details}})"
 }

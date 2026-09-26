@@ -1,35 +1,44 @@
-"""Display geometry of fitted primitives: a bounded surface patch plus its outline.
+"""Display geometry of construction primitives: a bounded surface patch and its outline.
 
 A primitive is infinite (plane, cylinder, cone) or closed (sphere, torus); the
-viewport shows the part of it that the fitted points cover, with a small
-margin, so the user sees where the construction lies relative to the scan.
+viewport shows the part of it that the fitted points cover, extended by 5 % on
+each side (10 % in total), so the user sees where the construction lies
+relative to the scan. Positions are in part coordinates.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 import numpy.typing as npt
 
-from m2c_kernel.document.results import DisplaySource
 from m2c_kernel.fitting.primitives import Cone, Cylinder, Plane, Primitive, Sphere, Torus
 from m2c_kernel.geometry import FloatArray, frame_from_axis, unit
 
 MARGIN = 0.05
-"""Relative margin around the covered extent."""
+"""Margin on each side, relative to the covered extent."""
 
 AROUND = 64
 """Segments around an axis."""
 
 ALONG = 8
-"""Segments along an axis or a meridian."""
+"""Segments along a cone or a meridian."""
 
 type IntArray = npt.NDArray[np.int64]
 
 
-def construction_display(primitive: Primitive, points: FloatArray) -> tuple[DisplaySource, ...]:
-    """Patch and outline of `primitive` over the extent of `points` (part coordinates)."""
-    if len(points) == 0:
-        return ()
+@dataclass(frozen=True)
+class PatchGeometry:
+    """Triangles of a surface patch and the segments (s, 2, 3) of its border."""
+
+    positions: FloatArray
+    faces: IntArray
+    outline: FloatArray
+
+
+def primitive_patch(primitive: Primitive, points: FloatArray) -> PatchGeometry:
+    """Patch of `primitive` over the extent of `points`."""
     match primitive:
         case Plane():
             grid = _plane_grid(primitive, points)
@@ -41,12 +50,27 @@ def construction_display(primitive: Primitive, points: FloatArray) -> tuple[Disp
             grid = _sphere_grid(primitive)
         case Torus():
             grid = _torus_grid(primitive)
-    return (
-        DisplaySource(
-            kind="mesh", style="construction", positions=_flatten(grid), indices=_grid_faces(grid)
-        ),
-        DisplaySource(kind="lines", style="constructionEdges", positions=_outline(grid)),
-    )
+    return PatchGeometry(grid.reshape(-1, 3), _grid_faces(grid), _outline(grid))
+
+
+def plane_patch(
+    origin: npt.ArrayLike, normal: npt.ArrayLike, x_dir: npt.ArrayLike, half_size: float
+) -> PatchGeometry:
+    """A square of `2 * half_size` centred on `origin`, one edge along `x_dir`."""
+    o = np.asarray(origin, dtype=np.float64)
+    e1 = unit(x_dir)
+    e2 = np.cross(unit(normal), e1)
+    corners = np.linspace(-half_size, half_size, 2)
+    grid: FloatArray = o + corners[:, None, None] * e1 + corners[None, :, None] * e2
+    return PatchGeometry(grid.reshape(-1, 3), _grid_faces(grid), _outline(grid))
+
+
+def axis_segment(point: npt.ArrayLike, direction: npt.ArrayLike, half_length: float) -> FloatArray:
+    """One segment (1, 2, 3) of an axis line, centred on `point`."""
+    p = np.asarray(point, dtype=np.float64)
+    d = unit(direction) * half_length
+    segment: FloatArray = np.stack([p - d, p + d])[None, :, :]
+    return segment
 
 
 def _extent(values: FloatArray) -> tuple[float, float]:
@@ -56,14 +80,11 @@ def _extent(values: FloatArray) -> tuple[float, float]:
 
 
 def _plane_grid(plane: Plane, points: FloatArray) -> FloatArray:
-    normal = unit(plane.normal)
-    e1, e2 = frame_from_axis(normal)
-    origin = np.asarray(plane.origin)
+    e1, e2 = frame_from_axis(plane.normal)
+    origin = np.asarray(plane.origin, dtype=np.float64)
     relative = points - origin
-    u0, u1 = _extent(relative @ e1)
-    v0, v1 = _extent(relative @ e2)
-    us = np.linspace(u0, u1, 2)
-    vs = np.linspace(v0, v1, 2)
+    us = np.array(_extent(relative @ e1))
+    vs = np.array(_extent(relative @ e2))
     grid: FloatArray = origin + us[:, None, None] * e1 + vs[None, :, None] * e2
     return grid
 
@@ -83,15 +104,14 @@ def _revolved_grid(
 
 def _cylinder_grid(cylinder: Cylinder, points: FloatArray) -> FloatArray:
     axis = unit(cylinder.axis)
-    origin = np.asarray(cylinder.origin)
-    h0, h1 = _extent((points - origin) @ axis)
-    heights = np.linspace(h0, h1, 2)
+    origin = np.asarray(cylinder.origin, dtype=np.float64)
+    heights = np.array(_extent((points - origin) @ axis))
     return _revolved_grid(origin, axis, heights, np.full(2, cylinder.radius))
 
 
 def _cone_grid(cone: Cone, points: FloatArray) -> FloatArray:
     axis = unit(cone.axis)
-    apex = np.asarray(cone.apex)
+    apex = np.asarray(cone.apex, dtype=np.float64)
     h0, h1 = _extent((points - apex) @ axis)
     heights = np.linspace(max(h0, 0.0), max(h1, 1e-6), ALONG + 1)
     return _revolved_grid(apex, axis, heights, heights * np.tan(cone.half_angle))
@@ -100,7 +120,7 @@ def _cone_grid(cone: Cone, points: FloatArray) -> FloatArray:
 def _sphere_grid(sphere: Sphere) -> FloatArray:
     polar = np.linspace(0.0, np.pi, 2 * ALONG + 1)
     return _revolved_grid(
-        np.asarray(sphere.center),
+        np.asarray(sphere.center, dtype=np.float64),
         np.array([0.0, 0.0, 1.0]),
         -sphere.radius * np.cos(polar),
         sphere.radius * np.sin(polar),
@@ -110,16 +130,11 @@ def _sphere_grid(sphere: Sphere) -> FloatArray:
 def _torus_grid(torus: Torus) -> FloatArray:
     tube = np.linspace(0.0, 2.0 * np.pi, 2 * ALONG + 1)
     return _revolved_grid(
-        np.asarray(torus.center),
+        np.asarray(torus.center, dtype=np.float64),
         unit(torus.axis),
         torus.minor_radius * np.sin(tube),
         torus.major_radius + torus.minor_radius * np.cos(tube),
     )
-
-
-def _flatten(grid: FloatArray) -> FloatArray:
-    flat: FloatArray = grid.reshape(-1, 3)
-    return flat
 
 
 def _grid_faces(grid: FloatArray) -> IntArray:
@@ -129,10 +144,8 @@ def _grid_faces(grid: FloatArray) -> IntArray:
     b = index[1:, :-1].ravel()
     c = index[1:, 1:].ravel()
     d = index[:-1, 1:].ravel()
-    faces: IntArray = np.concatenate([np.stack([a, b, c], 1), np.stack([a, c, d], 1)]).astype(
-        np.int64
-    )
-    return faces
+    faces: IntArray = np.concatenate([np.stack([a, b, c], 1), np.stack([a, c, d], 1)])
+    return faces.astype(np.int64)
 
 
 def _outline(grid: FloatArray) -> FloatArray:

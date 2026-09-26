@@ -1,0 +1,70 @@
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+.slot {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.active {
+  border-color: var(--accent);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.body:hover {
+  background: var(--bg-hover);
+}
+
+.role {
+  display: block;
+  color: var(--text-secondary);
+}
+
+.value {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  color: var(--text-secondary);
+}
+
+.fit {
+  display: block;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.problem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.problemIcon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--warning);
+}
+
+.hint {
+  margin: var(--space-4) 0;
+  color: var(--text-secondary);
+}

@@ -2,28 +2,40 @@
   "errors": {
     "invalidResult": "Das Ergebnis ist kein gültiger Körper.",
     "occtUnavailable": "Die Geometriebibliothek konnte nicht geladen werden.",
-    "profileOpen": "Keine geschlossene Kontur in der Skizze.",
-    "axisCrossesProfile": "Die Drehachse schneidet die Kontur.",
-    "axisNotInPlane": "Die Drehachse liegt nicht in der Skizzenebene.",
-    "planeParallel": "Die Zielebene ist parallel zur Extrusionsrichtung.",
-    "planeBehind": "Die Zielebene liegt hinter der Skizze.",
-    "emptyResult": "Die Operation ergibt keinen Körper.",
-    "booleanFailed": "Die boolesche Operation ist fehlgeschlagen.",
-    "filletFailed": "Die Verrundung ist fehlgeschlagen. Kleineren Radius versuchen.",
-    "edgeNotFound": "Eine gewählte Kante existiert nicht mehr.",
+    "profileOpen": "Nicht möglich: Die Skizze hat keine geschlossene Kontur.",
+    "loopNotFound": "Eine gewählte Kontur gibt es in der Skizze nicht mehr. Konturen neu wählen.",
+    "zeroLength": "Der Körper hätte kein Volumen: Abstand oder Winkel größer als 0 wählen.",
+    "axisCrossesProfile": "Drehung nicht möglich: Die Achse schneidet die Kontur.",
+    "axisNotInPlane": "Drehung nicht möglich: Die Achse liegt nicht in der Skizzenebene (Abstand {{distance, length}}, Winkel {{angleDeg, angle}}).",
+    "axisNotFound": "Drehung nicht möglich: Das gewählte Element hat keine Achse.",
+    "planeParallel": "Extrusion nicht möglich: Die Zielebene ist parallel zur Extrusionsrichtung.",
+    "planeBehind": "Extrusion nicht möglich: Die Zielebene liegt hinter der Skizze. Richtung umkehren.",
+    "symmetricToPlane": "Eine symmetrische Extrusion kann nicht an einer Ebene enden.",
+    "notAPlane": "Das gewählte Element ist keine Ebene.",
+    "notAPatch": "Das gewählte Element ist keine Freiformfläche.",
+    "emptyResult": "Die Operation entfernt den ganzen Körper.",
+    "noOverlap": "Die Operation ist nicht möglich: Die Körper überschneiden sich nicht.",
+    "multipleSolids": "Das Ergebnis zerfällt in {{count}} getrennte Körper.",
+    "booleanFailed": "Die Körperoperation ist fehlgeschlagen.",
+    "toolMissesBody": "Teilen nicht möglich: Ebene oder Fläche schneidet den Körper nicht.",
+    "filletFailed": "Verrundung fehlgeschlagen: Radius {{size, length}} ist zu groß für die gewählten Kanten.",
+    "chamferFailed": "Fase fehlgeschlagen: Abstand {{size, length}} ist zu groß für die gewählten Kanten.",
+    "edgeNotFound": "Kante {{index}} gibt es nicht mehr. Kanten neu wählen.",
+    "noEdges": "Mindestens eine Kante wählen.",
     "targetRequired": "Zielkörper wählen.",
-    "unsupportedTool": "Dieses Element kann hier nicht verwendet werden.",
-    "noExtent": "Die Ausdehnung kann nicht aus dem Scan bestimmt werden.",
-    "taperUnsupported": "Formschräge wird für diese Extrusion nicht unterstützt."
+    "toolsRequired": "Mindestens einen Werkzeugkörper wählen.",
+    "toolIsTarget": "Der Zielkörper kann nicht zugleich Werkzeug sein.",
+    "unsupportedFit": "Grundkörper brauchen einen eingepassten Zylinder, Kegel, Kugel oder Torus.",
+    "noExtent": "Die Länge ist aus dem Scan nicht bestimmbar: Keine Scan-Dreiecke liegen auf der eingepassten Fläche. Länge manuell eingeben."
   },
   "issues": {
     "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm).",
-    "splitFacesKept": "Einige geteilte Flächen konnten nicht zusammengeführt werden."
+    "splitFacesKept": "Ergebnis enthält geteilte Flächen, die nicht zusammengeführt werden konnten."
   },
   "progress": {
     "tessellating": "Darstellung wird berechnet",
-    "modelling": "Körper berechnen",
-    "boolean": "Boolesche Operation",
-    "fillet": "Verrunden"
+    "modelling": "Körper wird berechnet",
+    "boolean": "Körperoperation",
+    "fillet": "Verrundung wird berechnet"
   }
 }

@@ -3,6 +3,11 @@
 Seeded vertex-ring descent with one walker per (point, B-Rep face), a second pass
 from B-Rep edge vertices, and the pseudo-normal sign (Baerentzen and Aanaes).
 Details and measurements: `.work/research/algorithms-cad.md` section 4.2.
+
+A walker evaluates its triangle; while the closest point lies on a triangle edge
+or vertex, it moves to the best triangle around the vertices of that edge or
+vertex. Those triangles are exactly the ones that touch the closest point, so a
+walker that cannot improve has found a local minimum of the distance.
 """
 
 from __future__ import annotations
@@ -21,14 +26,23 @@ if TYPE_CHECKING:
     from m2c_kernel.session.jobs import JobContext
 
 type IntArray = npt.NDArray[np.int64]
+type BoolArray = npt.NDArray[np.bool_]
 
 # Region codes of the closest point on a triangle.
 INTERIOR, VERT_A, VERT_B, VERT_C, EDGE_AB, EDGE_BC, EDGE_CA = range(7)
 
+# Triangle corners (local indices) that touch the closest point, per region code; -1 = none.
+_TOUCHING = np.array(
+    [[-1, -1], [0, -1], [1, -1], [2, -1], [0, 1], [1, 2], [2, 0]],
+    dtype=np.int64,
+)
+# Local edge index (AB = 0, BC = 1, CA = 2) per region code, for the edge pseudo-normal.
+_EDGE_OF_REGION = np.array([-1, -1, -1, -1, 0, 1, 2], dtype=np.int64)
+
 SEEDS = 8
-MAX_WALK = 32
+MAX_WALK = 48
 EDGE_BAND_MM = 1.0
-CHUNK = 250_000
+CHUNK = 200_000
 
 
 @dataclass(frozen=True)
@@ -37,11 +51,12 @@ class Closest:
 
     signed: FloatArray
     triangle: IntArray
-    converged: npt.NDArray[np.bool_]
+    converged: BoolArray
 
 
 def _dot(u: FloatArray, v: FloatArray) -> FloatArray:
-    return np.einsum("ij,ij->i", u, v)
+    result: FloatArray = np.einsum("ij,ij->i", u, v)
+    return result
 
 
 def closest_on_triangles(
@@ -55,48 +70,39 @@ def closest_on_triangles(
     d5, d6 = _dot(ab, cp), _dot(ac, cp)
     va, vb, vc = d3 * d6 - d5 * d4, d5 * d2 - d1 * d6, d1 * d4 - d3 * d2
 
-    denom = va + vb + vc
-    denom = np.where(np.abs(denom) < 1e-300, 1e-300, denom)
-    v, w = vb / denom, vc / denom
-    bary = np.column_stack([1 - v - w, v, w])
-    region = np.full(len(p), INTERIOR, dtype=np.int64)
-
-    def assign(mask: npt.NDArray[np.bool_], values: FloatArray, code: int) -> None:
-        bary[mask] = values[mask] if values.ndim == 2 else values
-        region[mask] = code
-
     with np.errstate(divide="ignore", invalid="ignore"):
-        t = (d4 - d3) / ((d4 - d3) + (d5 - d6))
-        assign(
-            (va <= 0) & (d4 - d3 >= 0) & (d5 - d6 >= 0),
-            np.column_stack([np.zeros_like(t), 1 - t, t]),
-            EDGE_BC,
-        )
-        t = d2 / (d2 - d6)
-        assign(
-            (vb <= 0) & (d2 >= 0) & (d6 <= 0),
-            np.column_stack([1 - t, np.zeros_like(t), t]),
-            EDGE_CA,
-        )
-        t = d1 / (d1 - d3)
-        assign(
+        denom = va + vb + vc
+        denom = np.where(np.abs(denom) < 1e-300, 1e-300, denom)
+        t_ab = d1 / (d1 - d3)
+        t_ca = d2 / (d2 - d6)
+        t_bc = (d4 - d3) / ((d4 - d3) + (d5 - d6))
+        # Ericson's tests in his order; np.select takes the first that holds.
+        tests = [
+            (d1 <= 0) & (d2 <= 0),
+            (d3 >= 0) & (d4 <= d3),
             (vc <= 0) & (d1 >= 0) & (d3 <= 0),
-            np.column_stack([1 - t, t, np.zeros_like(t)]),
-            EDGE_AB,
-        )
-    assign((d6 >= 0) & (d5 <= d6), np.array([0.0, 0.0, 1.0]), VERT_C)
-    assign((d3 >= 0) & (d4 <= d3), np.array([0.0, 1.0, 0.0]), VERT_B)
-    assign((d1 <= 0) & (d2 <= 0), np.array([1.0, 0.0, 0.0]), VERT_A)
-    closest = bary[:, :1] * a + bary[:, 1:2] * b + bary[:, 2:] * c
+            (d6 >= 0) & (d5 <= d6),
+            (vb <= 0) & (d2 >= 0) & (d6 <= 0),
+            (va <= 0) & (d4 - d3 >= 0) & (d5 - d6 >= 0),
+        ]
+        zero, one = np.zeros_like(d1), np.ones_like(d1)
+        v = np.select(tests, [zero, one, t_ab, zero, zero, 1 - t_bc], vb / denom)
+        w = np.select(tests, [zero, zero, zero, one, t_ca, t_bc], vc / denom)
+    codes = [VERT_A, VERT_B, EDGE_AB, VERT_C, EDGE_CA, EDGE_BC]
+    region = np.select(tests, codes, INTERIOR).astype(np.int64)
+    closest = a + v[:, None] * ab + w[:, None] * ac
     return closest, region
 
 
 def _first_per_owner(owner: IntArray, dist: FloatArray) -> IntArray:
-    """Index of the smallest distance per owner (owners in increasing order)."""
-    order = np.lexsort((dist, owner))
-    keep = np.ones(len(order), dtype=bool)
-    keep[1:] = owner[order][1:] != owner[order][:-1]
-    return order[keep]
+    """Index of the smallest distance per owner; owners must be non-decreasing."""
+    starts = np.flatnonzero(np.r_[True, owner[1:] != owner[:-1]])
+    counts = np.diff(np.r_[starts, len(owner)])
+    smallest = np.minimum.reduceat(dist, starts)
+    hits = np.flatnonzero(dist == np.repeat(smallest, counts))
+    first = np.r_[True, owner[hits][1:] != owner[hits][:-1]]
+    result: IntArray = hits[first]
+    return result
 
 
 def _closest_among(
@@ -111,7 +117,7 @@ def _closest_among(
 
 
 def _ring_of(ref: ReferenceSurface, vertices: IntArray) -> tuple[IntArray, IntArray]:
-    """All triangles around each vertex, as (owner row, triangle) pairs."""
+    """All triangles around each vertex, as (row, triangle) pairs with rows in order."""
     lengths = np.diff(ref.vf_offsets)[vertices]
     starts = ref.vf_offsets[vertices]
     total = int(lengths.sum())
@@ -123,26 +129,39 @@ def _ring_of(ref: ReferenceSurface, vertices: IntArray) -> tuple[IntArray, IntAr
     return np.repeat(np.arange(len(vertices)), lengths), ref.vf_faces[position]
 
 
-def _vertex_ring(ref: ReferenceSurface, triangles: IntArray) -> tuple[IntArray, IntArray]:
-    """All triangles around the three vertices of each triangle."""
-    owner, ring = _ring_of(ref, ref.faces[triangles].ravel())
-    return owner // 3, ring
+def _touching(
+    ref: ReferenceSurface, triangles: IntArray, region: IntArray
+) -> tuple[IntArray, IntArray]:
+    """Triangles around the vertex or edge holding each closest point, as (row, triangle)."""
+    corners = _TOUCHING[region]
+    rows = np.repeat(np.arange(len(triangles)), 2)
+    local = corners.ravel()
+    valid = local >= 0
+    rows, local = rows[valid], local[valid]
+    owner, ring = _ring_of(ref, ref.faces[triangles[rows], local])
+    return rows[owner], ring
 
 
 def _walk(
     ref: ReferenceSurface, p: FloatArray, tri: IntArray
-) -> tuple[IntArray, FloatArray, FloatArray, IntArray, npt.NDArray[np.bool_]]:
-    """Greedy descent over vertex rings until the closest point is interior or stable."""
+) -> tuple[IntArray, FloatArray, FloatArray, IntArray, BoolArray]:
+    """Greedy descent until the closest point is interior or no neighbour improves it."""
     tri, dist, closest, region = _closest_among(ref, p, np.arange(len(p)), tri)
     active = np.flatnonzero(region != INTERIOR)
     for _ in range(MAX_WALK):
         if len(active) == 0:
             break
-        ring_owner, ring = _vertex_ring(ref, tri[active])
+        ring_owner, ring = _touching(ref, tri[active], region[active])
         t2, d2, c2, r2 = _closest_among(ref, p[active], ring_owner, ring)
         moved = (t2 != tri[active]) & (d2 < dist[active] - 1e-12)
-        tri[active], dist[active], closest[active], region[active] = t2, d2, c2, r2
-        active = active[moved & (r2 != INTERIOR)]
+        rows = active[moved]
+        tri[rows], dist[rows], closest[rows], region[rows] = (
+            t2[moved],
+            d2[moved],
+            c2[moved],
+            r2[moved],
+        )
+        active = rows[r2[moved] != INTERIOR]
     stuck = np.zeros(len(p), dtype=bool)
     stuck[active] = True
     return tri, dist, closest, region, stuck
@@ -150,7 +169,7 @@ def _walk(
 
 def _best_from_seeds(
     ref: ReferenceSurface, p: FloatArray, owner: IntArray, seed: IntArray
-) -> tuple[IntArray, FloatArray, FloatArray, IntArray, npt.NDArray[np.bool_]]:
+) -> tuple[IntArray, FloatArray, FloatArray, IntArray, BoolArray]:
     """One walker per (point, B-Rep face) from its first seed; the best result per point."""
     key = owner.astype(np.int64) * (int(ref.face_id.max()) + 1) + ref.face_id[seed]
     _, first = np.unique(key, return_index=True)
@@ -163,14 +182,15 @@ def _best_from_seeds(
 def _chunk(ref: ReferenceSurface, p: FloatArray) -> Closest:
     n = len(p)
     _, seeds = ref.centroid_tree.query(p, k=min(SEEDS, len(ref.faces)), workers=-1)
-    seeds = np.asarray(seeds).reshape(n, -1)
+    seeds = np.asarray(seeds, dtype=np.int64).reshape(n, -1)
     _, nearest_vertex = ref.vertex_tree.query(p, k=1, workers=-1)
-    ring_owner, ring = _ring_of(ref, np.asarray(nearest_vertex))
+    ring_owner, ring = _ring_of(ref, np.asarray(nearest_vertex, dtype=np.int64))
     owner = np.concatenate([np.repeat(np.arange(n), seeds.shape[1]), ring_owner])
-    tri, dist, closest, region, stuck = _best_from_seeds(
-        ref, p, owner, np.concatenate([seeds.ravel(), ring])
-    )
+    candidates = np.concatenate([seeds.ravel(), ring])
+    tri, dist, closest, region, stuck = _best_from_seeds(ref, p, owner, candidates)
 
+    # Next to a convex edge a point inside the material has a local minimum on each
+    # adjacent face; seeds from one face never find the other, so walk from the edge too.
     if len(ref.edge_vertices):
         edge_dist, nearest_edge = ref.edge_vertex_tree.query(p, k=1, workers=-1)
         near = np.flatnonzero(edge_dist <= 3.0 * dist + EDGE_BAND_MM)
@@ -187,7 +207,7 @@ def _chunk(ref: ReferenceSurface, p: FloatArray) -> Closest:
     vertex_local = np.select([region == VERT_A, region == VERT_B, region == VERT_C], [0, 1, 2], -1)
     is_vertex = vertex_local >= 0
     normal[is_vertex] = ref.vertex_normals[ref.faces[tri[is_vertex], vertex_local[is_vertex]]]
-    edge_local = np.select([region == EDGE_AB, region == EDGE_BC, region == EDGE_CA], [0, 1, 2], -1)
+    edge_local = _EDGE_OF_REGION[region]
     is_edge = edge_local >= 0
     normal[is_edge] = ref.edge_normals[ref.faces_unique_edges[tri[is_edge], edge_local[is_edge]]]
     sign = np.where(_dot(p - closest, normal) >= 0, 1.0, -1.0)
@@ -197,7 +217,7 @@ def _chunk(ref: ReferenceSurface, p: FloatArray) -> Closest:
 def closest_points(
     ref: ReferenceSurface, points: FloatArray, job: JobContext | None = None
 ) -> Closest:
-    """Signed distance of every point to the reference surface, in chunks."""
+    """Signed distance of every point to the reference surface, in cancellable chunks."""
     points = np.ascontiguousarray(points, dtype=np.float64)
     signed = np.empty(len(points))
     triangle = np.empty(len(points), dtype=np.int64)

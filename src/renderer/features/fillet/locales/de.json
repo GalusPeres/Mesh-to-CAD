@@ -1,3 +1,13 @@
 {
-  "name": "Verrundung"
+  "name": "Verrundung",
+  "modes": {
+    "fillet": "Verrundung",
+    "chamfer": "Fase"
+  },
+  "summary": {
+    "fillet_one": "R {{size}}, {{count}} Kante",
+    "fillet_other": "R {{size}}, {{count}} Kanten",
+    "chamfer_one": "{{size}}, {{count}} Kante",
+    "chamfer_other": "{{size}}, {{count}} Kanten"
+  }
 }

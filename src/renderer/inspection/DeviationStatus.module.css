@@ -1,0 +1,13 @@
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.passed {
+  color: var(--success);
+}
+
+.failed {
+  color: var(--warning);
+}

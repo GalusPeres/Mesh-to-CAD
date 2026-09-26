@@ -5,9 +5,10 @@ the renderer asks for the unit: `mesh.import` (main process only) loads the
 file into a pending import and returns a report; `mesh.commitImport` or
 `mesh.discardImport` follows from the import panel.
 
-Every preparation command works on the current scan and, unless `dry_run` is
-set, commits a new scan with a new key. Face sets in feature parameters and the
-region labels are carried over through the exact face map of the operation.
+Every preparation command works on the current scan. Unless `dry_run` is set or
+nothing changes, it commits a new scan with a new key and carries the face sets
+stored in features and the region labels over through the face map of the
+operation (`m2c_kernel.mesh.remap`).
 """
 
 from __future__ import annotations
@@ -20,13 +21,14 @@ from pathlib import Path
 from typing import Annotated
 
 import numpy as np
+import numpy.typing as npt
 
 from m2c_kernel.codes.mesh import ErrorCode, ProgressStage
 from m2c_kernel.document.model import (
     Document,
     DocumentSettings,
-    Feature,
     LengthUnit,
+    Regions,
     Scan,
     ScanOperation,
     ScanSource,
@@ -35,8 +37,17 @@ from m2c_kernel.geometry import Vec3, vec3
 from m2c_kernel.limits import DEFAULT_TOLERANCE_MM, MAX_WORKING_FACES
 from m2c_kernel.mesh.decimate import DecimationError, decimate
 from m2c_kernel.mesh.load import PendingImport, RawMesh, read_mesh, weld_vertices
+from m2c_kernel.mesh.normals import (
+    DEFAULT_CELL_MM,
+    NoiseEstimate,
+    estimate_noise,
+    face_normals,
+    vertex_normals,
+)
 from m2c_kernel.mesh.remap import remap_face_set, remap_labels
 from m2c_kernel.mesh.repair import (
+    DEFAULT_MIN_PART_FACES,
+    DEFAULT_MIN_PART_RATIO,
     REPAIR_STEPS,
     MeshChange,
     RepairStep,
@@ -44,22 +55,32 @@ from m2c_kernel.mesh.repair import (
     component_labels,
     delete_faces,
     fill_holes,
+    parts_to_keep,
+    remove_degenerate_faces,
+    remove_duplicate_faces,
     remove_small_parts,
     repair,
     signed_volume,
 )
-from m2c_kernel.mesh.topology import edge_topology, pack_rows
+from m2c_kernel.mesh.smoothing import MAX_ITERATIONS
+from m2c_kernel.mesh.topology import edge_topology
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
-from m2c_kernel.protocol.wire import JsonValue, Range, U32Array
+from m2c_kernel.protocol.wire import BlobRef, JsonValue, Range, U32Array
 from m2c_kernel.session.blobs import BlobStore
-from m2c_kernel.session.jobs import JobContext
+from m2c_kernel.session.jobs import JobContext, seeded_rng
 
 UNIT_SCALE: dict[LengthUnit, float] = {"mm": 1.0, "cm": 10.0, "m": 1000.0, "in": 25.4}
 _TOLERANCE_STEPS_MM = (0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1.0)
-DEFAULT_MIN_PART_RATIO = 0.01
-DEFAULT_MIN_PART_FACES = 100
-MAX_SMOOTHING_ITERATIONS = 20
+_METRES_BELOW_DIAGONAL = 2.0
+_FINE_SAMPLE_SHARE = 0.9
+_NO_FACES = np.zeros(0, dtype=np.uint32)
+_IMPORT_REPAIR_STEPS: tuple[RepairStep, ...] = (
+    "degenerate",
+    "duplicates",
+    "winding",
+    "orientation",
+)
 
 
 # --------------------------------------------------------------------------- import
@@ -74,45 +95,53 @@ class ImportParams:
 class ImportReport:
     """What the import panel shows before the user confirms the unit.
 
-    Bounds and `noise` are in file units. `suggested_unit` is a guess (a part
-    smaller than two units is almost certainly in metres); the user always
-    confirms. `proposed_tolerance` holds the tolerance each unit would give.
+    Bounds are in file units. `noise` (mm) and `proposed_tolerance` (mm) are given
+    per unit, because the noise is measured at the physical scale the unit implies.
+    `suggested_unit` is a guess (a part smaller than two units is almost certainly
+    stored in metres); the user always confirms. `counts` holds `mergedVertices`
+    and `nonFiniteFaces` (dropped while reading).
     """
 
     pending_id: str
     file_name: str
     face_count: int
     vertex_count: int
-    merged_vertices: int
     bounds_min: Vec3
     bounds_max: Vec3
     suggested_unit: LengthUnit
-    noise: float | None
+    noise: dict[str, float | None]
     proposed_tolerance: dict[str, float]
-    requires_reduction: bool
+    reduction_required: bool
+    counts: dict[str, int]
 
 
 @command("mesh.import", caller="main")
 def mesh_import(ctx: JobContext, params: ImportParams) -> ImportReport:
     """Load a mesh file into a pending import (called by the main process after a dialog)."""
     path = Path(params.path)
+    session = ctx.session
+    # Only the newest import can be confirmed; an older one would hold its mesh forever.
+    session.pending_imports.clear()
     ctx.progress(None, ProgressStage.READING)
-    raw = read_mesh(path)
+    loaded = read_mesh(path)
     ctx.check_cancelled()
     ctx.progress(None, ProgressStage.WELDING)
-    welded, merged = weld_vertices(raw)
-    del raw
+    welded, merged = weld_vertices(loaded)
+    dropped = loaded.dropped_faces
+    del loaded
     ctx.check_cancelled()
     ctx.progress(None, ProgressStage.ESTIMATING_NOISE)
-    noise = _estimate_noise(welded)
+    sha256 = _file_sha256(path)
+    noise = _noise_per_unit(welded, seeded_rng(f"import-noise:{sha256}"), ctx.check_cancelled)
     pending = PendingImport(
         id=uuid.uuid4().hex[:12],
         file_name=path.name,
-        sha256=_file_sha256(path),
+        sha256=sha256,
         mesh=welded,
-        merged_vertices=merged,
+        counts={"mergedVertices": merged, "nonFiniteFaces": dropped},
+        noise=noise,
     )
-    ctx.session.pending_imports[pending.id] = pending
+    session.pending_imports[pending.id] = pending
     low, high = welded.vertices.min(axis=0), welded.vertices.max(axis=0)
     diagonal = float(np.linalg.norm(high - low))
     return ImportReport(
@@ -120,16 +149,13 @@ def mesh_import(ctx: JobContext, params: ImportParams) -> ImportReport:
         file_name=pending.file_name,
         face_count=len(welded.faces),
         vertex_count=len(welded.vertices),
-        merged_vertices=merged,
         bounds_min=vec3(low),
         bounds_max=vec3(high),
-        suggested_unit="m" if diagonal < 2.0 else "mm",
-        noise=noise,
-        proposed_tolerance={
-            unit: propose_tolerance(None if noise is None else noise * scale)
-            for unit, scale in UNIT_SCALE.items()
-        },
-        requires_reduction=len(welded.faces) > MAX_WORKING_FACES,
+        suggested_unit="m" if diagonal < _METRES_BELOW_DIAGONAL else "mm",
+        noise=dict(noise),
+        proposed_tolerance={unit: propose_tolerance(value) for unit, value in noise.items()},
+        reduction_required=len(welded.faces) > MAX_WORKING_FACES,
+        counts=pending.counts,
     )
 
 
@@ -148,7 +174,10 @@ class CommitImportResult:
 
 @command("mesh.commitImport", exclusive=True)
 def mesh_commit_import(ctx: JobContext, params: CommitImportParams) -> CommitImportResult:
-    """Scale, reduce if needed, repair and make the pending import the scan of a new document."""
+    """Scale, repair, reduce if asked and make the pending import the scan of a new document.
+
+    The project tolerance becomes the value the import panel proposed for the unit.
+    """
     session = ctx.session
     pending = session.pending_imports.get(params.pending_id)
     if pending is None:
@@ -164,23 +193,27 @@ def mesh_commit_import(ctx: JobContext, params: CommitImportParams) -> CommitImp
     low, high = mesh.vertices.min(axis=0) * scale, mesh.vertices.max(axis=0) * scale
     origin = (low + high) / 2.0
     working = RawMesh(mesh.vertices * scale - origin, mesh.faces)
-    counts: dict[str, int] = {"mergedVertices": pending.merged_vertices}
 
-    ctx.progress(0.2, ProgressStage.REPAIRING)
-    prepared = default_preparation(working)
+    ctx.progress(0.05, ProgressStage.REPAIRING)
+    prepared = repair(working, _IMPORT_REPAIR_STEPS)
+    ctx.check_cancelled()
+    ctx.progress(0.3, ProgressStage.REMOVING_SMALL_PARTS)
+    prepared = prepared.then(
+        remove_small_parts(prepared.mesh, DEFAULT_MIN_PART_RATIO, DEFAULT_MIN_PART_FACES)
+    )
     ctx.check_cancelled()
     if target is not None and target < len(prepared.mesh.faces):
-        ctx.progress(0.4, ProgressStage.DECIMATING)
         prepared = prepared.then(_decimate(ctx, prepared.mesh, target))
-    counts |= prepared.counts
+    if len(prepared.mesh.faces) == 0:
+        raise KernelError(ErrorCode.NOTHING_LEFT)
+    counts = {**pending.counts, **prepared.counts}
 
-    ctx.progress(0.8, ProgressStage.ESTIMATING_NOISE)
-    noise = _estimate_noise(prepared.mesh)
-    ctx.check_cancelled()
+    ctx.progress(0.9, ProgressStage.STORING)
+    noise = pending.noise.get(params.unit)
     scan = _new_scan(
         session.blobs,
         prepared.mesh,
-        np.zeros(len(prepared.mesh.faces), dtype=bool),
+        prepared.synthetic,
         source=ScanSource(
             file_name=pending.file_name, sha256=pending.sha256, import_unit=params.unit
         ),
@@ -191,17 +224,10 @@ def mesh_commit_import(ctx: JobContext, params: CommitImportParams) -> CommitImp
     document = replace(
         Document.empty(), scan=scan, settings=DocumentSettings(tolerance=propose_tolerance(noise))
     )
+    ctx.check_cancelled()
     snapshot = session.commit(document, "import", ctx)
-    del session.pending_imports[pending.id]
+    session.pending_imports.pop(pending.id, None)
     return CommitImportResult(revision=snapshot.revision, counts=counts)
-
-
-def default_preparation(mesh: RawMesh) -> MeshChange:
-    """Repair applied to every import: all repair steps plus removal of small parts."""
-    repaired = repair(mesh)
-    return repaired.then(
-        remove_small_parts(repaired.mesh, DEFAULT_MIN_PART_RATIO, DEFAULT_MIN_PART_FACES)
-    )
 
 
 @dataclass(frozen=True)
@@ -231,55 +257,63 @@ class InspectParams:
 
 @dataclass(frozen=True)
 class MeshReport:
-    """Mesh condition shown in the mesh info panel. Lengths in mm, areas in mm²."""
+    """Condition of the scan, shown in the scan information panel.
+
+    Lengths in mm, areas in mm², volumes in mm³. `volume` is null unless the scan
+    is closed (every edge has exactly two faces). `small_parts` counts the loose
+    parts that *Kleine Teile entfernen* would remove with its default settings.
+    """
 
     scan_key: str
     face_count: int
     vertex_count: int
     watertight: bool
     boundary_loops: int
+    boundary_edges: int
     non_manifold_edges: int
     inconsistent_edges: int
     components: int
+    small_parts: int
     degenerate_faces: int
     duplicate_faces: int
     synthetic_faces: int
     area: float
     volume: float | None
+    size: Vec3
     noise: float | None
 
 
 @command("mesh.inspect")
 def mesh_inspect(ctx: JobContext, params: InspectParams) -> MeshReport:
-    """Condition of the current scan (holes, defects, components, area and volume)."""
+    """Condition of the current scan: holes, defects, parts, area and volume."""
     scan, mesh = _current_scan(ctx)
     ctx.progress(None, ProgressStage.INSPECTING)
-    faces = mesh.faces
-    topology = edge_topology(faces)
+    topology = edge_topology(mesh.faces)
     loops = boundary_loops(mesh, topology)
-    components, _ = component_labels(mesh)
-    v = mesh.vertices
-    cross = np.cross(v[faces[:, 1]] - v[faces[:, 0]], v[faces[:, 2]] - v[faces[:, 0]])
-    areas = 0.5 * np.linalg.norm(cross, axis=1)
-    repeated = (faces[:, 0] == faces[:, 1]) | (faces[:, 1] == faces[:, 2])
-    repeated |= faces[:, 0] == faces[:, 2]
-    unique_faces = len(np.unique(pack_rows(np.sort(faces, axis=1))))
+    components, face_part = component_labels(mesh)
+    ctx.check_cancelled()
+    sizes = np.bincount(face_part, minlength=components)
+    small = int(components - parts_to_keep(sizes).sum()) if components else 0
+    _, areas = face_normals(mesh.vertices, mesh.faces)
     watertight = bool((topology.valence == 2).all())
     synthetic = ctx.session.blobs.get(scan.synthetic) if scan.synthetic is not None else None
     return MeshReport(
         scan_key=scan.key,
-        face_count=len(faces),
-        vertex_count=len(v),
+        face_count=len(mesh.faces),
+        vertex_count=len(mesh.vertices),
         watertight=watertight,
         boundary_loops=len(loops.loops) + loops.skipped,
+        boundary_edges=int((topology.valence == 1).sum()),
         non_manifold_edges=topology.non_manifold_edge_count,
         inconsistent_edges=topology.inconsistent_edge_count(),
         components=components,
-        degenerate_faces=int((repeated | (areas <= 0.0)).sum()),
-        duplicate_faces=len(faces) - unique_faces,
+        small_parts=small,
+        degenerate_faces=remove_degenerate_faces(mesh).counts["degenerateFaces"],
+        duplicate_faces=remove_duplicate_faces(mesh).counts["duplicateFaces"],
         synthetic_faces=0 if synthetic is None else int(np.count_nonzero(synthetic)),
         area=float(areas.sum()),
         volume=abs(signed_volume(mesh)) if watertight else None,
+        size=vec3(np.ptp(mesh.vertices, axis=0)),
         noise=scan.noise,
     )
 
@@ -289,12 +323,20 @@ def mesh_inspect(ctx: JobContext, params: InspectParams) -> MeshReport:
 
 @dataclass(frozen=True)
 class MeshEditResult:
-    """Counts of a preparation step; `revision` is None for a dry run."""
+    """What a preparation step did or, for a dry run, would do.
+
+    `changed` is false when the step finds nothing to do; then nothing is committed.
+    `revision` is the new revision, or null for a dry run and for no change.
+    `affected_faces` (dry runs only) are the faces of the current scan that the step
+    removes or flips, or the faces around the holes it fills.
+    """
 
     counts: dict[str, int]
     face_count: int
     vertex_count: int
+    changed: bool
     revision: int | None
+    affected_faces: U32Array
 
 
 @dataclass(frozen=True)
@@ -305,7 +347,7 @@ class RepairParams:
 
 @command("mesh.repair", lane=True)
 def mesh_repair(ctx: JobContext, params: RepairParams) -> MeshEditResult:
-    """Weld, remove degenerate and duplicate faces, fix winding and orientation."""
+    """Weld, remove degenerate and duplicate faces, fix the winding, turn parts outward."""
     return _edit(ctx, "repair", params.dry_run, lambda mesh: repair(mesh, params.steps))
 
 
@@ -318,7 +360,7 @@ class RemoveSmallPartsParams:
 
 @command("mesh.removeSmallParts", lane=True)
 def mesh_remove_small_parts(ctx: JobContext, params: RemoveSmallPartsParams) -> MeshEditResult:
-    """Remove loose parts (debris) smaller than a share of the largest part."""
+    """Remove loose parts (debris, fixtures) below a share of the largest part."""
     return _edit(
         ctx,
         "removeSmallParts",
@@ -329,13 +371,14 @@ def mesh_remove_small_parts(ctx: JobContext, params: RemoveSmallPartsParams) -> 
 
 @dataclass(frozen=True)
 class FillHolesParams:
-    max_perimeter: Annotated[float, Range(0.0, 1e6)]
+    max_perimeter: Annotated[float, Range(0.0, 100_000.0)]
     dry_run: bool = False
 
 
 @command("mesh.fillHoles", lane=True)
 def mesh_fill_holes(ctx: JobContext, params: FillHolesParams) -> MeshEditResult:
-    """Close holes up to a perimeter; new faces are marked synthetic and never fitted."""
+    """Close holes up to a perimeter; the new faces are marked synthetic and never fitted."""
+    ctx.progress(None, ProgressStage.FILLING_HOLES)
     return _edit(
         ctx, "fillHoles", params.dry_run, lambda mesh: fill_holes(mesh, params.max_perimeter)
     )
@@ -351,13 +394,15 @@ class DecimateParams:
 def mesh_decimate(ctx: JobContext, params: DecimateParams) -> MeshEditResult:
     """Reduce the scan to a target triangle count.
 
-    A dry run only reports the counts; reducing is too slow to preview.
+    A dry run reports the counts only; the reduction itself takes seconds and
+    runs alone (exclusive), with cancellation.
     """
     if params.dry_run:
         _, mesh = _current_scan(ctx)
         after = min(params.target_faces, len(mesh.faces))
         counts = {"facesBefore": len(mesh.faces), "facesAfter": after}
-        return MeshEditResult(counts, after, len(mesh.vertices), None)
+        changed = after < len(mesh.faces)
+        return MeshEditResult(counts, after, len(mesh.vertices), changed, None, _NO_FACES)
     return _edit(ctx, "decimate", False, lambda mesh: _decimate(ctx, mesh, params.target_faces))
 
 
@@ -369,30 +414,30 @@ class DeleteFacesParams:
 
 @command("mesh.deleteFaces")
 def mesh_delete_faces(ctx: JobContext, params: DeleteFacesParams) -> MeshEditResult:
-    """Delete selected faces; a selection made on an older scan is rejected."""
+    """Delete selected faces; a selection made on another scan is rejected."""
     scan, mesh = _current_scan(ctx)
-    if params.scan_key != scan.key:
-        raise KernelError(ErrorCode.STALE_SELECTION, {"scanKey": params.scan_key})
     faces = np.asarray(params.faces, dtype=np.int64)
-    if len(faces) and (faces.max() >= len(mesh.faces)):
+    if params.scan_key != scan.key or (len(faces) and int(faces.max()) >= len(mesh.faces)):
         raise KernelError(ErrorCode.STALE_SELECTION, {"scanKey": params.scan_key})
     return _edit(ctx, "deleteFaces", False, lambda current: delete_faces(current, faces))
 
 
 @dataclass(frozen=True)
 class SetSmoothingParams:
-    iterations: Annotated[int, Range(0, MAX_SMOOTHING_ITERATIONS)]
+    iterations: Annotated[int, Range(0, MAX_ITERATIONS)]
 
 
 @dataclass(frozen=True)
 class SetSmoothingResult:
-    revision: int
+    revision: int | None
 
 
 @command("mesh.setSmoothing")
 def mesh_set_smoothing(ctx: JobContext, params: SetSmoothingParams) -> SetSmoothingResult:
-    """Display smoothing of the scan (Taubin); fitting always uses the unsmoothed scan."""
+    """Display smoothing of the scan (Taubin); fits always use the unsmoothed scan."""
     scan, _ = _current_scan(ctx)
+    if scan.display_smoothing == params.iterations:
+        return SetSmoothingResult(revision=None)
     document = ctx.session.document
     smoothed = replace(scan, display_smoothing=params.iterations)
     snapshot = ctx.session.commit(replace(document, scan=smoothed), "smoothing", ctx)
@@ -410,22 +455,44 @@ def propose_tolerance(noise: float | None) -> float:
     return next((step for step in _TOLERANCE_STEPS_MM if step >= wanted), _TOLERANCE_STEPS_MM[-1])
 
 
+def _noise_per_unit(
+    mesh: RawMesh, rng: np.random.Generator, check_cancelled: Callable[[], None]
+) -> dict[str, float | None]:
+    """Noise in mm for every unit the file could be in.
+
+    The jet fit works at a physical scale (`DEFAULT_CELL_MM`), so the estimate
+    depends on the unit. Units are tried from the coarsest cell to the finest;
+    once the cell is below the vertex spacing every finer cell gives the same
+    neighbourhoods, and the earlier estimate is reused.
+    """
+    normals = vertex_normals(mesh.vertices, mesh.faces)
+    noise: dict[str, float | None] = {}
+    fine: NoiseEstimate | None = None
+    for unit, scale in sorted(UNIT_SCALE.items(), key=lambda item: item[1]):
+        check_cancelled()
+        estimate = fine or estimate_noise(mesh.vertices, normals, rng, DEFAULT_CELL_MM / scale)
+        if estimate.sample_share >= _FINE_SAMPLE_SHARE:
+            fine = estimate
+        noise[unit] = None if estimate.noise is None else estimate.noise * scale
+    return noise
+
+
 def _edit(
     ctx: JobContext, op: str, dry_run: bool, operation: Callable[[RawMesh], MeshChange]
 ) -> MeshEditResult:
     scan, mesh = _current_scan(ctx)
     change = operation(mesh)
     ctx.check_cancelled()
-    if len(change.mesh.faces) == 0:
+    result = change.mesh
+    if len(result.faces) == 0:
         raise KernelError(ErrorCode.NOTHING_LEFT)
-    result_mesh = change.mesh
-    if dry_run:
-        return MeshEditResult(
-            change.counts, len(result_mesh.faces), len(result_mesh.vertices), None
-        )
-    revision = _commit_change(ctx, scan, change, op)
+    changed = not (
+        np.array_equal(result.faces, mesh.faces) and np.array_equal(result.vertices, mesh.vertices)
+    )
+    revision = _commit_change(ctx, scan, change, op) if changed and not dry_run else None
+    affected = change.affected.astype(np.uint32) if dry_run else _NO_FACES
     return MeshEditResult(
-        change.counts, len(result_mesh.faces), len(result_mesh.vertices), revision
+        change.counts, len(result.faces), len(result.vertices), changed, revision, affected
     )
 
 
@@ -442,13 +509,11 @@ def _current_scan(ctx: JobContext) -> tuple[Scan, RawMesh]:
 def _commit_change(ctx: JobContext, scan: Scan, change: MeshChange, op: str) -> int:
     session = ctx.session
     blobs = session.blobs
-    old_faces = scan.face_count
     has_source = change.new_to_old >= 0
     source = np.where(has_source, change.new_to_old, 0)
     synthetic = change.synthetic.copy()
     if scan.synthetic is not None:
-        old_synthetic = blobs.get(scan.synthetic).astype(bool)
-        synthetic |= has_source & old_synthetic[source]
+        synthetic |= has_source & blobs.get(scan.synthetic).astype(bool)[source]
     new_scan = _new_scan(
         blobs,
         change.mesh,
@@ -460,47 +525,72 @@ def _commit_change(ctx: JobContext, scan: Scan, change: MeshChange, op: str) -> 
         display_smoothing=scan.display_smoothing,
     )
     document = session.document
-    regions = document.regions
-    if regions.labels is not None:
-        labels = remap_labels(blobs.get(regions.labels).astype(np.uint16), change.new_to_old)
-        sizes = np.bincount(
-            labels, minlength=max((item.label for item in regions.items), default=0) + 1
-        )
-        items = tuple(replace(item, face_count=int(sizes[item.label])) for item in regions.items)
-        regions = replace(regions, labels=blobs.put(labels), items=items)
-    features = tuple(
-        _remap_feature(feature, blobs, change, old_faces) for feature in document.features
+    remap = _FaceSetRemap(blobs, change.new_to_old, scan.face_count)
+    document = replace(
+        document,
+        scan=new_scan,
+        regions=_remap_regions(document.regions, blobs, change),
+        features=tuple(
+            replace(feature, params=remap(feature.params)) for feature in document.features
+        ),
+        alignment=replace(document.alignment, params=remap(document.alignment.params)),
     )
-    document = replace(document, scan=new_scan, regions=regions, features=features)
     return session.commit(document, op, ctx).revision
 
 
-def _remap_feature(feature: Feature, blobs: BlobStore, change: MeshChange, old: int) -> Feature:
-    """Carry every face set (a 1-D integer blob) in the parameters over to the new scan."""
+class _FaceSetRemap:
+    """Carries every face set (a 1-D uint32 blob) inside parameter JSON to the new scan."""
 
-    def remap(value: JsonValue) -> JsonValue:
+    def __init__(self, blobs: BlobStore, new_to_old: npt.NDArray[np.int64], old_faces: int):
+        self._blobs = blobs
+        self._new_to_old = new_to_old
+        self._old_faces = old_faces
+        self._done: dict[BlobRef, BlobRef] = {}
+
+    def __call__(self, value: JsonValue) -> JsonValue:
         if isinstance(value, str) and value.startswith("blob:"):
-            array = blobs.get(value)
-            if array.ndim == 1 and np.issubdtype(array.dtype, np.integer):
-                faces = remap_face_set(array.astype(np.int64), change.new_to_old, old)
-                return blobs.put(faces.astype(array.dtype))
-            return value
+            return self._face_set(value)
         if isinstance(value, list):
-            return [remap(item) for item in value]
+            return [self(item) for item in value]
         if isinstance(value, dict):
-            return {key: remap(item) for key, item in value.items()}
+            return {key: self(item) for key, item in value.items()}
         return value
 
-    return replace(feature, params=remap(feature.params))
+    def _face_set(self, ref: BlobRef) -> BlobRef:
+        if ref not in self._done:
+            array = self._blobs.get(ref)
+            if array.ndim == 1 and array.dtype == np.uint32:
+                faces = remap_face_set(array.astype(np.int64), self._new_to_old, self._old_faces)
+                self._done[ref] = self._blobs.put(faces.astype(np.uint32))
+            else:
+                self._done[ref] = ref
+        return self._done[ref]
+
+
+def _remap_regions(regions: Regions, blobs: BlobStore, change: MeshChange) -> Regions:
+    """Labels through the face map; face counts and areas are recounted, empty regions go."""
+    if regions.labels is None:
+        return regions
+    labels = remap_labels(blobs.get(regions.labels).astype(np.uint16), change.new_to_old)
+    size = max((item.label for item in regions.items), default=0) + 1
+    counts = np.bincount(labels, minlength=size)
+    _, areas = face_normals(change.mesh.vertices, change.mesh.faces)
+    area = np.bincount(labels, weights=areas, minlength=size)
+    items = tuple(
+        replace(item, face_count=int(counts[item.label]), area=float(area[item.label]))
+        for item in regions.items
+        if counts[item.label] > 0
+    )
+    return Regions(labels=blobs.put(labels), items=items)
 
 
 def _new_scan(
     blobs: BlobStore,
     mesh: RawMesh,
-    synthetic: np.ndarray,
+    synthetic: npt.NDArray[np.bool_],
     *,
     source: ScanSource,
-    origin: np.ndarray,
+    origin: npt.NDArray[np.float64],
     noise: float | None,
     operations: tuple[ScanOperation, ...],
     display_smoothing: int = 0,
@@ -530,15 +620,6 @@ def _decimate(ctx: JobContext, mesh: RawMesh, target: int) -> MeshChange:
         return decimate(mesh, target, ctx.check_cancelled)
     except DecimationError as error:
         raise KernelError(ErrorCode.DECIMATION_FAILED, details=str(error)) from error
-
-
-def _estimate_noise(mesh: RawMesh) -> float | None:
-    from m2c_kernel.mesh.normals import jet_fit, vertex_normals
-
-    if len(mesh.vertices) < 100:
-        return None
-    jet = jet_fit(mesh.vertices, vertex_normals(mesh.vertices, mesh.faces))
-    return jet.noise
 
 
 def _file_sha256(path: Path) -> str:

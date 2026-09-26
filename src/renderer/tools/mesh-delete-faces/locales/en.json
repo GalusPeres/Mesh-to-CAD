@@ -1,3 +1,8 @@
 {
-  "label": "Delete selection"
+  "label": "Delete selection",
+  "tooltip": "Deletes the selected triangles from the scan.",
+  "nothingSelected": "No triangles selected.",
+  "deleted_one": "{{count, count}} triangle deleted",
+  "deleted_other": "{{count, count}} triangles deleted",
+  "onlyInPrepare": "Triangles can only be deleted in Prepare."
 }

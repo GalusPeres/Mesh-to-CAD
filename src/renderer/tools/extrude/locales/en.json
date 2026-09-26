@@ -1,3 +1,58 @@
 {
-  "label": "Extrude"
+  "label": "Extrude",
+  "help": "Choose a sketch. The distance is taken from the scan and can be dragged at the arrow or typed. With To plane the extrusion ends at a plane. Options decide whether a new body is created or an existing body is changed.",
+  "noSketch": "No sketch yet. Create a sketch first.",
+  "sketch": "Sketch",
+  "loops": "Profiles",
+  "allLoops": "All closed profiles",
+  "someLoops_one": "{{count}} selected profile",
+  "someLoops_other": "{{count}} selected profiles",
+  "useAllLoops": "Use all profiles",
+  "direction": "Direction",
+  "directions": {
+    "normal": "Normal",
+    "reversed": "Reversed",
+    "symmetric": "Symmetric"
+  },
+  "extent": "End",
+  "extents": {
+    "distance": "Distance",
+    "toPlane": "To plane"
+  },
+  "distance": "Distance",
+  "totalLength": "Total length",
+  "backward": "Opposite direction",
+  "plane": "Plane",
+  "offset": "Offset",
+  "lengthMissing": "The distance must be greater than 0.",
+  "solid": {
+    "operation": "Operation",
+    "operations": {
+      "newBody": "New body",
+      "add": "Unite",
+      "cut": "Subtract",
+      "intersect": "Intersect"
+    },
+    "targetBody": "Target body",
+    "body": "Body {{number}}",
+    "choose": "Choose …",
+    "problems": {
+      "targetMissing": "Choose a target body.",
+      "targetUnknown": "The target body no longer exists. Choose another body.",
+      "targetIsTool": "The target body cannot also be a tool.",
+      "toolsMissing": "Choose at least one tool body."
+    },
+    "inputsFirst": "Complete the inputs.",
+    "volume": "Volume",
+    "originPlanes": {
+      "XY": "XY plane",
+      "YZ": "YZ plane",
+      "XZ": "XZ plane"
+    },
+    "originAxes": {
+      "X": "X axis",
+      "Y": "Y axis",
+      "Z": "Z axis"
+    }
+  }
 }

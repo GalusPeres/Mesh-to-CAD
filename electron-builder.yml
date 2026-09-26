@@ -1,0 +1,70 @@
+# Windows installer (docs/ARCHITECTURE.md 3.4, 6.2).
+#
+# `npm run dist` first builds dist/ (renderer, main, preload), then runs
+# scripts/build-kernel.mjs (frozen kernel in release/kernel, licences, examples,
+# help pages) and finally electron-builder with this file. The installer works
+# offline: everything the application needs is inside it.
+
+appId: io.github.meshtocad.app
+productName: Mesh-to-CAD
+copyright: Copyright (c) 2026 Mesh-to-CAD contributors
+
+directories:
+  output: release
+  buildResources: resources/icons
+
+# Vite bundles the renderer, main and preload with their dependencies, so the
+# application needs no node_modules at runtime.
+files:
+  - dist/**/*
+  - '!dist/**/*.map'
+  - package.json
+  - '!node_modules/**/*'
+asar: true
+npmRebuild: false
+electronLanguages:
+  - de
+  - en-US
+
+# Kept outside the asar archive: the kernel is an executable with DLLs that must
+# stay replaceable (LGPL, see THIRD_PARTY_NOTICES.md), and main opens the help
+# pages and examples as files.
+extraResources:
+  - from: release/kernel
+    to: kernel
+  - from: resources/help
+    to: help
+  - from: resources/examples
+    to: examples
+    filter:
+      - '*.stl'
+      - NOTICE.txt
+  - from: resources/licenses
+    to: licenses
+  - from: LICENSE
+    to: LICENSE.txt
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icons/icon.ico
+  # Not signed yet. Resource editing stays on, so the executable keeps its icon
+  # and version information.
+  signExecutable: false
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Mesh-to-CAD
+  uninstallDisplayName: Mesh-to-CAD
+  deleteAppDataOnUninstall: false
+  installerIcon: resources/icons/icon.ico
+  uninstallerIcon: resources/icons/icon.ico
+  artifactName: Mesh-to-CAD-${version}-Setup.${ext}
+
+compression: maximum

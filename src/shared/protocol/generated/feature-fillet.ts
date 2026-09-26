@@ -18,7 +18,6 @@ export interface FilletParams {
   edges: EdgeRef[];
   mode: 'fillet' | 'chamfer';
   size: number;
-  sizeFromScan: boolean;
 }
 
 /** Input form of `FilletParams`: fields with defaults may be omitted. */
@@ -27,8 +26,9 @@ export interface FilletParamsInput {
   edges: EdgeRef[];
   mode?: 'fillet' | 'chamfer';
   size: number;
-  sizeFromScan?: boolean;
 }
+
+export const FILLET_PARAMS_RANGES = { size: { min: 0.001, max: null } } as const;
 
 export interface FilletFeatureType {
   type: 'fillet';

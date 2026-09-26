@@ -1,3 +1,19 @@
 {
-  "label": "Automatisch ausrichten"
+  "label": "Automatisch ausrichten",
+  "tooltip": "Größte Ebene auf XY, größte Ebene senkrecht dazu auf XZ, Ursprung an der Ecke des Scans.",
+  "help": "Die größte Ebene des Scans wird zur XY-Ebene, die größte Ebene senkrecht dazu zur XZ-Ebene; der Ursprung liegt an der Ecke der Umgebungsbox. Das neue Koordinatensystem wird bis OK über dem Scan gezeigt. Mit Umdrehen, X umkehren und Drehen 90° lässt sich die Lage korrigieren. Vor OK prüfen, ob die größte Ebene nahezu 0° zu XY liegt.",
+  "alignment": "Ausrichtung",
+  "noScan": "Kein Scan geladen.",
+  "adjust": "Lage",
+  "flipZ": "Umdrehen",
+  "flipX": "X umkehren",
+  "rotate": "Drehen 90°",
+  "rotation": "Drehung um Z",
+  "result": {
+    "largestPlane": "Größte Ebene",
+    "tilt": "{{angle}} zu {{plane}}",
+    "planes": "Erkannte Ebenen",
+    "flat": "Liegt eben",
+    "tilted": "Geneigt"
+  }
 }

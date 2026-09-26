@@ -1,3 +1,11 @@
 {
-  "label": "STL exportieren …"
+  "label": "STL exportieren …",
+  "tooltip": "Körper als STL-Datei speichern",
+  "help": "Die gewählten Körper werden als Dreiecksnetz in Millimetern gespeichert, zum Beispiel für den 3D-Druck. Die Genauigkeit ist der größte Abstand der Dreiecke von der exakten Fläche: kleinere Werte ergeben mehr Dreiecke.",
+  "noBody": "Kein Körper zum Exportieren vorhanden.",
+  "deflection": "Genauigkeit",
+  "deflectionHint": "0,010 mm für den 3D-Druck, 0,050 mm für eine Vorschau.",
+  "dialogTitle": "STL exportieren",
+  "filterName": "STL-Dateien",
+  "saved": "STL gespeichert: {{file}} ({{details}})"
 }

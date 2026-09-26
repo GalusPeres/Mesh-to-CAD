@@ -1,9 +1,16 @@
-"""Automatic sketch fit: split, constraints, joint refit, snapping, exact junctions."""
+"""Automatic sketch fit and constrained refit of an edited sketch.
+
+A fresh fit splits every section polyline into lines and arcs (or one circle),
+infers constraints, refits everything jointly, snaps values and refits again
+with the snaps fixed. A refit keeps the entities, constraints, snaps and typed
+dimensions of an edited sketch and only moves the fitted carriers to the current
+section; the shared points follow.
+"""
 
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,21 +20,38 @@ from m2c_kernel.sketch.constraints import (
     ConstraintOptions,
     infer_constraints,
     solve,
-    update_junctions,
+    update_points,
 )
-from m2c_kernel.sketch.model import Arc, Chain, Circle, Constraint, Entity, FloatArray, Line
-from m2c_kernel.sketch.snaps import SnapRecord, find_snaps
+from m2c_kernel.sketch.model import (
+    Arc,
+    Circle,
+    Constraint,
+    Entity,
+    FixedValue,
+    FloatArray,
+    Line,
+    Point,
+    WorkSketch,
+    entity_distances,
+    line_through,
+)
+from m2c_kernel.sketch.params import SketchDimension, SketchSnap
+from m2c_kernel.sketch.section import Section
+from m2c_kernel.sketch.snaps import find_snaps, fixed_values
 from m2c_kernel.snapping import SnapUnits
 
 MIN_TOLERANCE = 0.05
 NOISE_FACTOR = 6.0
+"""Tolerance = 6 sigma: the largest of ~2000 Gaussian residuals stays inside (research 1.3)."""
+AXIS_TOUCH = 0.5
+"""A rotational half-profile ends on the axis if its end lies this close to it (mm)."""
 
 
 @dataclass(frozen=True)
 class FitOutcome:
-    chains: list[Chain]
+    sketch: WorkSketch
     constraints: list[Constraint]
-    snaps: list[SnapRecord]
+    snaps: list[SketchSnap]
     tolerance: float
     noise: float
 
@@ -36,96 +60,227 @@ def suggested_tolerance(noise: float) -> float:
     return max(NOISE_FACTOR * noise, MIN_TOLERANCE)
 
 
-def _spacing(raw: FloatArray, closed: bool) -> float:
+def section_noise(section: Section) -> float:
+    """Robust noise sigma pooled over the raw section polylines (not resampled ones)."""
+    estimates = [
+        (fit2d.estimate_noise(p, closed=True), len(p)) for p in section.loops if len(p) >= 9
+    ] + [(fit2d.estimate_noise(p, closed=False), len(p)) for p in section.chains if len(p) >= 9]
+    if not estimates:
+        return 0.0
+    values = np.array([e for e, _ in estimates])
+    weights = np.array([n for _, n in estimates], dtype=np.float64)
+    order = np.argsort(values)
+    cumulative = np.cumsum(weights[order])
+    return float(values[order][np.searchsorted(cumulative, cumulative[-1] / 2)])
+
+
+def sample_spacing(raw: FloatArray, closed: bool) -> float:
+    """Median raw edge length, clipped to 0.05-1 mm (resampling finer adds no information)."""
     path = np.vstack([raw, raw[:1]]) if closed else raw
     edges = np.linalg.norm(np.diff(path, axis=0), axis=1)
     return float(np.clip(np.median(edges), 0.05, 1.0))
 
 
-def _entity(kind: str, fit: fit2d.Fit, points: FloatArray, eid: str) -> Entity:
+class IdSource:
+    """Point ids `p<n>` and entity ids `e<n>`, unique within one sketch."""
+
+    def __init__(self, used: Iterable[str] = ()) -> None:
+        self._next = {"p": 1, "e": 1}
+        for item in used:
+            prefix, number = item[:1], item[1:]
+            if prefix in self._next and number.isdigit():
+                self._next[prefix] = max(self._next[prefix], int(number) + 1)
+
+    def take(self, prefix: str) -> str:
+        value = self._next[prefix]
+        self._next[prefix] = value + 1
+        return f"{prefix}{value}"
+
+
+def _make_entity(
+    kind: str, fit: fit2d.Fit, points: FloatArray, eid: str, start: str, end: str
+) -> Entity:
     if isinstance(fit, fit2d.LineFit):
-        return Line(eid, fit.angle, fit.offset)
+        return Line(eid, fit.angle, fit.offset, start, end)
     ccw = fit2d.arc_sweep(points, fit.center) > 0
-    return Arc(eid, fit.center.copy(), fit.radius, ccw)
+    return Arc(eid, fit.center.copy(), fit.radius, ccw, start, end)
 
 
-def fit_chain(
-    raw: FloatArray, closed: bool, tolerance: float, noise: float, ids: list[str]
-) -> Chain:
-    """Lines and arcs (or one circle) through one section polyline."""
-    spacing = _spacing(raw, closed)
+def _add_polyline(
+    sketch: WorkSketch, raw: FloatArray, closed: bool, tolerance: float, ids: IdSource
+) -> list[str]:
+    """Lines and arcs (or one circle) through one section polyline; returns the point ids."""
+    spacing = sample_spacing(raw, closed)
     samples = fit2d.resample(raw, spacing, closed)
     opts = fit2d.SegmentOptions(tolerance=tolerance)
     if closed:
         circle = fit2d.fit_circle(samples)
         if circle is not None and circle.max_error <= tolerance:
-            return Chain([Circle(ids.pop(0), circle.center, circle.radius)], [samples], [], True)
-    sigma = max(noise, tolerance / NOISE_FACTOR)
-    pts, segments = fit2d.split_polyline(samples, closed, sigma, spacing, opts)
-    entities: list[Entity] = []
-    point_sets: list[FloatArray] = []
-    junctions: list[FloatArray] = []
-    for seg in segments:
+            eid = ids.take("e")
+            sketch.entities[eid] = Circle(eid, circle.center, circle.radius)
+            sketch.samples[eid] = samples
+            return []
+    # sigma = tolerance / 3 in the BIC cost: the tolerance decides how many entities appear.
+    pts, segments = fit2d.split_polyline(samples, closed, tolerance / 3.0, spacing, opts)
+    count = len(segments)
+    point_ids = [ids.take("p") for _ in range(count if closed else count + 1)]
+    if closed:
+        for k, seg in enumerate(segments):
+            sketch.points[point_ids[k]] = Point(point_ids[k], pts[seg.end].copy())
+    else:
+        sketch.points[point_ids[0]] = Point(point_ids[0], pts[0].copy())
+        for k, seg in enumerate(segments):
+            sketch.points[point_ids[k + 1]] = Point(point_ids[k + 1], pts[seg.end].copy())
+    for k, seg in enumerate(segments):
+        start = point_ids[k - 1] if closed else point_ids[k]
+        end = point_ids[k] if closed else point_ids[k + 1]
         points = pts[seg.start : seg.end + 1]
-        entities.append(_entity(seg.kind, seg.fit, points, ids.pop(0)))
-        point_sets.append(points)
-        junctions.append(pts[seg.end].copy())
-    return Chain(entities, point_sets, junctions, closed)
+        eid = ids.take("e")
+        sketch.entities[eid] = _make_entity(seg.kind, seg.fit, points, eid, start, end)
+        sketch.samples[eid] = points
+    return point_ids
 
 
-def auto_fit_polylines(
-    loops: Sequence[FloatArray],
-    chains: Sequence[FloatArray],
-    noise: float,
+def assign_points(sketch: WorkSketch, points: FloatArray, band: float) -> dict[str, FloatArray]:
+    """Section points per fitted entity: each point goes to the nearest entity within `band`."""
+    fitted = [e for e in sketch.entities.values() if e.origin == "fit"]
+    if not fitted or len(points) == 0:
+        return {}
+    distances = np.stack([entity_distances(sketch, e, points) for e in fitted])
+    nearest = np.argmin(distances, axis=0)
+    keep = distances[nearest, np.arange(len(points))] <= band
+    return {e.id: points[(nearest == k) & keep] for k, e in enumerate(fitted)}
+
+
+def _close_on_axis(sketch: WorkSketch, chains: list[list[str]], ids: IdSource) -> None:
+    """Rotational half-profiles that start and end on the axis are closed along it."""
+    for point_ids in chains:
+        if len(point_ids) < 2:
+            continue
+        first, last = sketch.points[point_ids[0]], sketch.points[point_ids[-1]]
+        if abs(first.xy[1]) > AXIS_TOUCH or abs(last.xy[1]) > AXIS_TOUCH:
+            continue
+        eid = ids.take("e")
+        sketch.entities[eid] = Line(eid, math.pi / 2, 0.0, last.id, first.id, origin="axis")
+
+
+def _resampled(section: Section) -> FloatArray:
+    parts = [fit2d.resample(p, sample_spacing(p, True), True) for p in section.loops if len(p) >= 3]
+    parts += [
+        fit2d.resample(p, sample_spacing(p, False), False) for p in section.chains if len(p) >= 2
+    ]
+    return np.vstack(parts) if parts else np.zeros((0, 2))
+
+
+def fit_points(section: Section) -> FloatArray:
+    """The points entities are fitted to: the cut and the support points of the section."""
+    cut = _resampled(section)
+    return cut if section.support is None else np.vstack([cut, section.support])
+
+
+def fit_section(
+    section: Section,
     tolerance: float | None,
     units: SnapUnits,
     rejected_snaps: Sequence[str] = (),
+    snap: bool = True,
 ) -> FitOutcome:
+    """Fit a new sketch to a section; `snap=False` leaves the measured values."""
+    noise = section_noise(section)
     tol = tolerance if tolerance is not None else suggested_tolerance(noise)
-    ids = [f"e{i}" for i in range(1, 100000)]
-    fitted: list[Chain] = []
-    for raw in loops:
-        fitted.append(fit_chain(raw, True, tol, noise, ids))
-    for raw in chains:
-        if len(raw) >= 2:
-            fitted.append(fit_chain(raw, False, tol, noise, ids))
-    constraints = infer_constraints(fitted, ConstraintOptions.for_tolerance(tol))
-    solve(fitted, constraints)
-    update_junctions(fitted, constraints)
-    snaps = find_snaps(fitted, constraints, max(noise, 1e-4), units, rejected_snaps)
+    sketch = WorkSketch()
+    ids = IdSource()
+    for raw in section.loops:
+        _add_polyline(sketch, raw, True, tol, ids)
+    open_chains = [
+        _add_polyline(sketch, raw, False, tol, ids) for raw in section.chains if len(raw) >= 2
+    ]
+    if section.rotational:
+        _close_on_axis(sketch, open_chains, ids)
+    constraints = infer_constraints(sketch, ConstraintOptions.for_tolerance(tol))
+    solve(sketch, constraints)
+    update_points(sketch, constraints)
+    # The split leaves the samples around each breakpoint with whichever entity the
+    # dynamic programme chose; near a tangent transition that biases radii. Handing
+    # every point to its nearest fitted entity and solving again removes the bias.
+    reassigned = assign_points(sketch, fit_points(section), max(3.0 * tol, 0.3))
+    sketch.samples.update({eid: pts for eid, pts in reassigned.items() if len(pts) >= 5})
+    solve(sketch, constraints)
+    update_points(sketch, constraints)
+    if not snap:
+        return FitOutcome(sketch, constraints, [], tol, noise)
+    snaps = find_snaps(sketch, constraints, max(noise, 1e-4), units, rejected_snaps)
     if snaps:
-        solve(fitted, constraints, [s.fixed for s in snaps])
-        update_junctions(fitted, constraints)
-    return FitOutcome(fitted, constraints, snaps, tol, noise)
+        solve(sketch, constraints, [f for s in snaps for f in fixed_values(sketch, s)])
+        update_points(sketch, constraints)
+    return FitOutcome(sketch, constraints, snaps, tol, noise)
 
 
-def fit_single(points: FloatArray, kind: str, tolerance: float, eid: str) -> tuple[Entity, float]:
-    """One line or arc through painted points (`auto` picks the better one); its max deviation."""
+def dimension_values(sketch: WorkSketch, dimensions: Sequence[SketchDimension]) -> list[FixedValue]:
+    values: list[FixedValue] = []
+    for dim in dimensions:
+        entity = sketch.entities.get(dim.entity)
+        if entity is None:
+            continue
+        match dim.kind:
+            case "length":
+                values.append(FixedValue(dim.entity, "length", dim.value))
+            case "angle" if isinstance(entity, Line):
+                target = math.radians(dim.value) - math.pi / 2
+                if math.cos(target - entity.angle) < 0:
+                    target += math.pi
+                values.append(FixedValue(dim.entity, "angle", target))
+            case "radius":
+                values.append(FixedValue(dim.entity, "radius", dim.value))
+            case "centerX":
+                values.append(FixedValue(dim.entity, "x", dim.value))
+            case "centerY":
+                values.append(FixedValue(dim.entity, "y", dim.value))
+    return values
+
+
+def refit(
+    sketch: WorkSketch,
+    constraints: list[Constraint],
+    snaps: Sequence[SketchSnap],
+    dimensions: Sequence[SketchDimension],
+    section: Section,
+    tolerance: float,
+) -> None:
+    """Move the fitted carriers of an edited sketch to the section, keeping all fixed values."""
+    assigned = assign_points(sketch, fit_points(section), max(3.0 * tolerance, 0.3))
+    sketch.samples = {eid: pts for eid, pts in assigned.items() if len(pts) >= 3}
+    fixed = [f for s in snaps for f in fixed_values(sketch, s)]
+    fixed += dimension_values(sketch, dimensions)
+    solve(sketch, constraints, fixed)
+    update_points(sketch, constraints)
+
+
+def fit_single(
+    points: FloatArray, kind: str, tolerance: float
+) -> tuple[Line | Arc, FloatArray, FloatArray, float]:
+    """One line or arc through painted points (`auto` picks the better one).
+
+    Returns the entity (without point ids), its start and end on the carrier and the
+    largest distance of the points from it.
+    """
     opts = fit2d.SegmentOptions(tolerance=tolerance, min_arc_sweep=math.radians(3.0), min_points=3)
-    choice: tuple[str, fit2d.Fit] | None
-    if kind == "line":
-        choice = ("line", fit2d.fit_line(points))
-    elif kind == "arc":
-        arc = fit2d.fit_kind(points, "arc", opts)
-        choice = ("arc", arc) if arc is not None else None
-    else:
-        line = fit2d.fit_line(points)
-        arc = fit2d.fit_kind(points, "arc", opts)
-        choice = (
-            ("arc", arc)
-            if arc is not None and arc.max_error < 0.5 * line.max_error
-            else ("line", line)
-        )
-    if choice is None:
-        choice = ("line", fit2d.fit_line(points))
-    entity = _entity(choice[0], choice[1], points, eid)
+    line = fit2d.fit_line(points)
+    arc = fit2d.fit_circle(points) if kind != "line" and len(points) >= 3 else None
+    if arc is not None and arc.radius > opts.max_radius:
+        arc = None
     first, last = points[0], points[-1]
-    if isinstance(entity, Line):
-        n = entity.normal
-        entity.start = first - (first @ n - entity.offset) * n
-        entity.end = last - (last @ n - entity.offset) * n
-    elif isinstance(entity, Arc):
-        for name, p in (("start", first), ("end", last)):
-            d = p - entity.center
-            setattr(entity, name, entity.center + entity.radius * d / np.linalg.norm(d))
-    return entity, choice[1].max_error
+    if arc is not None and (kind == "arc" or arc.max_error < 0.5 * line.max_error):
+        ccw = fit2d.arc_sweep(points, arc.center) > 0
+        entity: Line | Arc = Arc("", arc.center, arc.radius, ccw, "", "")
+        ends = [
+            arc.center + arc.radius * (p - arc.center) / np.linalg.norm(p - arc.center)
+            for p in (first, last)
+        ]
+        return entity, ends[0], ends[1], arc.max_error
+    fitted = Line("", line.angle, line.offset, "", "")
+    n = fitted.normal
+    start = first - (first @ n - fitted.offset) * n
+    end = last - (last @ n - fitted.offset) * n
+    fitted.angle, fitted.offset = line_through(start, end)
+    return fitted, start, end, line.max_error

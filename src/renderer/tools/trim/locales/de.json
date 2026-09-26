@@ -1,3 +1,12 @@
 {
-  "label": "Körper teilen"
+  "label": "Körper teilen",
+  "help": "Körper und Werkzeug wählen: eine Ursprungsebene, eine eingepasste Ebene, eine Hilfsebene oder eine Freiformfläche. Vorderseite behält den Teil auf der Seite, in die die Normale der Ebene zeigt, Rückseite den anderen Teil.",
+  "noBody": "Kein Körper vorhanden.",
+  "body": "Körper",
+  "tool": "Teilen mit",
+  "keep": "Behalten",
+  "sides": {
+    "front": "Vorderseite",
+    "back": "Rückseite"
+  }
 }

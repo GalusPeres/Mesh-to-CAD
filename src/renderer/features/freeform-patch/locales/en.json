@@ -1,3 +1,15 @@
 {
-  "name": "Freeform patch"
+  "name": "Freeform patch",
+  "summaryRms": "RMS {{rms}}",
+  "autoSpans": "Automatic spans",
+  "spansValue": "{{u}} × {{v}} spans",
+  "stats": {
+    "noise": "Scan noise",
+    "rms": "RMS",
+    "max": "Maximum",
+    "withinTolerance": "Within tolerance",
+    "faces": "Triangles",
+    "spans": "Spans",
+    "normalSpread": "Normal spread"
+  }
 }

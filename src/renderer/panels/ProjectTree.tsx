@@ -1,113 +1,62 @@
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import {
-  Axis3d,
-  Ban,
-  Box,
-  Boxes,
-  CircleAlert,
-  CircleDashed,
-  Cone,
-  Crosshair,
-  Cylinder,
-  FileBox,
-  History,
-  type LucideIcon,
-  Move3d,
-  Pencil,
-  Shapes,
-  Square,
-  Torus,
-  Trash2,
-  TriangleAlert,
-  Waves,
-  Wrench,
-} from 'lucide-react';
+import { Ban, CircleAlert, Eye, EyeOff, TriangleAlert } from 'lucide-react';
 import { type KeyboardEvent, type MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import menuStyles from '../ui/Menu/Menu.module.css';
-import { FEATURE_VIEWS, featureNames, featureView } from '../features/registry';
+import type { DocumentSnapshot } from '@shared/protocol/generated/document-snapshot';
+
+import { matchesShortcut } from '../app/commands/keymap';
+import { featureNames, featureView } from '../features/registry';
 import { useFormatter } from '../i18n/useFormatter';
 import { useDocument } from '../state/documentStore';
 import { hoverObject, selectObjects, useObjectSelection } from '../state/objectSelectionStore';
-import { openTool } from '../tools/framework/toolActions';
+import { useView } from '../state/viewStore';
+import { TOOLS } from '../tools/framework/registry';
 import { Checkbox } from '../ui/Checkbox/Checkbox';
-import { PlaneIcon, SphereIcon } from '../ui/icons/customIcons';
+import { IconButton } from '../ui/IconButton/IconButton';
 import { Tree, type TreeNode } from '../ui/Tree/Tree';
+import { useViewport } from '../viewport/api';
+import { featureEditTools } from './editTools';
+import {
+  canHide,
+  isHidden,
+  somethingHidden,
+  toggleHidden,
+  useHiddenObjects,
+} from './objectVisibility';
 import styles from './ProjectTree.module.css';
-import { canEditDocument, requestDelete, startRename, toggleSuppressed } from './treeActions';
+import { runTreeAction, TreeContextMenu } from './TreeContextMenu';
+import { setOnlyUnusedRegions, useTreeFilter } from './treeFilterStore';
+import { treeIcon } from './treeIcons';
+import { TREE_KEYS, type TreeMenuAction, treeMenuActions } from './treeMenu';
 import {
   buildProjectTree,
+  DEFAULT_EXPANDED,
   findNode,
   nodeIdOf,
   type ProjectNode,
-  type ProjectNodeIcon,
 } from './treeModel';
-import { setOnlyUnusedRegions, useTreeFilter } from './treeFilterStore';
-import { useViewportHighlight } from './viewportHighlight';
+import { useViewportSync } from './viewportSync';
 
-const FIXED_ICONS: Record<string, LucideIcon> = {
-  scan: FileBox,
-  operation: Wrench,
-  regions: Shapes,
-  bodies: Boxes,
-  body: Box,
-  origin: Crosshair,
-  plane: Square,
-  axes: Axis3d,
-  history: History,
-  alignment: Move3d,
-  'region:plane': PlaneIcon,
-  'region:cylinder': Cylinder,
-  'region:cone': Cone,
-  'region:sphere': SphereIcon,
-  'region:torus': Torus,
-  'region:freeform': Waves,
-  'region:unknown': CircleDashed,
-};
+const EDIT_TOOLS = featureEditTools(undefined, TOOLS);
 
-function iconOf(icon: ProjectNodeIcon | undefined): LucideIcon | undefined {
-  if (!icon) return undefined;
-  if (icon.startsWith('feature:')) return featureView(icon.slice('feature:'.length))?.icon;
-  return FIXED_ICONS[icon];
-}
-
-function StateIcon({ node, label }: { node: ProjectNode; label: string }) {
-  if (node.state === 'warning') {
-    return <TriangleAlert size={16} className={styles.warning} aria-label={label} role="img" />;
-  }
-  if (node.state === 'error') {
-    return <CircleAlert size={16} className={styles.error} aria-label={label} role="img" />;
-  }
-  if (node.state === 'skipped' || node.state === 'suppressed') {
-    return <Ban size={16} className={styles.disabled} aria-label={label} role="img" />;
+function StateIcon({ state, label }: { state: ProjectNode['state']; label: string }) {
+  const props = { size: 16, role: 'img', 'aria-label': label } as const;
+  if (state === 'warning') return <TriangleAlert {...props} className={styles.warning} />;
+  if (state === 'error') return <CircleAlert {...props} className={styles.error} />;
+  if (state === 'skipped' || state === 'suppressed') {
+    return <Ban {...props} className={styles.disabled} />;
   }
   return null;
 }
 
-/** Open the tool that edits this node (double-click, Enter, context menu). */
-function editNode(node: ProjectNode | null): void {
-  if (!node?.edit || !canEditDocument()) return;
-  void openTool(node.edit.toolId, null, node.edit.target);
-}
-
-/**
- * The project tree: object list and history in one (docs/DESIGN.md 5.5).
- * Groups without content are hidden; hover and selection go through
- * objectSelectionStore, which the viewport highlight follows.
- */
-export function ProjectTree() {
+/** Tree rows need the document plus the formatter and translations for names and summaries. */
+function useProjectModel(snapshot: DocumentSnapshot | null, onlyUnused: boolean): ProjectNode[] {
   const { t } = useTranslation('panels');
   const format = useFormatter();
-  const snapshot = useDocument((state) => state.snapshot);
-  const selected = useObjectSelection((state) => state.selected[0] ?? null);
-  const onlyUnused = useTreeFilter((state) => state.onlyUnusedRegions);
-  const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
-  useViewportHighlight();
-
-  const model = useMemo(() => {
-    if (!snapshot?.document.scan) return [];
-    const document = snapshot.document;
+  return useMemo(() => {
+    const document = snapshot?.document;
+    if (!document?.scan || !snapshot) return [];
     const summaries = new Map<string, string>();
     for (const feature of document.features) {
       const summary = featureView(feature.type)?.summary?.(feature.params as never, format, t);
@@ -119,57 +68,86 @@ export function ProjectTree() {
       t,
       format,
       featureNames: featureNames(document.features, t),
-      editTools: new Map(
-        [...FEATURE_VIEWS.values()].flatMap((view) =>
-          view.editTool ? [[view.type, view.editTool] as const] : [],
-        ),
-      ),
+      editTools: EDIT_TOOLS,
       summaries,
       onlyUnusedRegions: onlyUnused,
     });
   }, [snapshot, t, format, onlyUnused]);
+}
 
-  if (!model.length) return null;
+/**
+ * The project tree: object list and history in one (docs/DESIGN.md 5.5). Hover and
+ * selection go through objectSelectionStore, which the viewport follows and writes.
+ */
+export function ProjectTree() {
+  const { t } = useTranslation('panels');
+  const snapshot = useDocument((state) => state.snapshot);
+  const selected = useObjectSelection((state) => state.selected[0] ?? null);
+  const onlyUnused = useTreeFilter((state) => state.onlyUnusedRegions);
+  const hidden = useHiddenObjects((state) => state);
+  const visibility = useView((state) => state.visibility);
+  const viewport = useViewport();
+  const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
+  useViewportSync();
+  const model = useProjectModel(snapshot, onlyUnused);
 
-  const toTreeNode = (node: ProjectNode): TreeNode => ({
-    id: node.id,
-    label: node.label,
-    secondary: node.secondary,
-    icon: iconOf(node.icon),
-    muted: node.state === 'suppressed' || node.state === 'skipped',
-    status: <StateIcon node={node} label={t(`state.${node.state}`)} />,
-    children: node.children?.map(toTreeNode),
-    testId: node.testId,
+  if (!model.length || !snapshot) return null;
+
+  const menuContext = (node: ProjectNode) => ({
+    hidden: !!node.ref && isHidden(node.ref, hidden, visibility),
+    canHide: !!node.ref && canHide(node.ref, viewport),
+    anythingHidden: somethingHidden(hidden, visibility),
   });
+
+  const toTreeNode = (node: ProjectNode): TreeNode => {
+    const rowHidden = !!node.ref && isHidden(node.ref, hidden, visibility);
+    return {
+      id: node.id,
+      label: node.label,
+      secondary: node.secondary,
+      icon: treeIcon(node.icon),
+      muted: node.state === 'suppressed' || node.state === 'skipped',
+      status: (
+        <>
+          <StateIcon state={node.state} label={t(`state.${node.state}`)} />
+          {node.ref && canHide(node.ref, viewport) && (
+            <VisibilityToggle node={node} hidden={rowHidden} snapshot={snapshot} />
+          )}
+        </>
+      ),
+      children: node.children?.map(toTreeNode),
+      testId: node.testId,
+    };
+  };
 
   const selectedId = selected ? nodeIdOf(selected) : null;
   const selectedNode = selectedId ? findNode(model, selectedId) : null;
   const menuNode = menuNodeId ? findNode(model, menuNodeId) : null;
+  const menuGroups = menuNode ? treeMenuActions(menuNode, menuContext(menuNode)) : [];
   const hasRegions = model.some((node) => node.id === 'regions');
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const featureId = selectedNode?.ref?.kind === 'feature' ? selectedNode.ref.id : null;
-    if (!featureId || event.ctrlKey || event.altKey) return;
-    if (event.key === 'F2') {
-      event.preventDefault();
-      startRename(featureId, selectedNode?.label ?? '');
-    } else if (event.key === 'Delete') {
-      event.preventDefault();
-      void requestDelete(featureId);
-    }
+    if (!selectedNode) return;
+    const available = treeMenuActions(selectedNode, menuContext(selectedNode)).flat();
+    const action = (['rename', 'delete', 'hide', 'show'] as const).find(
+      (candidate: TreeMenuAction) => {
+        const shortcut = TREE_KEYS[candidate];
+        return available.includes(candidate) && !!shortcut && matchesShortcut(event, shortcut);
+      },
+    );
+    if (!action) return;
+    // Handled here, so the viewport commands on the same keys (Entf, H) do not run.
+    event.preventDefault();
+    runTreeAction(action, selectedNode, snapshot);
   };
 
   const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
     const row = (event.target as HTMLElement).closest('[role="treeitem"]');
-    const testId = row?.getAttribute('data-testid');
-    const node = testId ? findByTestId(model, testId) : null;
+    const node = findByTestId(model, row?.getAttribute('data-testid') ?? '');
     setMenuNodeId(node?.id ?? null);
     if (node?.ref) selectObjects([node.ref]);
-    if (!node?.edit && node?.ref?.kind !== 'feature') event.preventDefault();
+    if (!node || treeMenuActions(node, menuContext(node)).length === 0) event.preventDefault();
   };
-
-  const menuFeature = menuNode?.ref?.kind === 'feature' ? menuNode.ref.id : null;
-  const editable = canEditDocument();
 
   return (
     <div className={styles.panel}>
@@ -185,64 +163,60 @@ export function ProjectTree() {
       )}
       <ContextMenu.Root modal={false}>
         <ContextMenu.Trigger asChild>
-          <div onKeyDown={onKeyDown} onContextMenu={onContextMenu} className={styles.tree}>
+          <div className={styles.tree} onKeyDown={onKeyDown} onContextMenu={onContextMenu}>
             <Tree
               label={t('project')}
               nodes={model.map(toTreeNode)}
               selectedId={selectedId}
-              defaultExpanded={['scan', 'bodies', 'history']}
+              defaultExpanded={DEFAULT_EXPANDED}
               onSelect={(id) => {
                 const node = findNode(model, id);
                 selectObjects(node?.ref ? [node.ref] : []);
               }}
-              onActivate={(id) => editNode(findNode(model, id))}
+              onActivate={(id) => {
+                const node = findNode(model, id);
+                if (node?.edit) runTreeAction('edit', node, snapshot);
+              }}
               onHover={(id) => hoverObject(id ? (findNode(model, id)?.ref ?? null) : null)}
             />
           </div>
         </ContextMenu.Trigger>
         <ContextMenu.Portal>
-          <ContextMenu.Content className={menuStyles.content} collisionPadding={8}>
-            {menuNode?.edit && (
-              <MenuEntry
-                icon={Pencil}
-                label={t('menu.edit')}
-                shortcut="Enter"
-                disabled={!editable}
-                testId="tree-menu-edit"
-                onSelect={() => editNode(menuNode)}
-              />
-            )}
-            {menuFeature && (
-              <>
-                <MenuEntry
-                  label={t('menu.rename')}
-                  shortcut="F2"
-                  disabled={!editable}
-                  testId="tree-menu-rename"
-                  onSelect={() => startRename(menuFeature, menuNode?.label ?? '')}
-                />
-                <MenuEntry
-                  icon={Ban}
-                  label={t(menuNode?.state === 'suppressed' ? 'menu.unsuppress' : 'menu.suppress')}
-                  disabled={!editable}
-                  testId="tree-menu-suppress"
-                  onSelect={() => void toggleSuppressed(menuFeature)}
-                />
-                <ContextMenu.Separator className={menuStyles.separator} />
-                <MenuEntry
-                  icon={Trash2}
-                  label={t('menu.delete')}
-                  shortcut={t('menu.deleteKey')}
-                  disabled={!editable}
-                  testId="tree-menu-delete"
-                  onSelect={() => void requestDelete(menuFeature)}
-                />
-              </>
-            )}
-          </ContextMenu.Content>
+          {menuNode && menuGroups.length > 0 && (
+            <TreeContextMenu node={menuNode} groups={menuGroups} snapshot={snapshot} />
+          )}
         </ContextMenu.Portal>
       </ContextMenu.Root>
     </div>
+  );
+}
+
+function VisibilityToggle({
+  node,
+  hidden,
+  snapshot,
+}: {
+  node: ProjectNode;
+  hidden: boolean;
+  snapshot: DocumentSnapshot;
+}) {
+  const { t } = useTranslation('panels');
+  const ref = node.ref;
+  if (!ref) return null;
+  return (
+    <IconButton
+      icon={hidden ? EyeOff : Eye}
+      label={t(hidden ? 'menu.show' : 'menu.hide')}
+      shortcut="H"
+      pressed={hidden}
+      className={hidden ? styles.eyeHidden : styles.eye}
+      data-testid={`tree-eye-${node.testId.replace(/^tree-node-/, '')}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        toggleHidden(ref, snapshot);
+      }}
+      onDoubleClick={(event) => event.stopPropagation()}
+    />
   );
 }
 
@@ -253,30 +227,4 @@ function findByTestId(nodes: readonly ProjectNode[], testId: string): ProjectNod
     if (child) return child;
   }
   return null;
-}
-
-interface MenuEntryProps {
-  label: string;
-  icon?: LucideIcon;
-  shortcut?: string;
-  disabled?: boolean;
-  testId: string;
-  onSelect: () => void;
-}
-
-function MenuEntry({ label, icon: Icon, shortcut, disabled, testId, onSelect }: MenuEntryProps) {
-  return (
-    <ContextMenu.Item
-      className={menuStyles.item}
-      disabled={disabled}
-      data-testid={testId}
-      onSelect={onSelect}
-    >
-      <span className={menuStyles.icon} aria-hidden>
-        {Icon && <Icon size={16} />}
-      </span>
-      <span className={menuStyles.label}>{label}</span>
-      {shortcut && <span className={menuStyles.shortcut}>{shortcut}</span>}
-    </ContextMenu.Item>
-  );
 }

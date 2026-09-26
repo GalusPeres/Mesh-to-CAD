@@ -2,8 +2,14 @@
 
 Built once per set of bodies and tolerance: linear deflection at most tolerance / 20
 (distances below the deflection are within the chord error and count as "on the
-surface"), merged, subdivided to 2 mm, one global B-Rep face id per triangle, KD-trees
-and pseudo-normals. See `.work/research/algorithms-cad.md` section 4.2.
+surface"), merged, subdivided so no edge is longer than 5 mm, one global B-Rep face
+id per triangle, KD-trees and pseudo-normals. See `.work/research/algorithms-cad.md`
+section 4.2.
+
+BRepMesh produces long slivers on planar faces. The research used 2 mm; subdividing
+a sliver keeps its aspect ratio and multiplies the triangle count, so 5 mm halves the
+build time (0.4 s instead of 0.8 s for the test block) at the same accuracy: the
+walkers in `distance.py` find the exact closest point on any triangulation.
 """
 
 from __future__ import annotations
@@ -26,9 +32,9 @@ from m2c_kernel.geometry import FloatArray
 type IntArray = npt.NDArray[np.int64]
 
 ANGULAR_DEFLECTION_RAD = 0.1
-MAX_EDGE_MM = 2.0
+MAX_EDGE_MM = 5.0
 MIN_DEFLECTION_MM = 0.0005
-_CACHE_SIZE = 4
+CACHE_SIZE = 4
 
 
 def reference_deflection(tolerance: float) -> float:
@@ -51,7 +57,9 @@ class ReferenceSurface:
     vertex_normals: FloatArray
     vf_offsets: IntArray
     vf_faces: IntArray
+    """CSR adjacency vertex -> triangles: `vf_faces[vf_offsets[v]:vf_offsets[v + 1]]`."""
     edge_vertices: IntArray
+    """Vertices on B-Rep edges (shared by triangles of different B-Rep faces)."""
     centroid_tree: cKDTree
     vertex_tree: cKDTree
     edge_vertex_tree: cKDTree
@@ -64,11 +72,13 @@ class ReferenceSurface:
     """(2, 3) minimum and maximum corner."""
 
     def body_face(self, global_face: int) -> tuple[str, int]:
+        """Body id and B-Rep face index (`TopExp.MapShapes` order) of a global face index."""
         body = int(np.searchsorted(self.face_offsets, global_face, side="right")) - 1
         return self.body_ids[body], int(global_face - self.face_offsets[body])
 
 
 def build_reference(bodies: Sequence[tuple[str, Body]], deflection: float) -> ReferenceSurface:
+    """Tessellate, merge and index the bodies (body id, body) for distance queries."""
     vertex_blocks: list[FloatArray] = []
     face_blocks: list[IntArray] = []
     id_blocks: list[IntArray] = []
@@ -83,13 +93,12 @@ def build_reference(bodies: Sequence[tuple[str, Body]], deflection: float) -> Re
         offsets.append(offsets[-1] + indexed_map(body.shape, TopAbs_FACE).Extent())
     mesh = trimesh.Trimesh(np.vstack(vertex_blocks), np.vstack(face_blocks), process=False)
     mesh.merge_vertices()
-    face_id = np.concatenate(id_blocks)
     vertices, faces, index = trimesh.remesh.subdivide_to_size(
         mesh.vertices, mesh.faces, max_edge=MAX_EDGE_MM, max_iter=30, return_index=True
     )
+    face_id = np.concatenate(id_blocks)[index]
     mesh = trimesh.Trimesh(vertices, faces, process=False)
     mesh.merge_vertices()
-    face_id = face_id[index]
     keep = mesh.nondegenerate_faces()
     if not keep.all():
         mesh.update_faces(keep)
@@ -112,7 +121,6 @@ def _prepare(
     np.add.at(edge_normals, faces_unique_edges.ravel(), np.repeat(face_normals, 3, axis=0))
     edge_normals /= np.maximum(np.linalg.norm(edge_normals, axis=1, keepdims=True), 1e-300)
 
-    # Vertices shared by triangles of different B-Rep faces lie on B-Rep edges.
     corner_face = np.repeat(face_id, 3)
     first_face = np.full(len(mesh.vertices), -1, dtype=np.int64)
     first_face[flat] = corner_face
@@ -146,9 +154,13 @@ def _prepare(
 
 
 class ReferenceCache:
-    """The last few reference surfaces by body result keys and deflection."""
+    """The last few reference surfaces, by body keys and deflection.
 
-    def __init__(self, capacity: int = _CACHE_SIZE) -> None:
+    Body keys change whenever a body's geometry changes (they derive from result keys),
+    so a cached surface is never stale.
+    """
+
+    def __init__(self, capacity: int = CACHE_SIZE) -> None:
         self._capacity = capacity
         self._items: OrderedDict[tuple[tuple[str, ...], float], ReferenceSurface] = OrderedDict()
 
@@ -166,5 +178,5 @@ class ReferenceCache:
             self._items.move_to_end(key)
         return item
 
-
-REFERENCES = ReferenceCache()
+    def clear(self) -> None:
+        self._items.clear()

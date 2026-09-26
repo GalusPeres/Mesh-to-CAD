@@ -38,6 +38,9 @@ TRIAL_POINTS = 4_000
 TYPE_PENALTY = 1.15
 """A type with more parameters must lower the robust sigma by this factor to win."""
 
+MIN_CONE_HALF_ANGLE = np.radians(0.5)
+"""Flatter cones are cylinders for any practical part; their apex is ill-defined."""
+
 
 class FitError(ValueError):
     """The points do not determine the requested primitive (degenerate input)."""
@@ -249,9 +252,9 @@ def fit_cone(points: FloatArray, normals: FloatArray, rng: np.random.Generator) 
     slope, intercept = np.polyfit(h, rho, 1)
     if slope < 0:
         a, h, slope = -a, -h, -slope
-    if slope < 1e-6:
-        raise FitError("cone degenerates to a cylinder")
     half_angle = float(np.arctan(slope))
+    if half_angle < MIN_CONE_HALF_ANGLE or half_angle > np.pi / 2 - MIN_CONE_HALF_ANGLE:
+        raise FitError("cone degenerates to a cylinder or a plane")
     apex = q + a * (-intercept / slope)
     e1, e2 = frame_from_axis(a)
 
@@ -262,6 +265,8 @@ def fit_cone(points: FloatArray, normals: FloatArray, rng: np.random.Generator) 
         return result
 
     x = _refine(residual, np.array([0.0, 0.0, 0.0, 0.0, 0.0, half_angle]), points, rng)
+    if not MIN_CONE_HALF_ANGLE <= abs(x[5]) <= np.pi / 2 - MIN_CONE_HALF_ANGLE:
+        raise FitError("cone degenerates to a cylinder or a plane")
     axis = _direction(a, e1, e2, x[0], x[1])
     primitive = Cone(apex=vec3(apex + x[2:5]), axis=vec3(axis), half_angle=float(x[5]))
     return statistics(primitive, points)
@@ -313,20 +318,19 @@ def fit_primitive(
         raise FitError(f"{kind} fit failed: {error}") from error
 
 
-def fit_best(
+def trial_fits(
     points: FloatArray,
     normals: FloatArray,
     rng: np.random.Generator,
     noise: float | None = None,
     kinds: tuple[PrimitiveKind, ...] = PRIMITIVE_KINDS,
-) -> tuple[FitResult, list[FitResult]]:
-    """Choose the primitive type automatically.
+) -> tuple[FitResult | None, list[FitResult]]:
+    """Trial fits of several types on a subsample, and the preferred one.
 
-    Trial fits run on a subsample; a type with more parameters must lower the
-    robust sigma by `TYPE_PENALTY` to win. Plane, sphere and cylinder are always
-    tried; cone and torus only when the best simpler fit is clearly above the
-    noise. The winner is refitted on all points. Returns the winner and the
-    trial fits of every type that succeeded, best first (for the alternatives list).
+    A type with more parameters must lower the robust sigma by `TYPE_PENALTY`
+    to be preferred. Plane, sphere and cylinder are always tried; cone and torus
+    only when the best simpler fit is clearly above the noise. Returns the
+    preferred trial (None if nothing fits) and every successful trial, best first.
     """
     count = min(len(points), TRIAL_POINTS)
     sample = rng.choice(len(points), count, replace=False)
@@ -345,8 +349,24 @@ def fit_best(
         trials.append(trial)
         if best is None or trial.sigma * TYPE_PENALTY < best.sigma:
             best = trial
+    trials.sort(key=lambda trial: trial.sigma)
+    return best, trials
+
+
+def fit_best(
+    points: FloatArray,
+    normals: FloatArray,
+    rng: np.random.Generator,
+    noise: float | None = None,
+    kinds: tuple[PrimitiveKind, ...] = PRIMITIVE_KINDS,
+) -> tuple[FitResult, list[FitResult]]:
+    """Choose the primitive type automatically (`trial_fits`) and refit it on all points.
+
+    An early exit after the sphere would be wrong: a small patch of a cylinder
+    is matched by a sphere almost as well. Returns the winner and the trial fits
+    of every type that succeeded, best first (for the alternatives list).
+    """
+    best, trials = trial_fits(points, normals, rng, noise, kinds)
     if best is None:
         raise FitError("no primitive type fits these points")
-    winner = fit_primitive(best.kind, points, normals, rng)
-    trials.sort(key=lambda trial: trial.sigma)
-    return winner, trials
+    return fit_primitive(best.kind, points, normals, rng), trials

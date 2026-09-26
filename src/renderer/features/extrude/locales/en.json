@@ -1,3 +1,5 @@
 {
-  "name": "Extrusion"
+  "name": "Extrusion",
+  "toPlane": "to plane",
+  "symmetric": "{{length}} symmetric"
 }

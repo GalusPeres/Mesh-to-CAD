@@ -5,16 +5,17 @@ import { useFormatter } from '../i18n/useFormatter';
 import { useDocument } from '../state/documentStore';
 import { Button } from '../ui/Button/Button';
 import { Dialog } from '../ui/Dialog/Dialog';
-import { closeTreeDialogs, deleteFeature, useTreeDialogs } from './treeActions';
+import { closeTreeDialogs, deleteFeature, dependentsQuestion, useTreeDialogs } from './treeActions';
 
-/** Asks before a feature is deleted together with the features that use it (docs/DESIGN.md 5.5). */
+/**
+ * Asks before a feature is deleted together with the features that use it
+ * (docs/DESIGN.md 5.5). The destructive button is secondary; Abbrechen is the default.
+ */
 function DeleteDialog() {
   const { t } = useTranslation(['panels', 'common']);
   const format = useFormatter();
   const remove = useTreeDialogs((state) => state.remove);
   const features = useDocument((state) => state.snapshot?.document.features ?? []);
-  const names = featureNames(features, t);
-  const name = (id: string) => names.get(id) ?? id;
 
   return (
     <Dialog
@@ -35,17 +36,20 @@ function DeleteDialog() {
           >
             {t('delete.confirm')}
           </Button>
-          <Button variant="primary" onClick={closeTreeDialogs}>
+          <Button variant="primary" data-testid="delete-cancel" onClick={closeTreeDialogs}>
             {t('common:actions.cancel')}
           </Button>
         </>
       }
     >
       {remove &&
-        t('delete.withDependents', {
-          name: name(remove.featureId),
-          dependents: format.list(remove.dependents.map(name)),
-        })}
+        dependentsQuestion(
+          remove.featureId,
+          remove.dependents,
+          featureNames(features, t),
+          format,
+          t,
+        )}
     </Dialog>
   );
 }

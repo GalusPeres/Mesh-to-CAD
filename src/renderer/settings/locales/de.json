@@ -1,5 +1,59 @@
 {
   "title": "Einstellungen",
+  "general": "Allgemein",
   "language": "Sprache",
-  "theme": "Darstellung"
+  "theme": "Darstellung",
+  "navigation": "Navigation",
+  "invertWheel": "Mausrad umkehren",
+  "selection": "Auswahl",
+  "clearAfterFit": "Auswahl nach dem Einpassen leeren",
+  "tools": "Werkzeuge",
+  "toolOptionsHint": "Werkzeuge merken sich Optionen wie die Pinselgröße und geöffnete Abschnitte.",
+  "resetToolOptions": "Werkzeugoptionen zurücksetzen",
+  "toolOptionsReset": "Werkzeugoptionen zurückgesetzt.",
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "scopeHint": "Tasten ohne Strg wirken, wenn das Ansichtsfenster oder der Projektbaum den Fokus hat, nie in Eingabefeldern.",
+    "or": " oder ",
+    "sections": {
+      "file": "Datei",
+      "edit": "Bearbeiten",
+      "view": "Ansicht",
+      "tools": "Werkzeuge",
+      "selection": "Auswahl",
+      "sketch": "Skizze",
+      "toolPanel": "Geöffnetes Werkzeug",
+      "tree": "Projektbaum",
+      "help": "Hilfe",
+      "application": "Programm",
+      "other": "Weitere"
+    },
+    "toolPanel": {
+      "commit": "OK",
+      "apply": "Anwenden",
+      "cancel": "Abbrechen"
+    },
+    "tree": {
+      "edit": "Bearbeiten",
+      "rename": "Umbenennen",
+      "hide": "Ausblenden oder einblenden",
+      "delete": "Löschen"
+    }
+  },
+  "about": {
+    "description": "Wandelt 3D-Scans in bearbeitbare CAD-Körper um. Quelloffen unter der MIT-Lizenz.",
+    "version": "Version",
+    "kernel": "Rechenprozess",
+    "occt": "Open CASCADE",
+    "python": "Python",
+    "electron": "Electron",
+    "chrome": "Chromium",
+    "node": "Node.js",
+    "platform": "Plattform",
+    "unavailable": "Nicht verfügbar",
+    "licenses": "Lizenzen",
+    "licenseText": "Mesh-to-CAD steht unter der MIT-Lizenz. Die enthaltenen Komponenten stehen unter ihren eigenen Lizenzen.",
+    "showLicenses": "Lizenzen anzeigen",
+    "logs": "Protokollordner"
+  }
 }

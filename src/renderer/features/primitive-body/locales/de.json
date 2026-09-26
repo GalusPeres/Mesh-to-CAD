@@ -1,3 +1,5 @@
 {
-  "name": "Grundkörper"
+  "name": "Grundkörper",
+  "fromScan": "Länge aus Scan",
+  "fromScanMargin": "Länge aus Scan + {{margin}}"
 }

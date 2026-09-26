@@ -1,3 +1,31 @@
 {
-  "label": "Messen"
+  "label": "Messen",
+  "tooltip": "Abstände, Winkel und Durchmesser messen",
+  "help": "Zwei Elemente im Ansichtsfenster oder im Projektbaum anklicken: eingepasste Formen, Hilfsgeometrie oder Körperflächen; Ursprungsebenen und -achsen stehen in der Liste. Bei eingepassten Formen steht hinter dem Wert die Messunsicherheit aus dem Scan. Die Werte werden nur angezeigt und nicht im Projekt gespeichert.",
+  "noScan": "Kein Scan geladen.",
+  "first": "Element 1",
+  "second": "Element 2",
+  "none": "–",
+  "pickHint": "Im Ansichtsfenster oder im Projektbaum wählen.",
+  "empty": "Ein Element wählen.",
+  "chooseSecond": "Ein zweites Element wählen, um Abstand und Winkel zu messen.",
+  "distance": {
+    "parallel": "Abstand",
+    "shortest": "Kürzester Abstand",
+    "point": "Abstand",
+    "minimum": "Kleinster Abstand"
+  },
+  "angle": "Winkel",
+  "diameter": "Durchmesser",
+  "diameterFirst": "Durchmesser Element 1",
+  "diameterSecond": "Durchmesser Element 2",
+  "notParallel": "Nicht parallel ({{angle}}): Ein Abstand ist nicht definiert.",
+  "origin": {
+    "XY": "Ursprung: Ebene XY",
+    "YZ": "Ursprung: Ebene YZ",
+    "XZ": "Ursprung: Ebene XZ",
+    "X": "Ursprung: Achse X",
+    "Y": "Ursprung: Achse Y",
+    "Z": "Ursprung: Achse Z"
+  }
 }

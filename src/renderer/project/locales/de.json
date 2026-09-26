@@ -1,0 +1,30 @@
+{
+  "commands": {
+    "new": "Neues Projekt",
+    "open": "Projekt öffnen …",
+    "save": "Speichern",
+    "saveAs": "Speichern unter …"
+  },
+  "dialogs": {
+    "openTitle": "Projekt öffnen",
+    "saveTitle": "Projekt speichern",
+    "filterName": "Mesh-to-CAD-Projekte (*.m2c)"
+  },
+  "messages": {
+    "saved": "Gespeichert: {{fileName}}",
+    "opened": "Geöffnet: {{name}}"
+  },
+  "unsaved": {
+    "title": "Änderungen speichern?",
+    "text": "Die Änderungen an {{name}} sind nicht gespeichert.",
+    "save": "Speichern",
+    "discard": "Nicht speichern"
+  },
+  "recovery": {
+    "title": "Nicht gespeicherte Arbeit gefunden",
+    "text": "Mesh-to-CAD wurde am {{startedAt, datetime(dateStyle: medium; timeStyle: short)}} nicht regulär beendet. Der letzte Stand von {{name}} lässt sich wiederherstellen.",
+    "restore": "Wiederherstellen",
+    "discard": "Verwerfen",
+    "restored": "Wiederhergestellt: {{name}}"
+  }
+}

@@ -4,22 +4,25 @@
     "fileTooLarge": "Import failed: the file is larger than 1 GB.",
     "unsupportedFormat": "Import failed: file type {{suffix}} is not supported (STL, OBJ, PLY).",
     "readFailed": "Import failed: {{fileName}} is not a valid STL, OBJ or PLY file.",
+    "invalidStl": "Import failed: {{fileName}} is not a valid STL (the triangle count in the header does not match the file size).",
     "empty": "Import failed: {{fileName}} contains no triangles.",
     "tooManyFaces": "Import failed: {{faces, count}} triangles, at most {{maxFaces, count}}.",
     "reductionRequired": "The scan has {{faces, count}} triangles. Reduce it to at most {{maxFaces, count}} to work with it.",
     "unknownImport": "The import is no longer available. Open the file again.",
     "noScan": "No scan loaded.",
-    "staleSelection": "The selection belongs to an older scan state. Select again.",
-    "nothingLeft": "Nothing of the scan would remain.",
-    "decimationFailed": "Reduction failed."
+    "staleSelection": "The selection belongs to an older state of the scan. Select again.",
+    "nothingLeft": "Nothing of the scan would remain after this step.",
+    "decimationFailed": "Reduction failed: the computation ended without a result."
   },
   "progress": {
     "reading": "Reading the file",
     "welding": "Joining vertices",
     "estimatingNoise": "Estimating the scan noise",
-    "repairing": "Repairing",
-    "decimating": "Reducing",
+    "repairing": "Repairing the scan",
+    "removingSmallParts": "Removing small parts",
+    "decimating": "Reducing the scan",
     "fillingHoles": "Filling holes",
-    "inspecting": "Inspecting"
+    "inspecting": "Inspecting the scan",
+    "storing": "Storing the scan"
   }
 }

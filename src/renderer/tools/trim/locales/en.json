@@ -1,3 +1,12 @@
 {
-  "label": "Split body"
+  "label": "Split body",
+  "help": "Choose the body and the tool: an origin plane, a fitted plane, a reference plane or a freeform patch. Front keeps the part on the side the plane normal points to, Back the other part.",
+  "noBody": "No body yet.",
+  "body": "Body",
+  "tool": "Split with",
+  "keep": "Keep",
+  "sides": {
+    "front": "Front",
+    "back": "Back"
+  }
 }

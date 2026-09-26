@@ -1,3 +1,7 @@
 {
-  "name": "Split"
+  "name": "Split",
+  "keeps": {
+    "front": "front kept",
+    "back": "back kept"
+  }
 }

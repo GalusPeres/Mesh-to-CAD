@@ -28,3 +28,18 @@
   flex: none;
   color: var(--text-disabled);
 }
+
+/* The eye toggle shows on hover and keyboard focus, and always while the object is hidden. */
+.eye {
+  visibility: hidden;
+}
+
+:global([role='treeitem']:hover) .eye,
+:global([role='treeitem'][aria-selected='true']) .eye,
+.eye:focus-visible {
+  visibility: visible;
+}
+
+.eyeHidden {
+  visibility: visible;
+}

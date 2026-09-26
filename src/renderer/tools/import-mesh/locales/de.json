@@ -5,9 +5,19 @@
   "filterName": "Scans (STL, OBJ, PLY)",
   "file": "Datei",
   "triangles": "Dreiecke",
+  "trianglesUnit": "Dreiecke",
+  "nonFiniteFaces_one": "{{count, count}} Dreieck mit ungültigen Koordinaten wurde nicht übernommen.",
+  "nonFiniteFaces_other": "{{count, count}} Dreiecke mit ungültigen Koordinaten wurden nicht übernommen.",
   "unit": "Einheit der Datei",
   "size": "Abmessungen",
-  "unitHint": "Der Scan ist sehr klein. Vermutlich ist er in Metern gespeichert; die Einheit prüfen.",
-  "reductionRequired": "Der Scan hat mehr als 2.000.000 Dreiecke und muss vor dem Import reduziert werden.",
-  "help": "Die Datei enthält keine Einheit. Die Einheit so wählen, dass die Abmessungen zum realen Teil passen. Mit OK wird der Scan zum Ausgangspunkt eines neuen Projekts."
+  "smallScan": "Der Scan ist {{size}} groß. Einheit wählen: mm, cm, m, Zoll.",
+  "reduce": "Beim Import reduzieren",
+  "reduceTo": "Reduzieren auf",
+  "invalidTarget": "Zielwert zwischen {{min, count}} und {{max, count}} Dreiecken wählen.",
+  "reductionRequired": "Der Scan hat {{faces, count}} Dreiecke. Zum Arbeiten wird er reduziert.",
+  "noise": "Scanrauschen",
+  "noNoise": "nicht bestimmbar",
+  "tolerance": "Toleranz (Vorschlag)",
+  "toleranceHint": "Die Toleranz gilt für das ganze Projekt und lässt sich in der Statusleiste ändern.",
+  "help": "Die Datei enthält keine Einheit. Die Einheit so wählen, dass die Abmessungen zum realen Teil passen. Der Scan wird beim Import repariert; lose Kleinteile werden entfernt. Mit OK wird der Scan zum Ausgangspunkt eines neuen Projekts."
 }

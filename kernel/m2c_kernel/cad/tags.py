@@ -1,11 +1,11 @@
 """Face tags: one name per B-Rep face that survives upstream parameter changes.
 
 Tags are aligned with the face order of `indexed_map(shape, TopAbs_FACE)`. A
-feature names the faces it creates and carries the tags of existing faces
-through its operation with the builder's history (`Modified()`,
-`Generated()`, `IsDeleted()`). Faces the history cannot explain (for example
-after `ShapeFix_Shape`, which has no history) take the tag of the nearest
-input face that contains them.
+feature names the faces it creates (`<feature>:<role>...`, see
+`document.results`) and carries the tags of existing faces through its
+operation with the builder's history (`Modified()`, `IsDeleted()`). Faces the
+history cannot explain (after `ShapeFix_Shape`, which keeps no history) take the
+tag of the input face that contains a point of them.
 """
 
 from __future__ import annotations
@@ -13,16 +13,21 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Any
 
+import numpy as np
+
 from m2c_kernel.cad.occ_compat import (
     BRepAdaptor_Surface,
     BRepBuilderAPI_MakeVertex,
+    BRepClass_FaceClassifier,
     BRepExtrema_DistShapeShape,
     BRepTools,
     ShapeMap,
     TopAbs_FACE,
+    TopAbs_IN,
     TopoDS,
     TopoDS_Shape,
     gp_Pnt,
+    gp_Pnt2d,
     indexed_map,
 )
 from m2c_kernel.document.results import Body
@@ -30,17 +35,15 @@ from m2c_kernel.document.results import Body
 UNTAGGED = "untagged"
 _CONTAINS_TOLERANCE_MM = 1e-3
 
+type Point = tuple[float, float, float]
+
 
 def faces_of(shape: TopoDS_Shape) -> ShapeMap:
     return indexed_map(shape, TopAbs_FACE)
 
 
-def feature_tag(feature_id: str, *parts: str) -> str:
-    return ":".join((feature_id, *parts))
-
-
 class TagCollector:
-    """Assigns tags to the faces of a result shape."""
+    """Assigns tags to the faces of a result shape; the first tag a face gets wins."""
 
     def __init__(self, result: TopoDS_Shape) -> None:
         self.result = result
@@ -71,8 +74,8 @@ class TagCollector:
                 self.set(face, tag)
 
     def fill_by_proximity(self, sources: Sequence[Body]) -> None:
-        """Tag remaining faces like the nearest source face that contains their centre."""
-        missing = [index for index, tag in enumerate(self._tags) if tag is None]
+        """Tag remaining faces like the source face that contains a point of them."""
+        missing = self.missing()
         if not missing:
             return
         candidates = [
@@ -81,10 +84,10 @@ class TagCollector:
             for index, tag in enumerate(body.face_tags)
         ]
         for index in missing:
-            centre = face_centre(self._faces.FindKey(index + 1))
+            point = point_on_face(self.face(index))
             best: tuple[float, str] | None = None
             for face, tag in candidates:
-                distance = point_distance(centre, face)
+                distance = point_distance(point, face)
                 if distance <= _CONTAINS_TOLERANCE_MM and (best is None or distance < best[0]):
                     best = (distance, tag)
             if best is not None:
@@ -104,18 +107,33 @@ class TagCollector:
         return Body(self.result, self.tags())
 
 
-def face_centre(face: TopoDS_Shape) -> tuple[float, float, float]:
-    """A point on the face's surface at the middle of its parameter range.
+def tag_all(shape: TopoDS_Shape, tag: str) -> Body:
+    return Body(shape, tuple(tag for _ in range(faces_of(shape).Extent())))
 
-    Unlike the centre of mass it lies on the surface also for curved faces.
+
+def point_on_face(face: TopoDS_Shape) -> Point:
+    """A point inside the face (not on its boundary, not in a hole).
+
+    Tries the middle of the parameter range first, then a grid of parameters,
+    and classifies each candidate against the face's boundary.
     """
     typed = TopoDS.Face(face)
     u_min, u_max, v_min, v_max = BRepTools.UVBounds_s(typed)
-    point = BRepAdaptor_Surface(typed).Value((u_min + u_max) / 2, (v_min + v_max) / 2)
+    surface = BRepAdaptor_Surface(typed)
+    candidates = [(0.5, 0.5)] + [
+        (float(a), float(b)) for a in np.linspace(0.1, 0.9, 5) for b in np.linspace(0.1, 0.9, 5)
+    ]
+    for a, b in candidates:
+        u = u_min + a * (u_max - u_min)
+        v = v_min + b * (v_max - v_min)
+        if BRepClass_FaceClassifier(typed, gp_Pnt2d(u, v), 1e-7).State() == TopAbs_IN:
+            point = surface.Value(u, v)
+            return (point.X(), point.Y(), point.Z())
+    point = surface.Value((u_min + u_max) / 2, (v_min + v_max) / 2)
     return (point.X(), point.Y(), point.Z())
 
 
-def point_distance(point: tuple[float, float, float], shape: TopoDS_Shape) -> float:
+def point_distance(point: Point, shape: TopoDS_Shape) -> float:
     vertex = BRepBuilderAPI_MakeVertex(gp_Pnt(*point)).Vertex()
     extrema = BRepExtrema_DistShapeShape(vertex, shape)
     if not extrema.IsDone() or extrema.NbSolution() == 0:

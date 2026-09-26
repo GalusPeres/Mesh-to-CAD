@@ -12,22 +12,24 @@ export interface ImportParams {
 /**
  * What the import panel shows before the user confirms the unit.
  *
- * Bounds and `noise` are in file units. `suggested_unit` is a guess (a part
- * smaller than two units is almost certainly in metres); the user always
- * confirms. `proposed_tolerance` holds the tolerance each unit would give.
+ * Bounds are in file units. `noise` (mm) and `proposed_tolerance` (mm) are given
+ * per unit, because the noise is measured at the physical scale the unit implies.
+ * `suggested_unit` is a guess (a part smaller than two units is almost certainly
+ * stored in metres); the user always confirms. `counts` holds `mergedVertices`
+ * and `nonFiniteFaces` (dropped while reading).
  */
 export interface ImportReport {
   pendingId: string;
   fileName: string;
   faceCount: number;
   vertexCount: number;
-  mergedVertices: number;
   boundsMin: Vec3;
   boundsMax: Vec3;
   suggestedUnit: LengthUnit;
-  noise: number | null;
+  noise: Record<string, number | null>;
   proposedTolerance: Record<string, number>;
-  requiresReduction: boolean;
+  reductionRequired: boolean;
+  counts: Record<string, number>;
 }
 
 export interface CommitImportParams {
@@ -49,30 +51,48 @@ export type DiscardImportResult = Record<string, never>;
 
 export type InspectParams = Record<string, never>;
 
-/** Mesh condition shown in the mesh info panel. Lengths in mm, areas in mm². */
+/**
+ * Condition of the scan, shown in the scan information panel.
+ *
+ * Lengths in mm, areas in mm², volumes in mm³. `volume` is null unless the scan
+ * is closed (every edge has exactly two faces). `small_parts` counts the loose
+ * parts that *Kleine Teile entfernen* would remove with its default settings.
+ */
 export interface MeshReport {
   scanKey: string;
   faceCount: number;
   vertexCount: number;
   watertight: boolean;
   boundaryLoops: number;
+  boundaryEdges: number;
   nonManifoldEdges: number;
   inconsistentEdges: number;
   components: number;
+  smallParts: number;
   degenerateFaces: number;
   duplicateFaces: number;
   syntheticFaces: number;
   area: number;
   volume: number | null;
+  size: Vec3;
   noise: number | null;
 }
 
-/** Counts of a preparation step; `revision` is None for a dry run. */
+/**
+ * What a preparation step did or, for a dry run, would do.
+ *
+ * `changed` is false when the step finds nothing to do; then nothing is committed.
+ * `revision` is the new revision, or null for a dry run and for no change.
+ * `affected_faces` (dry runs only) are the faces of the current scan that the step
+ * removes or flips, or the faces around the holes it fills.
+ */
 export interface MeshEditResult {
   counts: Record<string, number>;
   faceCount: number;
   vertexCount: number;
+  changed: boolean;
   revision: number | null;
+  affectedFaces: Uint32Array;
 }
 
 export interface RepairParams {
@@ -93,7 +113,7 @@ export interface FillHolesParams {
   dryRun?: boolean;
 }
 
-export const FILL_HOLES_PARAMS_RANGES = { maxPerimeter: { min: 0, max: 1000000 } } as const;
+export const FILL_HOLES_PARAMS_RANGES = { maxPerimeter: { min: 0, max: 100000 } } as const;
 
 export interface DecimateParams {
   targetFaces: number;
@@ -114,7 +134,7 @@ export interface SetSmoothingParams {
 export const SET_SMOOTHING_PARAMS_RANGES = { iterations: { min: 0, max: 20 } } as const;
 
 export interface SetSmoothingResult {
-  revision: number;
+  revision: number | null;
 }
 
 export interface MeshMethods {

@@ -2,28 +2,40 @@
   "errors": {
     "invalidResult": "The result is not a valid body.",
     "occtUnavailable": "The geometry library could not be loaded.",
-    "profileOpen": "The sketch has no closed profile.",
-    "axisCrossesProfile": "The axis of revolution crosses the profile.",
-    "axisNotInPlane": "The axis of revolution does not lie in the sketch plane.",
-    "planeParallel": "The target plane is parallel to the extrusion direction.",
-    "planeBehind": "The target plane lies behind the sketch.",
-    "emptyResult": "The operation produces no body.",
-    "booleanFailed": "The boolean operation failed.",
-    "filletFailed": "The fillet failed. Try a smaller radius.",
-    "edgeNotFound": "A selected edge no longer exists.",
-    "targetRequired": "Select a target body.",
-    "unsupportedTool": "This element cannot be used here.",
-    "noExtent": "The extent cannot be derived from the scan.",
-    "taperUnsupported": "Taper is not supported for this extrusion."
+    "profileOpen": "Not possible: the sketch has no closed profile.",
+    "loopNotFound": "A selected profile no longer exists in the sketch. Choose the profiles again.",
+    "zeroLength": "The body would have no volume: choose a distance or angle greater than 0.",
+    "axisCrossesProfile": "Cannot revolve: the axis crosses the profile.",
+    "axisNotInPlane": "Cannot revolve: the axis does not lie in the sketch plane (distance {{distance, length}}, angle {{angleDeg, angle}}).",
+    "axisNotFound": "Cannot revolve: the chosen element has no axis.",
+    "planeParallel": "Cannot extrude: the target plane is parallel to the extrusion direction.",
+    "planeBehind": "Cannot extrude: the target plane lies behind the sketch. Reverse the direction.",
+    "symmetricToPlane": "A symmetric extrusion cannot end at one plane.",
+    "notAPlane": "The chosen element is not a plane.",
+    "notAPatch": "The chosen element is not a freeform patch.",
+    "emptyResult": "The operation removes the whole body.",
+    "noOverlap": "The operation is not possible: the bodies do not intersect.",
+    "multipleSolids": "The result falls apart into {{count}} separate bodies.",
+    "booleanFailed": "The body operation failed.",
+    "toolMissesBody": "Cannot split: the plane or patch does not cut the body.",
+    "filletFailed": "Fillet failed: radius {{size, length}} is too large for the selected edges.",
+    "chamferFailed": "Chamfer failed: distance {{size, length}} is too large for the selected edges.",
+    "edgeNotFound": "Edge {{index}} no longer exists. Choose the edges again.",
+    "noEdges": "Choose at least one edge.",
+    "targetRequired": "Choose a target body.",
+    "toolsRequired": "Choose at least one tool body.",
+    "toolIsTarget": "The target body cannot also be a tool.",
+    "unsupportedFit": "Primitives need a fitted cylinder, cone, sphere or torus.",
+    "noExtent": "The length cannot be taken from the scan: no scan triangles lie on the fitted surface. Enter the length manually."
   },
   "issues": {
     "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm).",
-    "splitFacesKept": "Some split faces could not be merged."
+    "splitFacesKept": "The result contains split faces that could not be merged."
   },
   "progress": {
     "tessellating": "Preparing the display",
-    "modelling": "Building body",
-    "boolean": "Boolean operation",
+    "modelling": "Building the body",
+    "boolean": "Body operation",
     "fillet": "Filleting"
   }
 }

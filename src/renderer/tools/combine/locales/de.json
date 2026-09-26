@@ -1,3 +1,7 @@
 {
-  "label": "Kombinieren"
+  "label": "Kombinieren",
+  "help": "Zielkörper und Werkzeugkörper wählen. Vereinigen fügt die Werkzeuge hinzu, Abziehen entfernt sie, Schnittmenge behält nur den gemeinsamen Teil. Der Zielkörper behält seinen Namen; die Werkzeugkörper entfallen, außer Werkzeuge behalten ist gewählt.",
+  "twoBodies": "Kombinieren braucht mindestens zwei Körper.",
+  "tools": "Werkzeugkörper",
+  "keepTools": "Werkzeuge behalten"
 }

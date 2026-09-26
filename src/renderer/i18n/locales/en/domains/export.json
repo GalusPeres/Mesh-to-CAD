@@ -1,10 +1,18 @@
 {
   "errors": {
-    "writeFailed": "Export failed: the file could not be written.",
     "noBody": "Cannot export: there is no body.",
-    "unknownBody": "Cannot export: body {{body}} no longer exists.",
-    "blocked": "Export blocked: {{body}} is not valid (caused by {{feature}}).",
-    "verifyFailed": "Export failed: the written file does not match the model. The target file is unchanged."
+    "unknownBody": "Cannot export: a chosen body no longer exists.",
+    "blocked": "Export blocked: a body failed the check. The body list gives the reason.",
+    "invalidNames": "Cannot export: the product name is missing or longer than 200 characters.",
+    "writeFailed": "Export failed: the file could not be written. Check the folder and write permissions.",
+    "verifyFailed": "Export failed: the written file does not match the model. An existing file is unchanged."
+  },
+  "issues": {
+    "notValid": "{{body}} is invalid",
+    "notClosed": "{{body}} is not closed",
+    "notOneSolid": "{{body}} is not exactly one solid",
+    "noVolume": "{{body}} has no volume",
+    "highTolerance": "{{body}} has large edge tolerances (up to {{tolerance}})"
   },
   "progress": {
     "writing": "Writing the file",

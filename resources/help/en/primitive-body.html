@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Primitive – Mesh-to-CAD help</title>
+    <style>
+      :root {
+        --bg-panel: #f5f5f6;
+        --bg-raised: #ffffff;
+        --text: #1c1d20;
+        --text-secondary: #555960;
+        --accent-text: #1f5fc2;
+        --border: #d0d2d6;
+        --border-subtle: #e1e2e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-panel: #232428;
+          --bg-raised: #2a2b30;
+          --text: #e4e5e7;
+          --text-secondary: #a3a6ad;
+          --accent-text: #7faef5;
+          --border: #393b41;
+          --border-subtle: #2e3035;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg-panel);
+        color: var(--text);
+        font:
+          14px/1.5 'Segoe UI Variable Text',
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 32px 48px;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 32px 0 8px;
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 24px 0 8px;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      nav {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+      code,
+      kbd {
+        font-family: 'Cascadia Mono', Consolas, monospace;
+        font-size: 13px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 12px 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+      }
+      .secondary {
+        color: var(--text-secondary);
+      }
+      ul.tools {
+        list-style: none;
+        padding: 0;
+      }
+      ul.tools li {
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">Back to the overview</a></nav>
+      <h1>Primitive</h1>
+
+      <table>
+        <tbody>
+          <tr>
+            <th>Stage</th>
+            <td>Model</td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>How to</h2>
+      <p>
+        Choose a fitted cylinder, cone, sphere or torus. From scan takes the length along the axis
+        from the triangles on the fitted surface, plus the margin at both ends. Manual measures
+        start and length along the axis from the foot of the origin; for an axis parallel to Z the
+        start is the Z coordinate.
+      </p>
+    </main>
+  </body>
+</html>

@@ -3,7 +3,8 @@
 export const INSPECTION_ERROR_CODES = [
   'inspection.noBody',
   'inspection.unknownBody',
-  'inspection.unknownReference',
+  'inspection.unknownItem',
+  'inspection.itemUnavailable',
   'inspection.notMeasurable',
   'inspection.noPreview',
 ] as const;

@@ -1,10 +1,16 @@
 {
   "errors": {
-    "emptySection": "The section does not intersect the scan."
+    "emptySection": "Cannot sketch: the section does not meet the scan. Change where to cut.",
+    "notAPlane": "Cannot sketch: the chosen item is not a plane.",
+    "notAnAxis": "Cannot sketch: the chosen item has no axis.",
+    "invalidGeometry": "Sketch is damaged: an entity refers to a missing point.",
+    "tooFewPoints": "Cannot fit an entity: too few points ({{count, count}})."
   },
   "issues": {
-    "profileOpen_one": "Profile open: 1 gap.",
+    "profileOpen_one": "Profile open: {{count}} gap.",
     "profileOpen_other": "Profile open: {{count}} gaps.",
-    "profileOpen": "The profile is not closed."
+    "profileInvalid": "Contour {{loop}} does not give a valid face.",
+    "deviatesFromScan": "Sketch deviates from the scan (max. {{max, length}}). Refit or check the plane.",
+    "sectionEmpty": "The section no longer meets the scan. Check the plane."
   }
 }

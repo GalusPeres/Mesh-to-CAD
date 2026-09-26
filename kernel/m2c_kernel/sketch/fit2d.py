@@ -305,25 +305,29 @@ def _refit(pts: FloatArray, seg: Segment, opts: SegmentOptions) -> None:
     seg.fit = fit
 
 
-def _sse(points: FloatArray, kind: Kind, opts: SegmentOptions) -> float:
-    fit = fit_kind(points, kind, opts) if len(points) >= 3 else None
-    return math.inf if fit is None else fit.sse
+def _range_sse(
+    moments: _PrefixMoments, kind: Kind, i: npt.NDArray[np.int64], j: npt.NDArray[np.int64]
+) -> FloatArray:
+    """Squared errors of fits over the index ranges [i, j] (circles: Kasa estimate)."""
+    return moments.line_sse(i, j) if kind == "line" else moments.circle_fit(i, j)[0]
 
 
 def _refine_breakpoints(pts: FloatArray, segments: list[Segment], opts: SegmentOptions) -> None:
     """Move each shared breakpoint to minimise the summed squared error of both neighbours."""
+    moments = _PrefixMoments(pts)
     for k in range(len(segments) - 1):
         a, b = segments[k], segments[k + 1]
         lo = max(a.start + 2, a.end - opts.refine_window)
         hi = min(b.end - 2, a.end + opts.refine_window)
-        best_split, best_cost = a.end, math.inf
-        for split in range(lo, hi + 1):
-            cost = _sse(pts[a.start : split + 1], a.kind, opts) + _sse(
-                pts[split : b.end + 1], b.kind, opts
-            )
-            if cost < best_cost:
-                best_split, best_cost = split, cost
-        a.end = b.start = best_split
+        if hi < lo:
+            continue
+        splits = np.arange(lo, hi + 1)
+        starts = np.full_like(splits, a.start)
+        ends = np.full_like(splits, b.end)
+        cost = _range_sse(moments, a.kind, starts, splits) + _range_sse(
+            moments, b.kind, splits, ends
+        )
+        a.end = b.start = int(splits[int(np.argmin(cost))])
         _refit(pts, a, opts)
         _refit(pts, b, opts)
 
@@ -395,34 +399,56 @@ def split_polyline(
         _refit(pts, seg, opts)
     _refine_breakpoints(pts, segments, replace(opts, refine_window=max(opts.refine_window, stride)))
     _drop_slivers(pts, segments, opts)
-    _merge_lines(pts, segments, closed, opts)
+    _merge_neighbours(pts, segments, opts)
+    if closed and len(segments) > 2:
+        pts, segments = _merge_across_start(pts, segments, opts)
     return pts, segments
 
 
-def _merge_lines(
-    pts: FloatArray, segments: list[Segment], closed: bool, opts: SegmentOptions
-) -> None:
-    """Merge neighbouring lines while their union is one line within tolerance."""
+def _union_fit(
+    points: FloatArray, a: Segment, b: Segment, opts: SegmentOptions
+) -> tuple[Kind, Fit] | None:
+    """One entity through the points of two neighbours, if it stays within tolerance."""
+    line = fit_line(points)
+    if line.max_error <= opts.tolerance:
+        return "line", line
+    if a.kind == b.kind == "arc":
+        arc = fit_kind(points, "arc", opts)
+        if arc is not None and arc.max_error <= opts.tolerance:
+            return "arc", arc
+    return None
+
+
+def _merge_neighbours(pts: FloatArray, segments: list[Segment], opts: SegmentOptions) -> None:
+    """Merge neighbours while one entity describes both within tolerance (spurious splits)."""
     k = 0
-    while k < len(segments) - 1:
+    while k < len(segments) - 1 and len(segments) > 1:
         a, b = segments[k], segments[k + 1]
-        if a.kind == b.kind == "line":
-            union = fit_line(pts[a.start : b.end + 1])
-            if union.max_error <= opts.tolerance:
-                a.end, a.fit = b.end, union
-                segments.pop(k + 1)
-                continue
-        k += 1
-    if closed and len(segments) > 2 and segments[0].kind == segments[-1].kind == "line":
-        first, last = segments[0], segments[-1]
-        n = len(pts) - 1
-        union = fit_line(np.vstack([pts[last.start : n], pts[: first.end + 1]]))
-        if union.max_error <= opts.tolerance:
-            shift = last.start
-            rotated = np.roll(pts[:n], -shift, axis=0)
-            pts[:] = np.vstack([rotated, rotated[:1]])
-            for seg in segments[1:-1]:
-                seg.start -= shift - n if seg.start < shift else 0
-                seg.start, seg.end = (seg.start + n - shift) % n, (seg.end + n - shift) % n or n
-            segments[0] = Segment("line", 0, first.end + n - shift, union)
-            segments.pop()
+        union = _union_fit(pts[a.start : b.end + 1], a, b, opts)
+        if union is None:
+            k += 1
+            continue
+        a.kind, a.fit, a.end = union[0], union[1], b.end
+        segments.pop(k + 1)
+
+
+def _merge_across_start(
+    pts: FloatArray, segments: list[Segment], opts: SegmentOptions
+) -> tuple[FloatArray, list[Segment]]:
+    """On closed loops, merge the last and the first entity if one entity fits both.
+
+    The sample array is rotated so that the merged entity starts at index 0.
+    """
+    n = len(pts) - 1
+    first, last = segments[0], segments[-1]
+    joined = np.vstack([pts[last.start : n], pts[: first.end + 1]])
+    union = _union_fit(joined, last, first, opts)
+    if union is None:
+        return pts, segments
+    shift = last.start
+    rotated = np.roll(pts[:n], -shift, axis=0)
+    rotated = np.vstack([rotated, rotated[:1]])
+    moved = n - shift
+    merged = Segment(union[0], 0, first.end + moved, union[1])
+    middle = [Segment(s.kind, s.start + moved, s.end + moved, s.fit) for s in segments[1:-1]]
+    return rotated, [merged, *middle]

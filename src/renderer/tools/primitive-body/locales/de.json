@@ -1,3 +1,15 @@
 {
-  "label": "Grundkörper"
+  "label": "Grundkörper",
+  "help": "Eingepassten Zylinder, Kegel, Kugel oder Torus wählen. Aus Scan übernimmt die Länge entlang der Achse aus den Dreiecken, die auf der eingepassten Fläche liegen, plus Zugabe an beiden Enden. Manuell misst Start und Länge entlang der Achse ab dem Fußpunkt des Ursprungs; bei einer Achse parallel zu Z ist der Start die Z-Koordinate.",
+  "noFit": "Kein eingepasster Zylinder, Kegel, Kugel oder Torus vorhanden.",
+  "fit": "Form",
+  "extent": "Länge",
+  "extents": {
+    "region": "Aus Scan",
+    "manual": "Manuell"
+  },
+  "margin": "Zugabe",
+  "start": "Start",
+  "length": "Länge",
+  "closed": "Kugel und Torus sind geschlossen; die Länge entfällt."
 }

@@ -58,6 +58,8 @@ export interface RevolveParamsInput {
   targetBody?: string | null;
 }
 
+export const REVOLVE_PARAMS_RANGES = { angleDeg: { min: 0, max: 360 } } as const;
+
 export interface RevolveFeatureType {
   type: 'revolve';
   params: RevolveParams;

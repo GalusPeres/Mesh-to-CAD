@@ -1,5 +1,56 @@
 {
   "status": {
-    "tolerance": "Tolerance ±{{value}}"
+    "tolerance": "Tolerance ±{{value}}",
+    "toleranceTooltip": "Change the project tolerance",
+    "deviation": "Deviation: {{share}} within tolerance",
+    "deviationStale": "Deviation: {{share}} within tolerance (before the last change)"
+  },
+  "tolerance": {
+    "title": "Project tolerance",
+    "value": "Tolerance",
+    "noise": "Scan noise",
+    "noiseUnknown": "not determined",
+    "proposal": "Proposal from the scan noise: ±{{value}}",
+    "useProposal": "Use proposal",
+    "snapUnits": "Snap values",
+    "metric": "metric",
+    "inch": "inch",
+    "apply": "Apply",
+    "hint": "Applies to fits, sketches and the deviation. Values below the scan noise are not meaningful.",
+    "belowNoise": "The tolerance is below 2.5 times the scan noise. Many results will be reported as outside."
+  },
+  "deviation": {
+    "legendTitle": "Deviation [mm]",
+    "legendTooltip": "Positive: the scan lies outside the body (excess material). Negative: the scan lies inside (missing material).",
+    "toleranceBand": "Tolerance ±{{value}}",
+    "outOfRange": "out of range",
+    "noData": "no data",
+    "mean": "Mean",
+    "sigma": "σ",
+    "rms": "RMS",
+    "withinShare": "{{share}} within tolerance",
+    "max": "Max {{above}} / {{below}}",
+    "stale": "Before the last change",
+    "collapse": "Collapse legend",
+    "expand": "Expand legend",
+    "cursorNoData": "no data",
+    "toggle": "Show deviation"
+  },
+  "body": "Body {{number}}",
+  "face": "{{body}} · face {{number}}",
+  "export": {
+    "bodies": "Bodies",
+    "checking": "Checking the bodies …",
+    "noneSelected": "Select at least one body.",
+    "blocked": "Export blocked: {{problem}} (caused by {{feature}}).",
+    "exportable": "{{problem}}. Export is still possible.",
+    "productName": "Product name",
+    "productWithBody": "{{project}} {{body}}",
+    "revealFolder": "Open folder",
+    "exporting": "Writing and checking the file …",
+    "bodyCount_one": "{{count}} body",
+    "bodyCount_other": "{{count}} bodies",
+    "triangleCount_one": "{{formatted}} triangle",
+    "triangleCount_other": "{{formatted}} triangles"
   }
 }

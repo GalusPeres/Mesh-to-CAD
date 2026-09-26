@@ -1,3 +1,10 @@
 {
-  "label": "Remove small parts"
+  "label": "Remove small parts",
+  "tooltip": "Removes loose parts such as turntable remains or dust.",
+  "minShare": "Minimum size (share of the largest part)",
+  "minFaces": "Minimum triangles",
+  "removedParts": "Removed parts",
+  "removedFaces": "Removed triangles",
+  "nothingToDo": "There are no parts below these limits.",
+  "help": "Every connected part of the scan that is smaller than either limit is removed; the largest part always stays. The affected triangles are marked red. Several parts of similar size stay with the default settings."
 }

@@ -1,3 +1,5 @@
 {
-  "name": "Combination"
+  "name": "Combination",
+  "tools_one": "{{count}} tool body",
+  "tools_other": "{{count}} tool bodies"
 }

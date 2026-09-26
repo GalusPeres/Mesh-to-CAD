@@ -2,6 +2,7 @@
   "project": "Project",
   "tree": {
     "scan": "Scan",
+    "scanSummary": "{{file}} · {{faces}}",
     "faces_one": "{{formatted}} triangle",
     "faces_other": "{{formatted}} triangles",
     "regions": "Regions ({{count}})",
@@ -36,16 +37,19 @@
   "alignmentMethod": {
     "none": "Scan coordinates",
     "auto": "Automatic",
-    "faces": "By faces"
+    "faces": "To faces"
   },
   "operations": {
     "repair": "Repaired",
     "decimate_one": "Reduced to {{formatted}} triangle",
     "decimate_other": "Reduced to {{formatted}} triangles",
-    "smooth": "Smoothed",
-    "fillHoles": "Holes filled",
-    "removeSmallParts": "Small parts removed",
-    "deleteFaces": "Triangles deleted"
+    "removeSmallParts_one": "{{formatted}} small part removed",
+    "removeSmallParts_other": "{{formatted}} small parts removed",
+    "fillHoles_one": "{{formatted}} hole filled",
+    "fillHoles_other": "{{formatted}} holes filled",
+    "deleteFaces_one": "{{formatted}} triangle deleted",
+    "deleteFaces_other": "{{formatted}} triangles deleted",
+    "other": "Edited"
   },
   "state": {
     "ok": "OK",
@@ -57,10 +61,13 @@
   "menu": {
     "edit": "Edit",
     "rename": "Rename",
+    "hide": "Hide",
+    "show": "Show",
+    "isolate": "Isolate",
+    "showAll": "Show all",
     "suppress": "Suppress",
     "unsuppress": "Unsuppress",
-    "delete": "Delete",
-    "deleteKey": "Del"
+    "delete": "Delete"
   },
   "rename": {
     "title": "Rename",
@@ -69,7 +76,7 @@
   },
   "delete": {
     "title": "Delete",
-    "withDependents": "{{name}} is used by {{dependents}}. Delete all of them?",
+    "withDependents": "{{name}} is used by {{dependents}}. Delete all {{count}}?",
     "confirm": "Delete"
   },
   "undo": {
@@ -79,23 +86,34 @@
     "delete": "Delete"
   },
   "properties": {
+    "scanSection": "Scan",
+    "featureSection": "Item",
+    "bodySection": "Body",
+    "regionSection": "Region",
     "file": "File",
+    "unit": "Import unit",
     "triangles": "Triangles",
     "vertices": "Vertices",
     "noise": "Scan noise",
+    "tolerance": "Tolerance",
+    "operations": "Preparation",
+    "unknown": "Unknown",
     "type": "Type",
     "summary": "Values",
     "status": "Status",
-    "issues": "Notes",
+    "skipped": "Not computed: an input is missing or failed. Check the inputs in the history.",
+    "suppressed": "Suppressed: left out of the rebuild.",
+    "createdBy": "Created by",
+    "changedBy": "Last changed by",
     "volume": "Volume",
     "area": "Surface area",
-    "validity": "Validity",
-    "valid": "Valid solid",
-    "invalid": "Invalid",
     "solids": "Solids",
+    "maxTolerance": "Largest edge tolerance",
+    "validity": "Validity",
+    "valid": "Closed and valid",
+    "invalid": "Invalid",
     "rms": "RMS",
-    "faces": "Triangles",
-    "unit": "Import unit",
-    "operations": "Preparation"
+    "usedBy": "Used by",
+    "unused": "Not used"
   }
 }

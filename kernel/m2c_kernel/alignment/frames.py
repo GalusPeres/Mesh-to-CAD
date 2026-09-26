@@ -1,39 +1,110 @@
-"""Rigid frames: 3-2-1 construction, PCA fallback and the user adjustments.
+"""Rigid frames: the 3-2-1 construction, the PCA fallback and the user adjustments.
 
 A transform `T` maps scan coordinates to part coordinates, `p_part = R (p_scan - o)`:
-the rows of `R` are the part axes in scan coordinates, `o` is the part origin in
-scan coordinates. See `.work/research/algorithms-mesh.md` section 5.
+the rows of `R` are the part axes in scan coordinates and `o` is the part origin in
+scan coordinates.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import cached_property
+from typing import Literal
 
 import numpy as np
+import numpy.typing as npt
 
+from m2c_kernel.codes.alignment import ErrorCode
 from m2c_kernel.document.model import AlignmentAdjust
-from m2c_kernel.geometry import FloatArray, unit
+from m2c_kernel.geometry import FloatArray, frame_from_axis, unit
 
 PARALLEL_SIN = float(np.sin(np.radians(5.0)))
-"""Directions closer than 5 degrees count as parallel."""
+"""Directions closer than 5 degrees count as parallel; constraints closer than that as dependent."""
+DISTINCT_AXES_MM = 1.0
+"""Two parallel axes further apart than this define a direction (bolt holes of a flange)."""
+
+type DatumKind = Literal["plane", "axis", "point"]
+type IntArray = npt.NDArray[np.int64]
 
 
 class FrameError(ValueError):
     """The inputs do not define a frame; `code` is an `alignment.*` error code."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: ErrorCode, role: str | None = None) -> None:
         super().__init__(code)
         self.code = code
+        self.role = role
 
 
 @dataclass(frozen=True)
 class Datum:
-    """A plane (`normal` points into the material) or an axis, in scan coordinates."""
+    """A plane, an axis or a point in scan coordinates.
 
-    kind: str
-    """'plane' or 'axis'."""
+    `direction` is the plane normal pointing into the material, or the axis direction;
+    it is unused for points.
+    """
+
+    kind: DatumKind
     point: FloatArray
     direction: FloatArray
+    role: str = ""
+
+
+class Surface:
+    """Area-weighted moments of the scan surface, computed on first use."""
+
+    def __init__(self, vertices: FloatArray, faces: IntArray) -> None:
+        self.vertices = vertices
+        self.faces = faces
+
+    @cached_property
+    def moments(self) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
+        """Centroid, second-moment matrix, face areas and centred face centroids.
+
+        The second moment of a triangle about the centroid is exact:
+        `A / 12 (a a^T + b b^T + c c^T + s s^T)` with `s = a + b + c`.
+        """
+        corners = self.vertices[self.faces]
+        a, b, c = corners[:, 0], corners[:, 1], corners[:, 2]
+        area = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
+        total = max(float(area.sum()), 1e-300)
+        centroid = (area[:, None] * (a + b + c) / 3.0).sum(axis=0) / total
+        a, b, c = a - centroid, b - centroid, c - centroid
+        s = a + b + c
+        second = sum(np.einsum("i,ij,ik->jk", area, v, v) for v in (a, b, c, s)) / 12.0
+        return centroid, second / total, area, s / 3.0
+
+    def skew_sign(self, direction: FloatArray) -> float:
+        """+1 when the area-weighted third moment along `direction` is positive, else -1.
+
+        Gives symmetric-looking axes a sign that depends only on the shape, so the same
+        part ends up in the same pose from any scan pose.
+        """
+        _, _, area, centred = self.moments
+        return 1.0 if float((area * (centred @ direction) ** 3).sum()) >= 0.0 else -1.0
+
+    def principal_rows(self) -> FloatArray:
+        """Principal axes (largest extent first) with skew-rule signs, as frame rows."""
+        _, second, _, _ = self.moments
+        _, vectors = np.linalg.eigh(second)
+        rows = vectors[:, ::-1].T.copy()
+        for index in range(2):
+            rows[index] *= self.skew_sign(rows[index])
+        rows[2] = np.cross(rows[0], rows[1])
+        return rows
+
+    def in_plane_direction(self, z: FloatArray) -> FloatArray:
+        """The principal direction of the surface perpendicular to `z`, skew-rule sign."""
+        _, second, _, _ = self.moments
+        e1, e2 = frame_from_axis(z)
+        basis = np.stack([e1, e2])
+        _, vectors = np.linalg.eigh(basis @ second @ basis.T)
+        direction = unit(vectors[:, -1] @ basis)
+        return direction * self.skew_sign(direction)
+
+    def minimum_along(self, direction: FloatArray) -> float:
+        return float((self.vertices @ direction).min())
 
 
 def make_transform(rows: FloatArray, origin: FloatArray) -> FloatArray:
@@ -48,121 +119,136 @@ def apply(transform: FloatArray, points: FloatArray) -> FloatArray:
     return result
 
 
-def surface_moments(
-    vertices: FloatArray, faces: np.ndarray
-) -> tuple[FloatArray, FloatArray, FloatArray, FloatArray]:
-    """Area-weighted centroid, covariance, face areas and centred face centroids."""
-    a, b, c = vertices[faces[:, 0]], vertices[faces[:, 1]], vertices[faces[:, 2]]
-    area = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
-    total = max(float(area.sum()), 1e-300)
-    centroid = (area[:, None] * (a + b + c) / 3.0).sum(axis=0) / total
-    a, b, c = a - centroid, b - centroid, c - centroid
-    s = a + b + c
-    moment = sum(np.einsum("i,ij,ik->jk", area, v, v) for v in (a, b, c, s)) / 12.0
-    return centroid, moment / total, area, s / 3.0
+def build_frame(
+    datums: Sequence[Datum], surface: Surface, require_point: bool
+) -> tuple[FloatArray, FloatArray]:
+    """Rows of the part axes and the origin (scan coordinates) of a 3-2-1 frame.
 
-
-def skew_sign(direction: FloatArray, area: FloatArray, centred: FloatArray) -> float:
-    """+1 when the area-weighted third moment along `direction` is positive, else -1."""
-    return 1.0 if float((area * (centred @ direction) ** 3).sum()) >= 0.0 else -1.0
-
-
-def pca_rows(vertices: FloatArray, faces: np.ndarray) -> tuple[FloatArray, FloatArray]:
-    """Principal axes (largest extent first) with deterministic signs, and the centroid."""
-    centroid, moment, area, centred = surface_moments(vertices, faces)
-    _, vectors = np.linalg.eigh(moment)
-    rows = vectors[:, ::-1].T.copy()
-    for index in range(2):
-        rows[index] *= skew_sign(rows[index], area, centred)
-    rows[2] = np.cross(rows[0], rows[1])
-    return rows, centroid
-
-
-def in_plane_direction(z: FloatArray, vertices: FloatArray, faces: np.ndarray) -> FloatArray:
-    """The principal direction of the surface perpendicular to `z`, sign by the skew rule."""
-    _, moment, area, centred = surface_moments(vertices, faces)
-    e1 = unit(np.cross(z, [1.0, 0.0, 0.0] if abs(z[0]) < 0.9 else [0.0, 1.0, 0.0]))
-    e2 = np.cross(z, e1)
-    basis = np.stack([e1, e2])
-    projected = basis @ moment @ basis.T
-    _, vectors = np.linalg.eigh(projected)
-    direction = unit(vectors[:, -1] @ basis)
-    return direction * skew_sign(direction, area, centred)
-
-
-def rows_from_datums(
-    primary: Datum, others: list[Datum], vertices: FloatArray, faces: np.ndarray
-) -> FloatArray:
-    """Z from the primary datum, Y (plane) or X (axis) from the first non-parallel datum.
-
-    An axis as primary with a perpendicular plane (a shaft and its end face) takes the
-    sign of Z from that plane. Without a second direction the in-plane rotation follows
-    the surface's principal direction.
+    The secondary datum must add a direction or a position; with `require_point`
+    (a tertiary datum was given) the datums together must fix a point.
     """
+    rows, direction_from = frame_rows(datums, surface)
+    origin, added = frame_origin(rows, datums, surface)
+    if len(datums) > 1 and direction_from != 1 and added[1] == 0:
+        raise FrameError(ErrorCode.PARALLEL_INPUTS, datums[1].role)
+    if require_point and sum(added) < 3:
+        raise FrameError(ErrorCode.NO_POINT, datums[-1].role)
+    return rows, origin
+
+
+def frame_rows(datums: Sequence[Datum], surface: Surface) -> tuple[FloatArray, int | None]:
+    """Part axes as rows, and the index of the datum that fixed the in-plane direction.
+
+    Z comes from the primary datum. A plane across Z gives Y (the XZ plane is that
+    plane), an axis across Z gives X. A plane perpendicular to a primary axis (the end
+    face of a shaft) only chooses the sign of Z; two distinct axes parallel to Z give X
+    along the line joining them. Without any of these the in-plane direction is the
+    principal direction of the scan.
+    """
+    primary = datums[0]
+    if primary.kind == "point":
+        raise FrameError(ErrorCode.UNSUPPORTED_INPUT, primary.role)
     z = unit(primary.direction)
-    for datum in others:
-        along = float(datum.direction @ z)
-        if primary.kind == "axis" and datum.kind == "plane" and abs(along) > 1 - PARALLEL_SIN:
-            z = z if along > 0 else -z
+    parallel_axis = primary.point if primary.kind == "axis" else None
+    for index, datum in enumerate(datums[1:], start=1):
+        if datum.kind == "point":
             continue
-        projected = datum.direction - along * z
-        if np.linalg.norm(projected) < PARALLEL_SIN:
-            raise FrameError("alignment.parallelInputs")
-        if datum.kind == "plane":
-            y = unit(projected)
-            return np.stack([np.cross(y, z), y, z])
-        x = unit(projected)
-        return np.stack([x, np.cross(z, x), z])
-    x = in_plane_direction(z, vertices, faces)
-    return np.stack([x, np.cross(z, x), z])
+        along = float(datum.direction @ z)
+        across = datum.direction - along * z
+        if np.linalg.norm(across) >= PARALLEL_SIN:
+            if datum.kind == "plane":
+                y = unit(across)
+                return np.stack([np.cross(y, z), y, z]), index
+            x = unit(across)
+            return np.stack([x, np.cross(z, x), z]), index
+        if primary.kind == "axis" and datum.kind == "plane":
+            z = z if along > 0 else -z
+        elif datum.kind == "axis":
+            if parallel_axis is not None:
+                joining = datum.point - parallel_axis
+                joining = joining - float(joining @ z) * z
+                if np.linalg.norm(joining) > DISTINCT_AXES_MM:
+                    x = unit(joining)
+                    return np.stack([x, np.cross(z, x), z]), index
+            parallel_axis = datum.point
+    x = surface.in_plane_direction(z)
+    return np.stack([x, np.cross(z, x), z]), None
 
 
-def origin_from_datums(
-    rows: FloatArray, datums: list[Datum], vertices: FloatArray, require_point: bool
-) -> FloatArray:
-    """The point fixed by the datums; free directions go to the bounding-box minimum.
+def _constraints(datum: Datum, rows: FloatArray) -> list[FloatArray]:
+    """Directions whose coordinate the datum fixes (plane: 1, axis: 2, point: 3)."""
+    if datum.kind == "plane":
+        return [unit(datum.direction)]
+    if datum.kind == "axis":
+        e1, e2 = frame_from_axis(datum.direction)
+        return [e1, e2]
+    return [row.copy() for row in rows]
 
-    A plane fixes one coordinate, an axis two. With `require_point` the datums must
-    fix all three (three planes with independent normals, or an axis and a plane).
+
+def frame_origin(
+    rows: FloatArray, datums: Sequence[Datum], surface: Surface
+) -> tuple[FloatArray, list[int]]:
+    """The origin fixed by the datums (scan coordinates) and the constraints each added.
+
+    Constraints are taken in datum order and only while they are independent of the
+    earlier ones, so the primary datum always holds exactly. Directions that no datum
+    fixes go to the bounding-box minimum.
     """
-    equations: list[FloatArray] = []
+    accepted: list[FloatArray] = []
     values: list[float] = []
+    added: list[int] = []
     for datum in datums:
-        if datum.kind == "plane":
-            normal = unit(datum.direction)
-            equations.append(normal)
+        count = 0
+        for normal in _constraints(datum, rows):
+            residual = normal.copy()
+            for basis in _orthonormal(accepted):
+                residual = residual - float(residual @ basis) * basis
+            if np.linalg.norm(residual) < PARALLEL_SIN:
+                continue
+            accepted.append(normal)
             values.append(float(normal @ datum.point))
-        else:
-            e1 = unit(
-                np.cross(
-                    datum.direction,
-                    rows[0] if abs(rows[0] @ unit(datum.direction)) < 0.9 else rows[1],
-                )
-            )
-            e2 = np.cross(unit(datum.direction), e1)
-            for e in (e1, e2):
-                equations.append(e)
-                values.append(float(e @ datum.point))
-    matrix = np.asarray(equations).reshape(-1, 3)
-    singular = np.linalg.svd(matrix, compute_uv=False) if len(matrix) else np.zeros(0)
-    rank = int((singular > PARALLEL_SIN).sum())
-    if require_point and rank < 3:
-        raise FrameError("alignment.noPoint")
-    # Least-squares point on the datums, then free directions to the bounding-box minimum.
-    point = (
-        np.linalg.lstsq(matrix, np.asarray(values), rcond=None)[0] if len(matrix) else np.zeros(3)
-    )
-    local = vertices @ rows.T
-    minimum = local.min(axis=0)
-    for axis in range(3):
-        fixed = bool(len(matrix)) and np.linalg.norm(matrix @ rows[axis]) > PARALLEL_SIN
-        if not fixed:
-            point = point + (minimum[axis] - point @ rows[axis]) * rows[axis]
-    return np.asarray(point, dtype=np.float64)
+            count += 1
+        added.append(count)
+    point = np.zeros(3)
+    if accepted:
+        point = np.linalg.lstsq(np.asarray(accepted), np.asarray(values), rcond=None)[0]
+    for free in _free_directions(accepted, rows):
+        point = point + (surface.minimum_along(free) - float(point @ free)) * free
+    return point, added
+
+
+def _orthonormal(vectors: Sequence[FloatArray]) -> list[FloatArray]:
+    basis: list[FloatArray] = []
+    for vector in vectors:
+        residual = vector.copy()
+        for item in basis:
+            residual = residual - float(residual @ item) * item
+        length = float(np.linalg.norm(residual))
+        if length > 1e-12:
+            basis.append(residual / length)
+    return basis
+
+
+def _free_directions(constraints: Sequence[FloatArray], rows: FloatArray) -> list[FloatArray]:
+    """Orthonormal directions the constraints leave free, aligned with the frame axes."""
+    basis = _orthonormal(constraints)
+    free: list[FloatArray] = []
+    for row in rows:
+        residual = row.copy()
+        for item in (*basis, *free):
+            residual = residual - float(residual @ item) * item
+        length = float(np.linalg.norm(residual))
+        if length > PARALLEL_SIN:
+            free.append(residual / length)
+    return free
 
 
 def adjustment_rotation(adjust: AlignmentAdjust) -> FloatArray:
-    """Rotation applied in part coordinates: flips turn the part by 180 degrees."""
+    """Rotation applied in part coordinates.
+
+    `flip_z` turns the part over (180 degrees about X), `flip_x` reverses X and Y
+    (180 degrees about Z), `rotate_z90` adds quarter turns about Z.
+    """
     rotation = np.eye(3)
     if adjust.flip_z:
         rotation = np.diag([1.0, -1.0, -1.0]) @ rotation
@@ -174,5 +260,7 @@ def adjustment_rotation(adjust: AlignmentAdjust) -> FloatArray:
     return rotation
 
 
-def angle_deg(a: FloatArray, b: FloatArray) -> float:
-    return float(np.degrees(np.arccos(np.clip(abs(float(unit(a) @ unit(b))), -1.0, 1.0))))
+def line_angle_deg(a: FloatArray, b: FloatArray) -> float:
+    """Angle between two lines (direction sign ignored), 0 to 90 degrees."""
+    cosine = abs(float(unit(a) @ unit(b)))
+    return float(np.degrees(np.arccos(min(cosine, 1.0))))

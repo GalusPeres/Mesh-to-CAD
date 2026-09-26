@@ -6,5 +6,13 @@
     "cone": "Cone",
     "sphere": "Sphere",
     "torus": "Torus"
+  },
+  "summary": {
+    "distance": "Distance {{value}}",
+    "diameter": "⌀ {{value}}",
+    "angle": "Cone angle {{value}}",
+    "radii": "R {{major}}, r {{minor}}",
+    "parallel": "parallel to {{axis}}",
+    "perpendicular": "perpendicular to {{axis}}"
   }
 }

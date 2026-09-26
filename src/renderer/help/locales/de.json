@@ -1,0 +1,47 @@
+{
+  "commands": {
+    "help": "Hilfe anzeigen",
+    "gettingStarted": "Erste Schritte",
+    "shortcuts": "Tastenkürzel",
+    "example": {
+      "bracket": "Beispiel öffnen: Halter",
+      "flange": "Beispiel öffnen: Flansch",
+      "knob": "Beispiel öffnen: Drehknopf"
+    }
+  },
+  "examples": {
+    "open": "Beispiel öffnen",
+    "bracket": "Halter",
+    "flange": "Flansch",
+    "knob": "Drehknopf",
+    "missing": "Beispiel nicht gefunden: {{file}} fehlt in der Installation."
+  },
+  "start": {
+    "openedAt": "{{date, datetime}}"
+  },
+  "pages": {
+    "title": "Mesh-to-CAD Hilfe",
+    "overview": "Übersicht",
+    "intro": "Diese Seiten beschreiben die Werkzeuge von Mesh-to-CAD. Im Programm öffnet F1 die Seite des aktiven Werkzeugs.",
+    "gettingStarted": "Erste Schritte",
+    "gettingStartedText": "Vom mitgelieferten Beispielscan zur STEP-Datei.",
+    "licenses": "Lizenzen",
+    "licensesText": "Die Lizenztexte aller Komponenten liegen im Installationsordner unter resources\\licenses.",
+    "tools": "Werkzeuge",
+    "file": "Datei",
+    "stage": "Arbeitsschritt",
+    "shortcut": "Tastenkürzel",
+    "howTo": "So geht's",
+    "noDescription": "Für dieses Werkzeug gibt es noch keine Beschreibung.",
+    "notAvailable": "Noch nicht verfügbar",
+    "back": "Zur Übersicht",
+    "mouse": "Maus",
+    "mouseRows": [
+      ["Drehen", "Rechte Maustaste ziehen; auf dem Würfel ziehen"],
+      ["Verschieben", "Mittlere Maustaste ziehen, Umschalt + rechte Maustaste ziehen"],
+      ["Zoomen", "Mausrad (zum Mauszeiger), Strg + rechte Maustaste ziehen"],
+      ["Alles zeigen", "Doppelklick mit der mittleren Maustaste"],
+      ["Kontextmenü", "Rechte Maustaste klicken, ohne zu ziehen"]
+    ]
+  }
+}

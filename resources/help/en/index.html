@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Overview – Mesh-to-CAD help</title>
+    <style>
+      :root {
+        --bg-panel: #f5f5f6;
+        --bg-raised: #ffffff;
+        --text: #1c1d20;
+        --text-secondary: #555960;
+        --accent-text: #1f5fc2;
+        --border: #d0d2d6;
+        --border-subtle: #e1e2e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-panel: #232428;
+          --bg-raised: #2a2b30;
+          --text: #e4e5e7;
+          --text-secondary: #a3a6ad;
+          --accent-text: #7faef5;
+          --border: #393b41;
+          --border-subtle: #2e3035;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg-panel);
+        color: var(--text);
+        font:
+          14px/1.5 'Segoe UI Variable Text',
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 32px 48px;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 32px 0 8px;
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 24px 0 8px;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      nav {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+      code,
+      kbd {
+        font-family: 'Cascadia Mono', Consolas, monospace;
+        font-size: 13px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 12px 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+      }
+      .secondary {
+        color: var(--text-secondary);
+      }
+      ul.tools {
+        list-style: none;
+        padding: 0;
+      }
+      ul.tools li {
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Mesh-to-CAD help</h1>
+      <p>
+        These pages describe the tools of Mesh-to-CAD. In the application, F1 opens the page of the
+        active tool.
+      </p>
+      <p>
+        <a href="getting-started.html">Getting started</a>
+        <span class="secondary">From the bundled example scan to a STEP file.</span>
+      </p>
+      <h2>Tools</h2>
+      <h3>File</h3>
+      <ul class="tools">
+        <li><a href="import-mesh.html">Import scan</a></li>
+      </ul>
+      <h3>Prepare</h3>
+      <ul class="tools">
+        <li><a href="select-brush.html">Brush</a></li>
+        <li><a href="select-lasso.html">Lasso</a></li>
+        <li><a href="select-rectangle.html">Rectangle</a></li>
+        <li><a href="select-smart.html">Smart select</a></li>
+        <li>
+          <a href="mesh-decimate.html">Reduce</a>
+          <span class="secondary">Lowers the number of triangles.</span>
+        </li>
+        <li>
+          <a href="mesh-delete-faces.html">Delete selection</a>
+          <span class="secondary">Deletes the selected triangles from the scan.</span>
+        </li>
+        <li>
+          <a href="mesh-fill-holes.html">Fill holes</a>
+          <span class="secondary">Closes small holes in the scan.</span>
+        </li>
+        <li>
+          <a href="mesh-remove-small-parts.html">Remove small parts</a>
+          <span class="secondary">Removes loose parts such as turntable remains or dust.</span>
+        </li>
+        <li>
+          <a href="mesh-repair.html">Repair</a>
+          <span class="secondary"
+            >Welds duplicate vertices, removes broken triangles and makes the orientation
+            consistent.</span
+          >
+        </li>
+        <li>
+          <a href="mesh-smooth.html">Smooth</a>
+          <span class="secondary">Smooths how the scan is displayed.</span>
+        </li>
+        <li>
+          <a href="mesh-info.html">Scan information</a>
+          <span class="secondary">Shows the size and condition of the scan.</span>
+        </li>
+      </ul>
+      <h3>Align</h3>
+      <ul class="tools">
+        <li><a href="segment.html">Segment</a></li>
+        <li>
+          <a href="align-auto.html">Align automatically</a>
+          <span class="secondary"
+            >Largest plane on XY, largest plane perpendicular to it on XZ, origin at the corner of
+            the scan.</span
+          >
+        </li>
+        <li>
+          <a href="align-faces.html">Align to faces</a>
+          <span class="secondary"
+            >Alignment to fitted faces, axes or regions by the 3-2-1 principle.</span
+          >
+        </li>
+        <li>
+          <a href="align-reset.html">Reset alignment</a>
+          <span class="secondary">Show the scan in its original coordinates again.</span>
+        </li>
+      </ul>
+      <h3>Model</h3>
+      <ul class="tools">
+        <li><a href="fit-primitive.html">Fit shape</a></li>
+        <li><a href="reference-geometry.html">Reference geometry</a></li>
+        <li>
+          <a href="section-sketch.html">Sketch</a>
+          <span class="secondary">Section of the scan as a sketch of lines, arcs and circles</span>
+        </li>
+        <li><a href="combine.html">Combine</a></li>
+        <li><a href="extrude.html">Extrude</a></li>
+        <li><a href="fillet.html">Fillet</a></li>
+        <li><a href="primitive-body.html">Primitive</a></li>
+        <li><a href="revolve.html">Revolve</a></li>
+        <li><a href="trim.html">Split body</a></li>
+        <li>
+          <a href="freeform-patch.html">Freeform patch</a>
+          <span class="secondary"
+            >Fit a B-spline surface to a region of the scan, for example to split a body.</span
+          >
+        </li>
+        <li>
+          <a href="loft.html">Loft</a>
+          <span class="secondary">Body through sections of the scan along an axis.</span>
+        </li>
+      </ul>
+      <h3>Inspect</h3>
+      <ul class="tools">
+        <li>
+          <a href="deviation.html">Deviation</a>
+          <span class="secondary">Compare the scan with the bodies in colour</span>
+        </li>
+        <li>
+          <a href="measure.html">Measure</a>
+          <span class="secondary">Measure distances, angles and diameters</span>
+        </li>
+        <li><a href="report.html">Report</a></li>
+        <li>
+          <a href="export-step.html">Export STEP …</a>
+          <span class="secondary">Save bodies as a STEP file</span>
+        </li>
+        <li>
+          <a href="export-stl.html">Export STL …</a>
+          <span class="secondary">Save bodies as an STL file</span>
+        </li>
+      </ul>
+      <h2>Mouse</h2>
+      <table>
+        <tbody>
+          <tr>
+            <th>Orbit</th>
+            <td>Right drag; drag on the view cube</td>
+          </tr>
+          <tr>
+            <th>Pan</th>
+            <td>Middle drag, Shift + right drag</td>
+          </tr>
+          <tr>
+            <th>Zoom</th>
+            <td>Wheel (to the cursor), Ctrl + right drag</td>
+          </tr>
+          <tr>
+            <th>Fit all</th>
+            <td>Middle double-click</td>
+          </tr>
+          <tr>
+            <th>Context menu</th>
+            <td>Right click without dragging</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><a href="licenses.html">Licences</a></p>
+    </main>
+  </body>
+</html>

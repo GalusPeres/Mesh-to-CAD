@@ -1,6 +1,13 @@
 {
   "errors": {
-    "corrupt": "Cannot open the project: the file is damaged.",
-    "unsupportedVersion": "Cannot open the project: it was created with a newer version."
+    "fileNotFound": "Cannot open the project: {{fileName}} was not found.",
+    "corrupt": "Cannot open the project: {{fileName}} is damaged or not a Mesh-to-CAD project.",
+    "unsupportedVersion": "Cannot open the project: {{fileName}} was created with a newer version. Update Mesh-to-CAD.",
+    "saveFailed": "Saving failed: {{fileName}} cannot be written. Check the folder and the write permissions.",
+    "readFailed": "Cannot open the project: {{fileName}} cannot be read."
+  },
+  "progress": {
+    "saving": "Saving the project",
+    "loading": "Opening the project"
   }
 }

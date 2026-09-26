@@ -9,3 +9,33 @@
   display: block;
   outline: none;
 }
+
+/* The home and rotate buttons sit in the corners of the 88 px view cube square. */
+.cubeButtons {
+  position: absolute;
+  top: var(--space-8);
+  right: var(--space-8);
+  width: 88px;
+  height: 88px;
+  pointer-events: none;
+}
+
+.cubeButtons button {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.home {
+  top: 0;
+  left: 0;
+}
+
+.rollLeft {
+  bottom: 0;
+  left: 0;
+}
+
+.rollRight {
+  right: 0;
+  bottom: 0;
+}

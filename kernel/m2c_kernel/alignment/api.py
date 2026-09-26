@@ -1,70 +1,77 @@
 """Public API of the scan alignment.
 
-The alignment is a slot of the document, evaluated first in every rebuild. Its
-inputs are fitted in scan coordinates, so fit features referenced as inputs are
-refitted from their stored triangles here (never from their own results, which
-are in part coordinates and depend on the alignment).
+The alignment is a slot of the document, evaluated first in every rebuild
+(`evaluate_alignment`). Methods (`Alignment.method`):
 
-Methods (`Alignment.method`):
 - `none`: identity, then the adjustment.
-- `auto`: largest plane -> XY (material above it), largest plane within 10 degrees of
-  perpendicular -> XZ (material behind it), origin at the bounding-box minimum, snapped
-  onto those planes. PCA with the third-moment sign rule when fewer planes exist.
-- `faces`: 3-2-1 frame from fit features or regions (`FacesAlignmentParams`).
+- `auto`: the largest plane becomes XY with the material above it, the largest plane
+  within 10 degrees of perpendicular becomes XZ (material on the +Y side), the
+  origin goes to the bounding-box minimum, snapped onto planes that lie there. With
+  only one plane the in-plane direction is the principal direction of the scan;
+  without planes the frame is the principal axes of the surface (PCA with the
+  third-moment sign rule).
+- `faces`: a 3-2-1 frame from fit features, reference features, regions or stored
+  face sets (`FacesAlignmentParams`).
+
+`adjust` then turns the part over, reverses X and Y, or rotates it in quarter turns.
 """
 
 from __future__ import annotations
 
 import json
 from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
 from m2c_kernel.alignment.frames import (
     Datum,
     FrameError,
+    Surface,
     adjustment_rotation,
-    angle_deg,
     apply,
-    in_plane_direction,
+    build_frame,
+    line_angle_deg,
     make_transform,
-    origin_from_datums,
-    pca_rows,
-    rows_from_datums,
-    skew_sign,
-    surface_moments,
 )
-from m2c_kernel.alignment.params import AlignmentInputRef, FacesAlignmentParams
+from m2c_kernel.alignment.inputs import InputFit, ScanGeometry, input_cache_key, resolve_input
+from m2c_kernel.alignment.params import AlignmentInput, FacesAlignmentParams, InputRole
 from m2c_kernel.alignment.planes import PlaneCandidate, detect_planes
-from m2c_kernel.codes.alignment import ErrorCode
+from m2c_kernel.codes.alignment import ErrorCode, IssueCode, ProgressStage
 from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.document.model import Alignment, AlignmentAdjust, Document
-from m2c_kernel.fitting.api import FitError, fit_primitive
-from m2c_kernel.geometry import IDENTITY, FloatArray, Matrix4, matrix_tuple, unit
+from m2c_kernel.geometry import IDENTITY, FloatArray, Matrix4, matrix_tuple
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.wire import from_json
-from m2c_kernel.session.blobs import BlobStore
 from m2c_kernel.session.jobs import JobContext, seeded_rng
+
+__all__ = [
+    "AlignmentEvaluation",
+    "InputFit",
+    "LargestPlane",
+    "evaluate",
+    "evaluate_alignment",
+]
 
 PERPENDICULAR_SIN = float(np.sin(np.radians(10.0)))
 """The secondary plane of the automatic alignment is within 10 degrees of perpendicular."""
+AXIS_ALIGNED_COS = float(np.cos(np.radians(2.0)))
+"""A plane this close to a part axis may define the origin coordinate along that axis."""
 TIE_RATIO = 0.9
 """Opposite planes whose areas differ by less than 10 % are a tie, decided by the skew rule."""
 ORIGIN_SNAP_MM = 1.0
-"""A frame plane this close to the bounding-box minimum becomes the origin coordinate."""
-_MAX_AXIS_FACES = 400_000
+"""A plane this close above the bounding-box minimum gives the origin coordinate."""
+
+type PrincipalPlane = Literal["XY", "XZ", "YZ"]
 
 
 @dataclass(frozen=True)
-class InputFit:
-    """How well one alignment input was refitted."""
+class LargestPlane:
+    """The largest plane of the scan and its angle to the nearest principal plane."""
 
-    role: str
-    kind: str
-    rms: float
-    point_count: int
+    plane: PrincipalPlane
+    tilt_deg: float
 
 
 @dataclass(frozen=True)
@@ -73,128 +80,135 @@ class AlignmentEvaluation:
 
     matrix: Matrix4
     inputs: tuple[InputFit, ...] = ()
-    largest_plane_tilt_deg: float | None = None
+    largest_plane: LargestPlane | None = None
     plane_count: int = 0
-    fallback: bool = False
-    extra: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class ScanGeometry:
-    """The scan in scan coordinates, as the alignment reads it."""
-
-    vertices: FloatArray
-    faces: np.ndarray
-    usable: np.ndarray
-    """Faces that are not synthetic (hole fills)."""
-    band: float
+    issues: tuple[str, ...] = ()
 
 
 def evaluate_alignment(document: Document, job: JobContext) -> Matrix4:
-    """Return the scan-to-part transform for the document's alignment slot."""
-    if document.alignment.method == "none" and document.alignment.adjust == AlignmentAdjust():
+    """Return the scan-to-part transform of the document's alignment slot."""
+    alignment = document.alignment
+    if alignment.method == "none" and alignment.adjust == AlignmentAdjust():
         return IDENTITY
-    return evaluate(document, document.alignment, job.session.blobs).matrix
+    return evaluate(document, alignment, job).matrix
 
 
-_cache: OrderedDict[str, AlignmentEvaluation] = OrderedDict()
-_plane_cache: OrderedDict[str, list[PlaneCandidate]] = OrderedDict()
 _CACHE_SIZE = 16
+_evaluations: OrderedDict[str, AlignmentEvaluation] = OrderedDict()
+_planes: OrderedDict[str, list[PlaneCandidate]] = OrderedDict()
 
 
-def evaluate(document: Document, alignment: Alignment, blobs: BlobStore) -> AlignmentEvaluation:
-    """Evaluate an alignment (committed or previewed); cached by its inputs."""
-    scan = document.scan
-    if scan is None:
+def evaluate(document: Document, alignment: Alignment, job: JobContext) -> AlignmentEvaluation:
+    """Evaluate an alignment (committed or previewed); results are cached by their inputs."""
+    if document.scan is None:
         if alignment.method == "none":
             return AlignmentEvaluation(matrix=IDENTITY)
         raise KernelError(DocumentError.NO_SCAN)
-    key = _cache_key(document, alignment)
-    cached = _cache.get(key)
+    key = _evaluation_key(document, alignment)
+    cached = _evaluations.get(key)
     if cached is not None:
-        _cache.move_to_end(key)
+        _evaluations.move_to_end(key)
         return cached
-    geometry = _scan_geometry(document, blobs)
-    planes = _planes(scan.key, geometry)
+    scan = _scan_geometry(document, job)
+    planes = scan_planes(scan, job)
+    surface = Surface(scan.vertices, scan.faces[scan.usable])
     try:
         if alignment.method == "auto":
-            result = _auto(geometry, planes, alignment.adjust)
+            transform, issues = _auto(scan, surface, planes, alignment.adjust)
+            inputs: tuple[InputFit, ...] = ()
         elif alignment.method == "faces":
-            result = _faces(document, alignment, geometry, blobs)
+            transform, inputs = _faces(document, alignment, scan, surface, job)
+            issues = ()
         else:
-            rotation = np.eye(4)
-            rotation[:3, :3] = adjustment_rotation(alignment.adjust)
-            result = AlignmentEvaluation(matrix=matrix_tuple(rotation))
+            transform = make_transform(adjustment_rotation(alignment.adjust), np.zeros(3))
+            inputs, issues = (), ()
     except FrameError as error:
-        raise KernelError(error.code) from error
-    if planes:
-        z_part = np.asarray(result.matrix).reshape(4, 4)[:3, :3] @ planes[0].normal
-        tilt = angle_deg(z_part, np.array([0.0, 0.0, 1.0]))
-        result = AlignmentEvaluation(
-            matrix=result.matrix,
-            inputs=result.inputs,
-            largest_plane_tilt_deg=tilt,
-            plane_count=len(planes),
-            fallback=result.fallback,
-        )
-    _cache[key] = result
-    while len(_cache) > _CACHE_SIZE:
-        _cache.popitem(last=False)
+        raise KernelError(error.code, {"input": error.role} if error.role else {}) from error
+    result = AlignmentEvaluation(
+        matrix=matrix_tuple(transform),
+        inputs=inputs,
+        largest_plane=_largest_plane(transform, planes),
+        plane_count=len(planes),
+        issues=issues,
+    )
+    _evaluations[key] = result
+    while len(_evaluations) > _CACHE_SIZE:
+        _evaluations.popitem(last=False)
     return result
 
 
-def _cache_key(document: Document, alignment: Alignment) -> str:
+def scan_planes(scan: ScanGeometry, job: JobContext) -> list[PlaneCandidate]:
+    """The large planes of a scan, largest first (cached per scan)."""
+    cached = _planes.get(scan.key)
+    if cached is not None:
+        _planes.move_to_end(scan.key)
+        return cached
+    job.progress(None, ProgressStage.DETECTING_PLANES)
+    band = max(0.15, 4.0 * scan.noise)
+    rng = seeded_rng(f"alignment.planes:{scan.key}")
+    planes = detect_planes(
+        scan.vertices, scan.faces, band, rng, scan.usable, check_cancelled=job.check_cancelled
+    )
+    _planes[scan.key] = planes
+    while len(_planes) > 4:
+        _planes.popitem(last=False)
+    return planes
+
+
+def _evaluation_key(document: Document, alignment: Alignment) -> str:
     assert document.scan is not None
-    parts: list[Any] = [
+    adjust = alignment.adjust
+    parts: list[object] = [
         document.scan.key,
+        document.settings.noise_override,
         alignment.method,
         alignment.params,
-        [alignment.adjust.flip_x, alignment.adjust.flip_z, alignment.adjust.rotate_z90],
+        [adjust.flip_x, adjust.flip_z, adjust.rotate_z90],
     ]
     if alignment.method == "faces":
-        parts.append([feature.params for feature in document.features if feature.type == "fit"])
-        parts.append(document.regions.labels)
+        params = _faces_params(alignment)
+        refs = [params.primary, params.secondary, params.tertiary]
+        parts.append([input_cache_key(document, ref) for ref in refs if ref is not None])
     return json.dumps(parts, sort_keys=True, default=str)
 
 
-def _scan_geometry(document: Document, blobs: BlobStore) -> ScanGeometry:
+def _scan_geometry(document: Document, job: JobContext) -> ScanGeometry:
     scan = document.scan
     assert scan is not None
+    blobs = job.session.blobs
     vertices = blobs.get(scan.vertices).astype(np.float64) + np.asarray(scan.origin)
     faces = blobs.get(scan.faces).astype(np.int64)
     usable = np.ones(len(faces), dtype=bool)
     if scan.synthetic is not None:
         usable = ~blobs.get(scan.synthetic).astype(bool)
     noise = document.settings.noise_override or scan.noise or 0.03
-    return ScanGeometry(vertices, faces, usable, band=max(0.15, 4.0 * noise))
+    return ScanGeometry(scan.key, vertices, faces, usable, noise)
 
 
-def _planes(scan_key: str, geometry: ScanGeometry) -> list[PlaneCandidate]:
-    cached = _plane_cache.get(scan_key)
-    if cached is None:
-        rng = seeded_rng(f"alignment.planes:{scan_key}")
-        cached = detect_planes(
-            geometry.vertices, geometry.faces, geometry.band, rng, geometry.usable
-        )
-        _plane_cache[scan_key] = cached
-        while len(_plane_cache) > 4:
-            _plane_cache.popitem(last=False)
-    return cached
+def _auto(
+    scan: ScanGeometry, surface: Surface, planes: list[PlaneCandidate], adjust: AlignmentAdjust
+) -> tuple[FloatArray, tuple[str, ...]]:
+    datums, issues = auto_datums(planes, surface)
+    if datums:
+        rows, _ = build_frame(datums, surface, require_point=False)
+    else:
+        rows = surface.principal_rows()
+    rotation = adjustment_rotation(adjust) @ rows
+    return rebased(make_transform(rotation, np.zeros(3)), scan.vertices, planes), issues
 
 
-def auto_rows(
-    vertices: FloatArray, faces: np.ndarray, planes: list[PlaneCandidate]
-) -> tuple[FloatArray, list[PlaneCandidate], bool]:
-    """Axes of the automatic alignment, the planes used as datums and whether PCA was used."""
+def auto_datums(
+    planes: list[PlaneCandidate], surface: Surface
+) -> tuple[list[Datum], tuple[str, ...]]:
+    """Primary and secondary datum of the automatic alignment, and the fallback issue."""
     if not planes:
-        rows, _ = pca_rows(vertices, faces)
-        return rows, [], True
+        return [], (IssueCode.PCA_FALLBACK,)
     primary = planes[0]
     z = -primary.normal
+    primary_datum = Datum("plane", primary.point, z, "primary")
     side = [plane for plane in planes[1:] if abs(float(plane.normal @ z)) < PERPENDICULAR_SIN]
     if not side:
-        x = in_plane_direction(z, vertices, faces)
-        return np.stack([x, np.cross(z, x), z]), [primary], True
+        return [primary_datum], (IssueCode.SINGLE_PLANE,)
     secondary = side[0]
     ties = [
         plane
@@ -203,139 +217,82 @@ def auto_rows(
         and float(plane.normal @ secondary.normal) < -0.9
     ]
     if ties:
-        _, _, area, centred = surface_moments(vertices, faces)
-        y_candidate = unit(-secondary.normal + float(secondary.normal @ z) * z)
-        if skew_sign(y_candidate, area, centred) < 0:
+        y = -secondary.normal + float(secondary.normal @ z) * z
+        if surface.skew_sign(y / np.linalg.norm(y)) < 0:
             secondary = ties[0]
-    y = unit(-secondary.normal - float(-secondary.normal @ z) * z)
-    return np.stack([np.cross(y, z), y, z]), [primary, secondary], False
-
-
-def _auto(
-    geometry: ScanGeometry, planes: list[PlaneCandidate], adjust: AlignmentAdjust
-) -> AlignmentEvaluation:
-    vertices, faces = geometry.vertices, geometry.faces[geometry.usable]
-    rows, datums, fallback = auto_rows(vertices, faces, planes)
-    rotation = adjustment_rotation(adjust) @ rows
-    transform = make_transform(rotation, np.zeros(3))
-    transform = rebased(transform, vertices, datums)
-    inputs = tuple(
-        InputFit(role=role, kind="plane", rms=plane.rms, point_count=len(plane.faces))
-        for role, plane in zip(("primary", "secondary"), datums, strict=False)
-    )
-    return AlignmentEvaluation(matrix=matrix_tuple(transform), inputs=inputs, fallback=fallback)
+    return [primary_datum, Datum("plane", secondary.point, -secondary.normal, "secondary")], ()
 
 
 def rebased(
     transform: FloatArray, vertices: FloatArray, planes: list[PlaneCandidate]
 ) -> FloatArray:
-    """Move the origin to the bounding-box minimum; a frame plane near it takes its place."""
+    """Move the origin to the bounding-box minimum; a plane lying there takes its place.
+
+    Snapping onto planes makes the origin independent of scanner spikes below a face.
+    """
     result = transform.copy()
     minimum = apply(transform, vertices).min(axis=0)
     rotation = transform[:3, :3]
     for axis in range(3):
-        for plane in planes:
-            normal = rotation @ plane.normal
-            if abs(normal[axis]) < 1 - 1e-9:
-                continue
-            offset = float(apply(transform, plane.point[None])[0, axis])
-            if abs(offset - minimum[axis]) <= ORIGIN_SNAP_MM:
-                minimum[axis] = offset
+        levels = [
+            float(apply(transform, plane.point[None])[0, axis])
+            for plane in planes
+            if abs((rotation @ plane.normal)[axis]) > AXIS_ALIGNED_COS
+        ]
+        low = float(minimum[axis])
+        near = [level for level in levels if low <= level <= low + ORIGIN_SNAP_MM]
+        if near:
+            minimum[axis] = min(near)
     result[:3, 3] -= minimum
     return result
 
 
-def _faces(
-    document: Document, alignment: Alignment, geometry: ScanGeometry, blobs: BlobStore
-) -> AlignmentEvaluation:
+def _faces_params(alignment: Alignment) -> FacesAlignmentParams:
     try:
-        params = from_json(alignment.params, FacesAlignmentParams)
-    except (TypeError, ValueError, KeyError) as error:
+        return from_json(alignment.params, FacesAlignmentParams)
+    except KernelError as error:
         raise KernelError(ErrorCode.INVALID_PARAMS) from error
-    refs = [("primary", params.primary), ("secondary", params.secondary)]
+
+
+def _faces(
+    document: Document,
+    alignment: Alignment,
+    scan: ScanGeometry,
+    surface: Surface,
+    job: JobContext,
+) -> tuple[FloatArray, tuple[InputFit, ...]]:
+    params = _faces_params(alignment)
+    refs: list[tuple[InputRole, AlignmentInput]] = [
+        ("primary", params.primary),
+        ("secondary", params.secondary),
+    ]
     if params.tertiary is not None:
         refs.append(("tertiary", params.tertiary))
+    job.progress(None, ProgressStage.FITTING_INPUTS)
     datums: list[Datum] = []
-    inputs: list[InputFit] = []
+    fits: list[InputFit] = []
     for role, ref in refs:
-        datum, fit = input_datum(document, ref, role, geometry, blobs)
-        datums.append(datum)
-        inputs.append(fit)
-    vertices, faces = geometry.vertices, geometry.faces[geometry.usable]
-    datums = orient_axes(datums, vertices, faces)
-    rows = rows_from_datums(datums[0], datums[1:], vertices, faces)
-    origin = origin_from_datums(rows, datums, vertices, require_point=len(datums) == 3)
+        job.check_cancelled()
+        datum, fit = resolve_input(document, ref, role, scan, job)
+        datums.append(_signed_axis(datum, surface))
+        fits.append(fit)
+    rows, origin = build_frame(datums, surface, require_point=params.tertiary is not None)
     rotation = adjustment_rotation(alignment.adjust) @ rows
-    transform = make_transform(rotation, origin)
-    return AlignmentEvaluation(matrix=matrix_tuple(transform), inputs=tuple(inputs))
+    return make_transform(rotation, origin), tuple(fits)
 
 
-def orient_axes(datums: list[Datum], vertices: FloatArray, faces: np.ndarray) -> list[Datum]:
-    """Give fitted axes (whose sign is arbitrary) a deterministic sign by the skew rule."""
-    _, _, area, centred = surface_moments(vertices, faces)
-    result = []
-    for datum in datums:
-        if datum.kind == "axis":
-            direction = unit(datum.direction)
-            datum = Datum("axis", datum.point, direction * skew_sign(direction, area, centred))
-        result.append(datum)
-    return result
+def _signed_axis(datum: Datum, surface: Surface) -> Datum:
+    """Fitted axes have no inherent sign; the skew rule gives them one."""
+    if datum.kind != "axis":
+        return datum
+    direction = datum.direction * surface.skew_sign(datum.direction)
+    return Datum("axis", datum.point, direction, datum.role)
 
 
-def input_datum(
-    document: Document, ref: AlignmentInputRef, role: str, geometry: ScanGeometry, blobs: BlobStore
-) -> tuple[Datum, InputFit]:
-    """Refit the triangles of a fit feature or region in scan coordinates."""
-    face_ids, kind = _input_faces(document, ref, blobs)
-    face_ids = face_ids[(face_ids >= 0) & (face_ids < len(geometry.faces))]
-    face_ids = face_ids[geometry.usable[face_ids]]
-    if len(face_ids) > _MAX_AXIS_FACES:
-        face_ids = face_ids[:: int(np.ceil(len(face_ids) / _MAX_AXIS_FACES))]
-    if len(face_ids) < 6:
-        raise KernelError(ErrorCode.FIT_FAILED, {"input": role})
-    corners = geometry.vertices[geometry.faces[face_ids]]
-    points = corners.mean(axis=1)
-    normals = unit(np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0]))
-    rng = seeded_rng(f"alignment.input:{document.scan.key if document.scan else ''}:{role}")
-    try:
-        fit = fit_primitive(kind, points, normals, rng)  # type: ignore[arg-type]
-    except FitError as error:
-        raise KernelError(ErrorCode.FIT_FAILED, {"input": role}) from error
-    primitive: Any = fit.primitive
-    info = InputFit(role=role, kind=kind, rms=fit.rms, point_count=fit.point_count)
-    if kind == "plane":
-        normal = unit(np.asarray(primitive.normal))
-        if float((normals @ normal).sum()) < 0:
-            normal = -normal
-        return Datum("plane", np.asarray(primitive.origin), -normal), info
-    point = primitive.apex if kind == "cone" else primitive.origin
-    return Datum("axis", np.asarray(point), unit(np.asarray(primitive.axis))), info
-
-
-_AXIS_KINDS = ("cylinder", "cone")
-
-
-def _input_faces(
-    document: Document, ref: AlignmentInputRef, blobs: BlobStore
-) -> tuple[np.ndarray, str]:
-    if (ref.feature is None) == (ref.region is None):
-        raise KernelError(ErrorCode.INVALID_PARAMS)
-    if ref.feature is not None:
-        feature = document.feature(ref.feature)
-        if feature is None or feature.suppressed:
-            raise KernelError(ErrorCode.INPUT_NOT_FOUND, {"input": ref.feature})
-        params = feature.params if isinstance(feature.params, dict) else {}
-        kind = str(params.get("kind", ""))
-        faces_ref = params.get("faces")
-        if feature.type != "fit" or not isinstance(faces_ref, str):
-            raise KernelError(ErrorCode.UNSUPPORTED_INPUT, {"input": ref.feature})
-        if kind not in ("plane", *_AXIS_KINDS):
-            raise KernelError(ErrorCode.UNSUPPORTED_INPUT, {"input": ref.feature, "kind": kind})
-        return blobs.get(faces_ref).astype(np.int64), kind
-    region = next((item for item in document.regions.items if item.id == ref.region), None)
-    if region is None or document.regions.labels is None:
-        raise KernelError(ErrorCode.INPUT_NOT_FOUND, {"input": ref.region})
-    if region.kind not in ("plane", *_AXIS_KINDS):
-        raise KernelError(ErrorCode.UNSUPPORTED_INPUT, {"input": ref.region, "kind": region.kind})
-    labels = blobs.get(document.regions.labels)
-    return np.nonzero(labels == region.label)[0].astype(np.int64), region.kind
+def _largest_plane(transform: FloatArray, planes: list[PlaneCandidate]) -> LargestPlane | None:
+    if not planes:
+        return None
+    normal = transform[:3, :3] @ planes[0].normal
+    names: tuple[PrincipalPlane, ...] = ("YZ", "XZ", "XY")
+    axis = int(np.argmax(np.abs(normal)))
+    return LargestPlane(names[axis], line_angle_deg(normal, np.eye(3)[axis]))

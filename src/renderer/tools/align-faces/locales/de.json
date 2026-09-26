@@ -1,4 +1,39 @@
 {
   "label": "An Flächen ausrichten",
-  "tooltip": "Ausrichtung an eingepassten Flächen und Achsen (3-2-1)."
+  "tooltip": "Ausrichtung an eingepassten Flächen, Achsen oder Bereichen nach dem 3-2-1-Prinzip.",
+  "help": "Der Primärbezug legt Z fest (Ebene oder Achse), der Sekundärbezug X oder Y, der optionale Tertiärbezug den Ursprung. Formen, Hilfsgeometrie oder Bereiche im Projektbaum oder im Ansichtsfenster anklicken; sie werden in das aktive Feld übernommen. Für eine Welle genügen Achse und Stirnfläche. Vor OK die Abweichung der Eingaben und die Neigung der größten Ebene prüfen.",
+  "roles": {
+    "primary": "Primärbezug (Z)",
+    "secondary": "Sekundärbezug (X/Y)",
+    "tertiary": "Tertiärbezug (Ursprung)"
+  },
+  "empty": {
+    "required": "Fläche oder Achse wählen",
+    "optional": "Optional"
+  },
+  "clear": "{{role}} leeren",
+  "storedFaces": "Gespeicherte Dreiecke",
+  "selection_one": "Auswahl: {{formatted}} Dreieck",
+  "selection_other": "Auswahl: {{formatted}} Dreiecke",
+  "takeSelection": "Auswahl als {{role}} übernehmen",
+  "pickHint": "Form, Hilfsgeometrie oder Bereich im Projektbaum oder Ansichtsfenster anklicken.",
+  "inputsFirst": "Primär- und Sekundärbezug wählen.",
+  "fit": "{{kind}}, RMS {{rms}}, {{faces}} Dreiecke",
+  "kinds": {
+    "plane": "Ebene",
+    "cylinder": "Zylinder",
+    "cone": "Kegel",
+    "sphere": "Kugel",
+    "torus": "Torus",
+    "axis": "Achse",
+    "point": "Punkt"
+  },
+  "problems": {
+    "unknown": "Existiert nicht mehr oder ist unterdrückt.",
+    "unsupported": "Ist weder Ebene noch Achse noch Kugel.",
+    "pointAsPrimary": "Eine Kugel legt keine Richtung fest; als Tertiärbezug verwenden.",
+    "duplicate": "Wird bereits verwendet.",
+    "tooFewFaces": "Zu wenige Dreiecke (mindestens 200).",
+    "staleSelection": "Auswahl gehört zu einem älteren Stand des Scans."
+  }
 }

@@ -2,11 +2,18 @@
 
 export const SKETCH_ERROR_CODES = [
   'sketch.emptySection',
+  'sketch.notAPlane',
+  'sketch.notAnAxis',
+  'sketch.invalidGeometry',
+  'sketch.tooFewPoints',
 ] as const;
 export type SketchErrorCode = (typeof SKETCH_ERROR_CODES)[number];
 
 export const SKETCH_ISSUE_CODES = [
   'sketch.profileOpen',
+  'sketch.profileInvalid',
+  'sketch.deviatesFromScan',
+  'sketch.sectionEmpty',
 ] as const;
 export type SketchIssueCode = (typeof SKETCH_ISSUE_CODES)[number];
 

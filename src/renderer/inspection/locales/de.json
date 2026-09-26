@@ -1,5 +1,56 @@
 {
   "status": {
-    "tolerance": "Toleranz ±{{value}}"
+    "tolerance": "Toleranz ±{{value}}",
+    "toleranceTooltip": "Projekttoleranz ändern",
+    "deviation": "Abweichung: {{share}} in Toleranz",
+    "deviationStale": "Abweichung: {{share}} in Toleranz (Stand vor der letzten Änderung)"
+  },
+  "tolerance": {
+    "title": "Projekttoleranz",
+    "value": "Toleranz",
+    "noise": "Scanrauschen",
+    "noiseUnknown": "nicht bestimmt",
+    "proposal": "Vorschlag aus Scanrauschen: ±{{value}}",
+    "useProposal": "Vorschlag verwenden",
+    "snapUnits": "Fangwerte",
+    "metric": "metrisch",
+    "inch": "Zoll",
+    "apply": "Übernehmen",
+    "hint": "Gilt für Einpassen, Skizzen und die Abweichung. Kleiner als das Scanrauschen ist nicht sinnvoll.",
+    "belowNoise": "Die Toleranz liegt unter dem 2,5-fachen Scanrauschen. Viele Ergebnisse werden als außerhalb gemeldet."
+  },
+  "deviation": {
+    "legendTitle": "Abweichung [mm]",
+    "legendTooltip": "Positiv: Der Scan liegt außerhalb des Körpers (Material zu viel). Negativ: Der Scan liegt innerhalb (Material fehlt).",
+    "toleranceBand": "Toleranz ±{{value}}",
+    "outOfRange": "außerhalb",
+    "noData": "keine Daten",
+    "mean": "Mittel",
+    "sigma": "σ",
+    "rms": "RMS",
+    "withinShare": "{{share}} in Toleranz",
+    "max": "Max {{above}} / {{below}}",
+    "stale": "Stand vor der letzten Änderung",
+    "collapse": "Legende einklappen",
+    "expand": "Legende ausklappen",
+    "cursorNoData": "keine Daten",
+    "toggle": "Abweichung anzeigen"
+  },
+  "body": "Körper {{number}}",
+  "face": "{{body}} · Fläche {{number}}",
+  "export": {
+    "bodies": "Körper",
+    "checking": "Körper werden geprüft …",
+    "noneSelected": "Mindestens einen Körper wählen.",
+    "blocked": "Export gesperrt: {{problem}} (Ursache: {{feature}}).",
+    "exportable": "{{problem}}. Der Export ist trotzdem möglich.",
+    "productName": "Produktname",
+    "productWithBody": "{{project}} {{body}}",
+    "revealFolder": "Ordner öffnen",
+    "exporting": "Datei wird geschrieben und geprüft …",
+    "bodyCount_one": "{{count}} Körper",
+    "bodyCount_other": "{{count}} Körper",
+    "triangleCount_one": "{{formatted}} Dreieck",
+    "triangleCount_other": "{{formatted}} Dreiecke"
   }
 }

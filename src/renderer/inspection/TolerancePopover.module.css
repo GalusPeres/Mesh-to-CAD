@@ -1,0 +1,41 @@
+.popover {
+  position: fixed;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-floating);
+  font-variant-numeric: tabular-nums;
+  z-index: 50;
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-header);
+  line-height: var(--line-header);
+  font-weight: var(--weight-semibold);
+}
+
+.proposal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.hint {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}

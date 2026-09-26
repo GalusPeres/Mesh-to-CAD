@@ -1,9 +1,10 @@
 {
   "errors": {
     "noBody": "Kein Körper zum Vergleichen vorhanden.",
-    "unknownBody": "Körper {{body}} ist nicht mehr vorhanden.",
-    "unknownReference": "Messen nicht möglich: {{reference}} ist nicht mehr vorhanden.",
-    "notMeasurable": "Messen nicht möglich: {{reference}} hat keine messbare Geometrie.",
+    "unknownBody": "Vergleich nicht möglich: Ein gewählter Körper ist nicht mehr vorhanden.",
+    "unknownItem": "Messen nicht möglich: Das Element ist nicht mehr vorhanden.",
+    "itemUnavailable": "Messen nicht möglich: Das Element ist fehlgeschlagen oder unterdrückt.",
+    "notMeasurable": "Messen nicht möglich: Das Element hat keine Ebene, keine Achse und keinen Punkt.",
     "noPreview": "Die Vorschau ist nicht mehr verfügbar."
   },
   "progress": {

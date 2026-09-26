@@ -1,0 +1,30 @@
+{
+  "commands": {
+    "new": "New project",
+    "open": "Open project …",
+    "save": "Save",
+    "saveAs": "Save as …"
+  },
+  "dialogs": {
+    "openTitle": "Open project",
+    "saveTitle": "Save project",
+    "filterName": "Mesh-to-CAD projects (*.m2c)"
+  },
+  "messages": {
+    "saved": "Saved: {{fileName}}",
+    "opened": "Opened: {{name}}"
+  },
+  "unsaved": {
+    "title": "Save changes?",
+    "text": "The changes to {{name}} are not saved.",
+    "save": "Save",
+    "discard": "Don't save"
+  },
+  "recovery": {
+    "title": "Unsaved work found",
+    "text": "Mesh-to-CAD did not close properly on {{startedAt, datetime(dateStyle: medium; timeStyle: short)}}. The last state of {{name}} can be restored.",
+    "restore": "Restore",
+    "discard": "Discard",
+    "restored": "Restored: {{name}}"
+  }
+}

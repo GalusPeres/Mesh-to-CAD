@@ -1,3 +1,19 @@
 {
-  "label": "Align automatically"
+  "label": "Align automatically",
+  "tooltip": "Largest plane on XY, largest plane perpendicular to it on XZ, origin at the corner of the scan.",
+  "help": "The largest plane of the scan becomes the XY plane, the largest plane perpendicular to it the XZ plane; the origin lies at the corner of the bounding box. The new coordinate system is shown over the scan until OK. Turn over, Reverse X and Rotate 90° correct the orientation. Before OK, check that the largest plane is close to 0° to XY.",
+  "alignment": "Alignment",
+  "noScan": "No scan loaded.",
+  "adjust": "Orientation",
+  "flipZ": "Turn over",
+  "flipX": "Reverse X",
+  "rotate": "Rotate 90°",
+  "rotation": "Rotation about Z",
+  "result": {
+    "largestPlane": "Largest plane",
+    "tilt": "{{angle}} to {{plane}}",
+    "planes": "Planes found",
+    "flat": "Lies flat",
+    "tilted": "Tilted"
+  }
 }

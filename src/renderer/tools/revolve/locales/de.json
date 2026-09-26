@@ -1,3 +1,7 @@
 {
-  "label": "Drehung"
+  "label": "Drehung",
+  "help": "Skizze und Drehachse wählen. Die Achse kann eine Linie der Skizze, die Achse eines eingepassten Zylinders oder eine Hilfsachse sein; sie muss in der Skizzenebene liegen und darf die Kontur nicht schneiden. Der Winkel zählt gegen den Uhrzeigersinn um die Achsrichtung.",
+  "axis": "Achse",
+  "sketchLine": "Skizzenlinie {{id}}",
+  "angle": "Winkel"
 }

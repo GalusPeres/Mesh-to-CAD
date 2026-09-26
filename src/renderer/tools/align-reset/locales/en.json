@@ -1,3 +1,5 @@
 {
-  "label": "Reset alignment"
+  "label": "Reset alignment",
+  "tooltip": "Show the scan in its original coordinates again.",
+  "notAligned": "The scan is not aligned."
 }

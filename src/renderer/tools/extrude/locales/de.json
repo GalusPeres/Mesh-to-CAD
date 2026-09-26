@@ -1,3 +1,58 @@
 {
-  "label": "Extrusion"
+  "label": "Extrusion",
+  "help": "Skizze wählen. Der Abstand wird aus dem Scan übernommen und kann am Pfeil gezogen oder eingegeben werden. Mit Bis Ebene endet die Extrusion an einer Ebene. Unter Optionen wird festgelegt, ob ein neuer Körper entsteht oder ein vorhandener Körper geändert wird.",
+  "noSketch": "Keine Skizze vorhanden. Zuerst eine Skizze erstellen.",
+  "sketch": "Skizze",
+  "loops": "Konturen",
+  "allLoops": "Alle geschlossenen Konturen",
+  "someLoops_one": "{{count}} ausgewählte Kontur",
+  "someLoops_other": "{{count}} ausgewählte Konturen",
+  "useAllLoops": "Alle Konturen verwenden",
+  "direction": "Richtung",
+  "directions": {
+    "normal": "Normal",
+    "reversed": "Umgekehrt",
+    "symmetric": "Symmetrisch"
+  },
+  "extent": "Ende",
+  "extents": {
+    "distance": "Abstand",
+    "toPlane": "Bis Ebene"
+  },
+  "distance": "Abstand",
+  "totalLength": "Gesamtlänge",
+  "backward": "Gegenrichtung",
+  "plane": "Ebene",
+  "offset": "Versatz",
+  "lengthMissing": "Abstand muss größer als 0 sein.",
+  "solid": {
+    "operation": "Operation",
+    "operations": {
+      "newBody": "Neuer Körper",
+      "add": "Vereinigen",
+      "cut": "Abziehen",
+      "intersect": "Schnittmenge"
+    },
+    "targetBody": "Zielkörper",
+    "body": "Körper {{number}}",
+    "choose": "Auswählen …",
+    "problems": {
+      "targetMissing": "Zielkörper wählen.",
+      "targetUnknown": "Der Zielkörper existiert nicht mehr. Anderen Körper wählen.",
+      "targetIsTool": "Der Zielkörper kann nicht zugleich Werkzeug sein.",
+      "toolsMissing": "Mindestens einen Werkzeugkörper wählen."
+    },
+    "inputsFirst": "Eingaben vervollständigen.",
+    "volume": "Volumen",
+    "originPlanes": {
+      "XY": "XY-Ebene",
+      "YZ": "YZ-Ebene",
+      "XZ": "XZ-Ebene"
+    },
+    "originAxes": {
+      "X": "X-Achse",
+      "Y": "Y-Achse",
+      "Z": "Z-Achse"
+    }
+  }
 }

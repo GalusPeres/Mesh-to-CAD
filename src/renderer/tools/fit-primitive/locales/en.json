@@ -1,3 +1,67 @@
 {
-  "label": "Fit shape"
+  "label": "Fit shape",
+  "help": "Mark triangles with the brush or smart select; the selection can change while the tool is open. The type is chosen automatically or set by hand; lock a value to fix it. Before OK, check that at least 95 % of the triangles are within the tolerance and that the snapped values are right. Robust ignores other surfaces that were selected by mistake.",
+  "noScan": "No scan loaded.",
+  "selection": "Selection",
+  "triangles_one": "{{formatted}} triangle",
+  "triangles_other": "{{formatted}} triangles",
+  "selectionEmpty": "Mark triangles with the brush or smart select (at least {{min}}).",
+  "selectionTooSmall_one": "Selection too small: {{formatted}} triangle, at least {{min}}.",
+  "selectionTooSmall_other": "Selection too small: {{formatted}} triangles, at least {{min}}.",
+  "kind": "Type",
+  "auto": "Automatic",
+  "rmsShort": "RMS {{value}}",
+  "values": {
+    "offset": "Distance from origin",
+    "radius": "Radius",
+    "halfAngleDeg": "Half angle",
+    "majorRadius": "Major radius",
+    "minorRadius": "Minor radius",
+    "normal": "Normal",
+    "axis": "Axis",
+    "point": {
+      "sphere": "Centre",
+      "cylinder": "Axis point",
+      "cone": "Apex",
+      "torus": "Centre"
+    }
+  },
+  "relation": "Direction",
+  "relations": {
+    "free": "Free",
+    "parallel": "Parallel",
+    "perpendicular": "Perpendicular"
+  },
+  "relationTarget": "Reference",
+  "axisName": "{{axis}} axis",
+  "robust": "Robust (ignore other surfaces in the selection)",
+  "snap": "Snap design values",
+  "computedHint": "Computed: the value comes from the scan. Click to fix it.",
+  "fixedHint": "Fixed: the fit keeps this value. Click to release it.",
+  "result": {
+    "noise": "Scan noise",
+    "rms": "RMS",
+    "max": "Maximum",
+    "withinTolerance": "Within tolerance",
+    "faces": "Triangles",
+    "excluded": "Not used",
+    "pass": "Within tolerance",
+    "fail": "Not within tolerance",
+    "poorFit": "Only {{share}} % of the triangles are within the tolerance of ±{{tolerance}}. Check the selection or choose another type."
+  },
+  "snaps": {
+    "axis": {
+      "parallel": "Axis parallel to {{axis}}",
+      "perpendicular": "Axis perpendicular to {{axis}}"
+    },
+    "normal": {
+      "parallel": "Normal parallel to {{axis}}",
+      "perpendicular": "Normal perpendicular to {{axis}}"
+    },
+    "offset": "Distance from origin {{value}}",
+    "radius": "Radius {{value}}",
+    "halfAngle": "Half angle {{value}}",
+    "majorRadius": "Major radius {{value}}",
+    "minorRadius": "Minor radius {{value}}"
+  }
 }

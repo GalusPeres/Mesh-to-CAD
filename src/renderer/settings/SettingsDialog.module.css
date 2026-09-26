@@ -1,0 +1,63 @@
+.heading {
+  margin: var(--space-12) 0 var(--space-4);
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  font-weight: var(--weight-semibold);
+}
+
+.heading:first-child {
+  margin-top: 0;
+}
+
+.hint {
+  margin: 0 0 var(--space-8);
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+}
+
+.table th {
+  padding: var(--space-4) 0;
+  text-align: left;
+  font-weight: var(--weight-regular);
+}
+
+.table td {
+  padding: var(--space-4) 0 var(--space-4) var(--space-12);
+  color: var(--text-secondary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table tr + tr {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.values {
+  margin: 0;
+}
+
+.path {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  font-family: var(--font-mono);
+  font-size: var(--text-body);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}

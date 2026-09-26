@@ -1,12 +1,25 @@
 // Routes pointer, wheel and key events of the canvas to the registered
-// interactions (selection modes, tool handlers, handles), latest first. An
-// interaction that consumes a pointer-down owns the drag until pointer-up, and
-// navigation is off meanwhile.
+// interactions (viewport chrome first, then tools latest first). An interaction
+// that consumes a pointer-down owns the drag until pointer-up, and navigation is
+// off meanwhile. Key presses in text fields never reach interactions.
 
 import type { ViewportInteraction, ViewportPointerEvent } from './api';
 
+/** Viewport-internal interactions may also hear that the pointer left the canvas. */
+export interface ChromeInteraction extends ViewportInteraction {
+  onPointerLeave?(): void;
+}
+
+function inTextField(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+  );
+}
+
 export class PointerRouter {
   private readonly interactions: ViewportInteraction[] = [];
+  private readonly chrome: ChromeInteraction[] = [];
   private dragOwner: ViewportInteraction | null = null;
   private readonly detach: () => void;
 
@@ -15,9 +28,9 @@ export class PointerRouter {
     private readonly setNavigationEnabled: (enabled: boolean) => void,
   ) {
     const onPointerDown = (event: PointerEvent) => {
-      canvas.focus();
+      canvas.focus({ preventScroll: true });
       const viewportEvent = this.toEvent(event);
-      const owner = this.topDown().find((interaction) =>
+      const owner = this.ordered().find((interaction) =>
         interaction.onPointerDown?.(viewportEvent),
       );
       if (!owner) return;
@@ -29,7 +42,7 @@ export class PointerRouter {
     const onPointerMove = (event: PointerEvent) => {
       const viewportEvent = this.toEvent(event);
       if (this.dragOwner) this.dragOwner.onPointerMove?.(viewportEvent);
-      else this.topDown().some((interaction) => interaction.onPointerMove?.(viewportEvent));
+      else this.ordered().some((interaction) => interaction.onPointerMove?.(viewportEvent));
     };
     const onPointerUp = (event: PointerEvent) => {
       const owner = this.dragOwner;
@@ -37,25 +50,31 @@ export class PointerRouter {
       setNavigationEnabled(true);
       owner?.onPointerUp?.(this.toEvent(event));
     };
+    const onPointerLeave = () => {
+      if (!this.dragOwner) this.chrome.forEach((interaction) => interaction.onPointerLeave?.());
+    };
     const onWheel = (event: WheelEvent) => {
       const viewportEvent = { ...this.toEvent(event), deltaY: event.deltaY };
-      if (this.topDown().some((interaction) => interaction.onWheel?.(viewportEvent))) {
+      if (this.ordered().some((interaction) => interaction.onWheel?.(viewportEvent))) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
     };
     const onKeyDown = (event: KeyboardEvent) => {
-      if (this.topDown().some((interaction) => interaction.onKeyDown?.(event))) {
+      if (inTextField(event.target)) return;
+      if (this.ordered().some((interaction) => interaction.onKeyDown?.(event))) {
         event.preventDefault();
         event.stopPropagation();
       }
     };
     const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
-    // Capture phase: interactions see the pointer before the orbit controls do.
+    // Capture phase: interactions see the pointer before the camera rig does.
     canvas.addEventListener('pointerdown', onPointerDown, { capture: true });
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerUp);
+    canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.addEventListener('wheel', onWheel, { capture: true, passive: false });
     canvas.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('keydown', onKeyDown, true);
@@ -63,10 +82,16 @@ export class PointerRouter {
       canvas.removeEventListener('pointerdown', onPointerDown, { capture: true });
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerUp);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel, { capture: true });
       canvas.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown, true);
     };
+  }
+
+  get count(): number {
+    return this.interactions.length;
   }
 
   add(interaction: ViewportInteraction): () => void {
@@ -83,16 +108,29 @@ export class PointerRouter {
     };
   }
 
+  /** Viewport chrome (view cube): asked before every tool. */
+  addChrome(interaction: ChromeInteraction): void {
+    this.chrome.push(interaction);
+  }
+
+  /** Cursor while the pointer is over viewport chrome; null returns to the tool's cursor. */
+  setChromeCursor(cursor: string | null): void {
+    if (cursor) this.canvas.style.cursor = cursor;
+    else this.updateCursor();
+  }
+
   dispose(): void {
     this.detach();
   }
 
-  private topDown(): ViewportInteraction[] {
-    return [...this.interactions].reverse();
+  private ordered(): ViewportInteraction[] {
+    return [...this.chrome, ...[...this.interactions].reverse()];
   }
 
   private updateCursor(): void {
-    const cursor = this.topDown().find((interaction) => interaction.cursor)?.cursor;
+    const cursor = [...this.interactions]
+      .reverse()
+      .find((interaction) => interaction.cursor)?.cursor;
     this.canvas.style.cursor = cursor ?? 'default';
   }
 

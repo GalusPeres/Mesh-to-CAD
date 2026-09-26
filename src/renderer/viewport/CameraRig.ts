@@ -8,12 +8,15 @@ import * as THREE from 'three';
 import type { Projection } from '../state/viewStore';
 import type { ScreenPoint, StandardView, Vec3 } from './api';
 import {
+  type CameraPose,
   STANDARD_VIEWS,
   TRANSITION_MS,
   boxSphere,
   easeOut,
+  orbitPose,
   orthographicHalfHeight,
   perspectiveDistance,
+  viewQuaternion,
 } from './cameraMath';
 import { SCENE_COLORS } from './palette';
 
@@ -21,51 +24,14 @@ const FOV_DEG = 35;
 const ORBIT_RAD_PER_PX = 0.008;
 const WHEEL_FACTOR = 0.0015;
 const DRAG_ZOOM_FACTOR = 0.01;
-const Z_UP = new THREE.Vector3(0, 0, 1);
 
 type DragMode = 'orbit' | 'pan' | 'zoom';
-
-interface CameraPose {
-  position: THREE.Vector3;
-  quaternion: THREE.Quaternion;
-  target: THREE.Vector3;
-  halfHeight: number;
-}
 
 export interface CameraRigOptions {
   /** Scan or body point under the cursor, the orbit pivot. */
   pickPivot(at: ScreenPoint): Vec3 | null;
   invertWheel(): boolean;
   onChange(): void;
-}
-
-/**
- * Rotate a camera pose around a pivot: yaw around world Z, then pitch around the
- * camera's right axis. The pivot keeps its place on the screen.
- */
-export function orbitPose(
-  pose: CameraPose,
-  pivot: THREE.Vector3,
-  yaw: number,
-  pitch: number,
-): void {
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(pose.quaternion);
-  const rotation = new THREE.Quaternion()
-    .setFromAxisAngle(Z_UP, yaw)
-    .multiply(new THREE.Quaternion().setFromAxisAngle(right, pitch));
-  pose.position.sub(pivot).applyQuaternion(rotation).add(pivot);
-  pose.target.sub(pivot).applyQuaternion(rotation).add(pivot);
-  pose.quaternion.premultiply(rotation).normalize();
-}
-
-/** Orientation of a camera looking in `direction` with `up` pointing up on screen. */
-export function viewQuaternion(direction: Vec3, up: Vec3): THREE.Quaternion {
-  const matrix = new THREE.Matrix4().lookAt(
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(...direction),
-    new THREE.Vector3(...up),
-  );
-  return new THREE.Quaternion().setFromRotationMatrix(matrix);
 }
 
 function reducedMotion(): boolean {
@@ -95,6 +61,7 @@ export class CameraRig {
     pivot: THREE.Vector3;
   } | null = null;
   private animation = 0;
+  private readonly headlight = new THREE.DirectionalLight(SCENE_COLORS.headlight, 1.4);
   private readonly detach: () => void;
 
   constructor(
@@ -104,12 +71,13 @@ export class CameraRig {
   ) {
     for (const camera of [this.orthographic, this.perspective]) {
       camera.up.set(0, 0, 1);
-      // A headlight attached to the camera shows scan detail from every direction.
-      const headlight = new THREE.DirectionalLight(SCENE_COLORS.headlight, 1.4);
-      headlight.position.set(-0.4, 0.6, 1);
-      camera.add(headlight);
       scene.add(camera);
     }
+    // One headlight, carried by the active camera, slightly up and left of the view
+    // direction: shading shows scan detail from every direction.
+    this.headlight.position.set(-0.4, 0.6, 1);
+    this.headlight.target.position.set(0, 0, 0);
+    this.carryHeadlight();
     this.applyPose({
       position: new THREE.Vector3(200, -200, 200),
       quaternion: viewQuaternion(STANDARD_VIEWS.iso.direction, STANDARD_VIEWS.iso.up),
@@ -143,6 +111,15 @@ export class CameraRig {
     return [this.targetPoint.x, this.targetPoint.y, this.targetPoint.z];
   }
 
+  get orthographicProjection(): boolean {
+    return this.active === this.orthographic;
+  }
+
+  /** Vertical field of view of the perspective camera in degrees. */
+  get fieldOfView(): number {
+    return FOV_DEG;
+  }
+
   /** Navigation reacts to the pointer only while enabled (not during tool drags). */
   setNavigationEnabled(enabled: boolean): void {
     this.navigationEnabled = enabled;
@@ -171,7 +148,7 @@ export class CameraRig {
     this.updateProjection();
   }
 
-  fitBox(min: Vec3, max: Vec3, animate = false): void {
+  fitBox(min: Vec3, max: Vec3, animate = true): void {
     const sphere = boxSphere(min, max);
     const aspect = this.width / this.height;
     const halfHeight = orthographicHalfHeight(sphere.radius, aspect);
@@ -263,6 +240,7 @@ export class CameraRig {
       pose.position.copy(this.targetPoint).addScaledVector(this.forward(), -this.sceneRadius * 4);
     }
     this.active = next;
+    this.carryHeadlight();
     this.applyPose(pose);
   }
 
@@ -306,6 +284,10 @@ export class CameraRig {
       pose.target.lerp(point, 1 - factor);
     }
     this.applyPose(pose);
+  }
+
+  private carryHeadlight(): void {
+    this.active.add(this.headlight, this.headlight.target);
   }
 
   private onPointerDown(event: PointerEvent): void {

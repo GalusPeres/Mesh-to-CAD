@@ -1,6 +1,46 @@
-// Camera placement for standard views and fitting, Z up (CAD convention).
+// Camera placement for standard views, fitting and orbiting, Z up (CAD convention).
+
+import * as THREE from 'three';
 
 import type { StandardView, Vec3 } from './api';
+
+const Z_UP = new THREE.Vector3(0, 0, 1);
+
+export interface CameraPose {
+  position: THREE.Vector3;
+  quaternion: THREE.Quaternion;
+  target: THREE.Vector3;
+  halfHeight: number;
+}
+
+/**
+ * Rotate a camera pose around a pivot: yaw around world Z, then pitch around the
+ * camera's right axis. The pivot keeps its place on the screen.
+ */
+export function orbitPose(
+  pose: CameraPose,
+  pivot: THREE.Vector3,
+  yaw: number,
+  pitch: number,
+): void {
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(pose.quaternion);
+  const rotation = new THREE.Quaternion()
+    .setFromAxisAngle(Z_UP, yaw)
+    .multiply(new THREE.Quaternion().setFromAxisAngle(right, pitch));
+  pose.position.sub(pivot).applyQuaternion(rotation).add(pivot);
+  pose.target.sub(pivot).applyQuaternion(rotation).add(pivot);
+  pose.quaternion.premultiply(rotation).normalize();
+}
+
+/** Orientation of a camera looking in `direction` with `up` pointing up on screen. */
+export function viewQuaternion(direction: Vec3, up: Vec3): THREE.Quaternion {
+  const matrix = new THREE.Matrix4().lookAt(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(...direction),
+    new THREE.Vector3(...up),
+  );
+  return new THREE.Quaternion().setFromRotationMatrix(matrix);
+}
 
 export interface ViewDirection {
   /** Direction the camera looks in (from the camera towards the target). */

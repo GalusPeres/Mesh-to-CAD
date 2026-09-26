@@ -2,6 +2,7 @@
   "project": "Projekt",
   "tree": {
     "scan": "Scan",
+    "scanSummary": "{{file}} · {{faces}}",
     "faces_one": "{{formatted}} Dreieck",
     "faces_other": "{{formatted}} Dreiecke",
     "regions": "Bereiche ({{count}})",
@@ -36,16 +37,19 @@
   "alignmentMethod": {
     "none": "Scan-Koordinaten",
     "auto": "Automatisch",
-    "faces": "Über Flächen"
+    "faces": "An Flächen"
   },
   "operations": {
     "repair": "Repariert",
     "decimate_one": "Reduziert auf {{formatted}} Dreieck",
     "decimate_other": "Reduziert auf {{formatted}} Dreiecke",
-    "smooth": "Geglättet",
-    "fillHoles": "Löcher gefüllt",
-    "removeSmallParts": "Kleine Teile entfernt",
-    "deleteFaces": "Dreiecke gelöscht"
+    "removeSmallParts_one": "{{formatted}} kleines Teil entfernt",
+    "removeSmallParts_other": "{{formatted}} kleine Teile entfernt",
+    "fillHoles_one": "{{formatted}} Loch gefüllt",
+    "fillHoles_other": "{{formatted}} Löcher gefüllt",
+    "deleteFaces_one": "{{formatted}} Dreieck gelöscht",
+    "deleteFaces_other": "{{formatted}} Dreiecke gelöscht",
+    "other": "Bearbeitet"
   },
   "state": {
     "ok": "OK",
@@ -57,10 +61,13 @@
   "menu": {
     "edit": "Bearbeiten",
     "rename": "Umbenennen",
+    "hide": "Ausblenden",
+    "show": "Einblenden",
+    "isolate": "Isolieren",
+    "showAll": "Alle einblenden",
     "suppress": "Unterdrücken",
     "unsuppress": "Unterdrückung aufheben",
-    "delete": "Löschen",
-    "deleteKey": "Entf"
+    "delete": "Löschen"
   },
   "rename": {
     "title": "Umbenennen",
@@ -69,7 +76,7 @@
   },
   "delete": {
     "title": "Löschen",
-    "withDependents": "{{name}} wird von {{dependents}} verwendet. Alle löschen?",
+    "withDependents": "{{name}} wird von {{dependents}} verwendet. Alle {{count}} löschen?",
     "confirm": "Löschen"
   },
   "undo": {
@@ -79,23 +86,34 @@
     "delete": "Löschen"
   },
   "properties": {
+    "scanSection": "Scan",
+    "featureSection": "Element",
+    "bodySection": "Körper",
+    "regionSection": "Bereich",
     "file": "Datei",
+    "unit": "Importeinheit",
     "triangles": "Dreiecke",
     "vertices": "Eckpunkte",
     "noise": "Scanrauschen",
+    "tolerance": "Toleranz",
+    "operations": "Vorbereitung",
+    "unknown": "Unbekannt",
     "type": "Typ",
     "summary": "Werte",
     "status": "Status",
-    "issues": "Hinweise",
+    "skipped": "Nicht berechnet: eine Eingabe fehlt oder ist fehlerhaft. Die Eingaben im Verlauf prüfen.",
+    "suppressed": "Unterdrückt: wird beim Neuaufbau übersprungen.",
+    "createdBy": "Erzeugt von",
+    "changedBy": "Zuletzt geändert von",
     "volume": "Volumen",
     "area": "Oberfläche",
-    "validity": "Gültigkeit",
-    "valid": "Gültiger Volumenkörper",
-    "invalid": "Ungültig",
     "solids": "Volumenkörper",
+    "maxTolerance": "Größte Kantentoleranz",
+    "validity": "Gültigkeit",
+    "valid": "Geschlossen und gültig",
+    "invalid": "Ungültig",
     "rms": "RMS",
-    "faces": "Dreiecke",
-    "unit": "Importeinheit",
-    "operations": "Vorbereitung"
+    "usedBy": "Verwendet von",
+    "unused": "Nicht verwendet"
   }
 }

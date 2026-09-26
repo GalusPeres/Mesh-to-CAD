@@ -25,7 +25,7 @@ export const SCENE_COLORS = {
   brushDark: '#1C1D20',
 } as const;
 
-/** Mix factors of the per-face states over the base colour. */
+/** Mix factors over the base colour and opacities of the scene styles. */
 export const SCENE_MIX = {
   selection: 0.55,
   hover: 0.25,
@@ -34,6 +34,8 @@ export const SCENE_MIX = {
   patchFill: 0.35,
   xrayOpacity: 0.3,
   sketchGhostOpacity: 0.15,
+  triangleEdges: 0.12,
+  regionBorder: 0.6,
 } as const;
 
 /** Ten muted region colours; hues 225-290 degrees are excluded (selection blue). */

@@ -1,3 +1,41 @@
 {
-  "label": "Freiformfläche"
+  "label": "Freiformfläche",
+  "tooltip": "B-Spline-Fläche an einen Bereich des Scans anpassen, zum Beispiel zum Teilen eines Körpers.",
+  "help": "Dreiecke einer gewölbten Fläche mit Pinsel oder Flächenauswahl markieren oder einen Bereich wählen. Die Fläche wird als Höhenfeld angepasst und um den Rand über die Dreiecke hinaus verlängert, damit sie einen Körper sicher teilt. Die Zahl der Spannen wird automatisch gewählt; mehr Spannen folgen dem Scan genauer, stärkere Glättung überbrückt Lücken. Vor OK prüfen, ob mindestens 95 % der Dreiecke in der Toleranz liegen.",
+  "noScan": "Kein Scan geladen.",
+  "source": "Eingabe",
+  "sources": {
+    "selection": "Auswahl",
+    "region": "Bereich"
+  },
+  "region": "Bereich",
+  "choose": "Auswählen …",
+  "triangles": "Dreiecke",
+  "inputMissing": "Dreiecke mit Pinsel oder Flächenauswahl markieren oder einen Bereich wählen (mindestens {{min}}).",
+  "inputsFirst": "Eingabe vervollständigen.",
+  "autoSpans": "Spannen automatisch wählen",
+  "spans": {
+    "u": "Spannen U",
+    "v": "Spannen V"
+  },
+  "smoothing": "Glättung",
+  "smoothingLevels": {
+    "low": "Gering",
+    "medium": "Mittel",
+    "high": "Stark"
+  },
+  "margin": "Rand",
+  "result": {
+    "noise": "Scanrauschen",
+    "rms": "RMS",
+    "max": "Maximum",
+    "withinTolerance": "In Toleranz",
+    "pass": "In Toleranz",
+    "fail": "Nicht in Toleranz",
+    "faces": "Dreiecke",
+    "spans": "Spannen",
+    "spansValue": "{{u}} × {{v}}",
+    "normalSpread": "Normalenstreuung",
+    "poorFit": "Nur {{share}} % der Dreiecke liegen in der Toleranz ±{{tolerance}}. Mehr Spannen, weniger Glättung oder eine kleinere Auswahl wählen."
+  }
 }

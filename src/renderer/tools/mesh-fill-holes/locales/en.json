@@ -1,3 +1,11 @@
 {
-  "label": "Fill holes"
+  "label": "Fill holes",
+  "tooltip": "Closes small holes in the scan.",
+  "maxPerimeter": "Largest perimeter",
+  "filledHoles": "Filled holes",
+  "openHoles": "Holes left open",
+  "addedFaces": "New triangles",
+  "nothingToDo": "There are no holes up to this perimeter.",
+  "syntheticHint": "New triangles do not count as scan data: fitting, segmentation and deviation leave them out.",
+  "help": "Holes up to the set perimeter are closed; their borders are marked green. Large open areas stay open, because filling them would invent a surface. Holes do not need to be filled for fitting."
 }

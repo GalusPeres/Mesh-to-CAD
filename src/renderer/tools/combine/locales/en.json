@@ -1,3 +1,7 @@
 {
-  "label": "Combine"
+  "label": "Combine",
+  "help": "Choose the target body and the tool bodies. Unite adds the tools, Subtract removes them, Intersect keeps only the common part. The target body keeps its name; the tool bodies disappear unless Keep tools is chosen.",
+  "twoBodies": "Combine needs at least two bodies.",
+  "tools": "Tool bodies",
+  "keepTools": "Keep tools"
 }

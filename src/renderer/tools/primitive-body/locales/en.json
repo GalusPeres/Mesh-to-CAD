@@ -1,3 +1,15 @@
 {
-  "label": "Primitive body"
+  "label": "Primitive",
+  "help": "Choose a fitted cylinder, cone, sphere or torus. From scan takes the length along the axis from the triangles on the fitted surface, plus the margin at both ends. Manual measures start and length along the axis from the foot of the origin; for an axis parallel to Z the start is the Z coordinate.",
+  "noFit": "No fitted cylinder, cone, sphere or torus yet.",
+  "fit": "Shape",
+  "extent": "Length",
+  "extents": {
+    "region": "From scan",
+    "manual": "Manual"
+  },
+  "margin": "Margin",
+  "start": "Start",
+  "length": "Length",
+  "closed": "Spheres and tori are closed; no length is needed."
 }

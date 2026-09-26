@@ -1,3 +1,5 @@
 {
-  "name": "Extrusion"
+  "name": "Extrusion",
+  "toPlane": "bis Ebene",
+  "symmetric": "{{length}} symmetrisch"
 }

@@ -1,3 +1,11 @@
 {
-  "label": "Löcher füllen"
+  "label": "Löcher füllen",
+  "tooltip": "Schließt kleine Löcher im Scan.",
+  "maxPerimeter": "Größter Umfang",
+  "filledHoles": "Gefüllte Löcher",
+  "openHoles": "Offen bleibende Löcher",
+  "addedFaces": "Neue Dreiecke",
+  "nothingToDo": "Es gibt keine Löcher bis zu diesem Umfang.",
+  "syntheticHint": "Neue Dreiecke zählen nicht zum Scan: Einpassen, Segmentieren und Abweichung lassen sie aus.",
+  "help": "Löcher bis zum eingestellten Umfang werden geschlossen; die Ränder dieser Löcher sind grün markiert. Große offene Bereiche bleiben offen, weil eine Füllung dort eine Fläche erfinden würde. Für das Einpassen müssen Löcher nicht gefüllt werden."
 }

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Erste Schritte – Mesh-to-CAD Hilfe</title>
+    <style>
+      :root {
+        --bg-panel: #f5f5f6;
+        --bg-raised: #ffffff;
+        --text: #1c1d20;
+        --text-secondary: #555960;
+        --accent-text: #1f5fc2;
+        --border: #d0d2d6;
+        --border-subtle: #e1e2e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-panel: #232428;
+          --bg-raised: #2a2b30;
+          --text: #e4e5e7;
+          --text-secondary: #a3a6ad;
+          --accent-text: #7faef5;
+          --border: #393b41;
+          --border-subtle: #2e3035;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg-panel);
+        color: var(--text);
+        font:
+          14px/1.5 'Segoe UI Variable Text',
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 32px 48px;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 32px 0 8px;
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 24px 0 8px;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      nav {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+      code,
+      kbd {
+        font-family: 'Cascadia Mono', Consolas, monospace;
+        font-size: 13px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 12px 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+      }
+      .secondary {
+        color: var(--text-secondary);
+      }
+      ul.tools {
+        list-style: none;
+        padding: 0;
+      }
+      ul.tools li {
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">Zur Übersicht</a></nav>
+      <h1>Erste Schritte</h1>
+      <p>
+        Diese Anleitung macht aus dem mitgelieferten Beispielscan eines Halters eine STEP-Datei. Sie
+        dauert etwa 20 Minuten und verwendet die wichtigsten Werkzeuge je einmal. Die englische
+        Fassung ist <a href="getting-started.html">getting-started.md</a>.
+      </p>
+      <p>
+        Der Halter ist ein L-förmiges Teil mit 80 × 50 × 60 mm, zwei Bohrungen in der Grundplatte,
+        einer Bohrung im Steg und verrundeten Kanten. Der Scan hat etwa 167.000 Dreiecke und ein
+        Rauschen von 0,03 mm und liegt wie ein echter Scan schräg im Raum.
+      </p>
+      <h2>Maus und Tastatur</h2>
+      <ul>
+        <li>
+          Rechte Maustaste ziehen dreht die Ansicht, mittlere Maustaste verschiebt, das Mausrad
+          zoomt zum Mauszeiger. Doppelklick mit der mittleren Maustaste zeigt alles.
+        </li>
+        <li>Die linke Maustaste wählt aus und malt; sie bewegt nie die Ansicht.</li>
+        <li>
+          <code>F1</code> öffnet die Hilfeseite des aktiven Werkzeugs, <code>Strg+/</code> zeigt
+          alle Tastenkürzel.
+        </li>
+        <li>
+          <code>Eingabe</code> bestätigt ein Werkzeug (OK), <code>Esc</code> bricht es ab.
+          <code>Strg+Z</code> macht den letzten Schritt rückgängig.
+        </li>
+      </ul>
+      <h2>1. Beispiel öffnen</h2>
+      <ol>
+        <li>Mesh-to-CAD starten. Das Ansichtsfenster zeigt <em>Kein Scan geladen</em>.</li>
+        <li>
+          <strong>Beispiel öffnen</strong> klicken (oder
+          <em>Hilfe &gt; Beispiel öffnen: Halter</em>).
+        </li>
+        <li>
+          Der Bereich <em>Scan importieren</em> zeigt Datei, Abmessungen und das gemessene
+          Scanrauschen. Einheit <em>mm</em> und die vorgeschlagene Toleranz beibehalten und
+          <strong>OK</strong> klicken.
+        </li>
+      </ol>
+      <p>
+        Im Projektbaum steht jetzt <em>Scan</em> mit Dateiname und Dreiecksanzahl. Die Statusleiste
+        zeigt die Dreiecksanzahl und die Projekttoleranz.
+      </p>
+      <h2>2. Scan vorbereiten</h2>
+      <p>
+        Arbeitsschritt <em>Vorbereiten</em>. <strong>Reparieren</strong> prüft den Scan auf doppelte
+        Punkte, Dreiecke ohne Fläche und uneinheitliche Orientierung. Das Beispiel hat solche Fehler
+        nicht; der Bereich meldet, dass nichts zu tun ist. Bei einem echten Scan zuerst reparieren,
+        dann lose Teile mit <em>Kleine Teile entfernen</em> löschen und kleine Löcher mit
+        <em>Löcher füllen</em> schließen.
+      </p>
+      <h2>3. Scan ausrichten</h2>
+      <p>
+        Arbeitsschritt <em>Ausrichten</em>, Werkzeug <strong>Automatisch ausrichten</strong>. Die
+        größte Ebene (die Unterseite der Grundplatte) wird zur XY-Ebene, die größte Ebene senkrecht
+        dazu zur XZ-Ebene, und der Ursprung liegt an einer Ecke des Scans. Unter
+        <em>Ergebnis</em> prüfen, dass die größte Ebene höchstens wenige Hundertstel Grad zu XY
+        liegt. Liegt das Teil falsch herum, mit <em>Umdrehen</em> oder
+        <em>Drehen 90°</em> korrigieren und <strong>OK</strong> klicken.
+      </p>
+      <p>
+        Die Ausrichtung ist der erste Eintrag unter <em>Verlauf</em>. Ein Doppelklick öffnet sie zum
+        Ändern; alle folgenden Schritte werden danach neu berechnet.
+      </p>
+      <h2>4. Flächen finden</h2>
+      <p>
+        <strong>Segmentieren</strong> teilt den Scan in Bereiche aus Ebenen, Zylindern und anderen
+        Formen. Sie erscheinen im Projektbaum unter <em>Bereiche</em>, nach Typ gruppiert. Zeigt der
+        Mauszeiger auf einen Bereich, werden seine Dreiecke im Ansichtsfenster hervorgehoben.
+      </p>
+      <h2>5. Bohrungen einpassen</h2>
+      <p>
+        Arbeitsschritt <em>Modellieren</em>, Werkzeug
+        <strong>Form einpassen</strong> (<code>A</code>).
+      </p>
+      <ol>
+        <li>
+          In der Werkzeugleiste <em>Flächenauswahl</em> (<code>W</code>) wählen und die Wand einer
+          Bohrung in der Grundplatte anklicken.
+        </li>
+        <li>
+          Der Bereich zeigt <em>Zylinder</em> mit Scanrauschen, RMS, Maximum und dem Anteil der
+          Dreiecke in der Toleranz. Der Radius wird auf 4,500 mm gefangen und die Achse auf Z; jeder
+          gefangene Wert zeigt den gemessenen Wert, den er ersetzt.
+        </li>
+        <li>
+          <strong>OK</strong> klicken. <em>Zylinder 1</em> erscheint im Verlauf, die verwendeten
+          Dreiecke verlassen die Auswahl.
+        </li>
+      </ol>
+      <p>
+        Das Gleiche für die zweite Bohrung und die Bohrung im Steg wiederholen (Radius 6,000 mm,
+        Achse parallel zu Y).
+      </p>
+      <h2>6. Seitenprofil skizzieren</h2>
+      <p>
+        Werkzeug <strong>Skizze</strong> (<code>S</code>). Ebene <em>YZ</em> wählen und den Schnitt
+        in die Mitte des Teils legen. Der Schnitt durch den Scan erscheint in der Skizzenebene.
+        <strong>OK</strong> passt Linien und Bögen ein: die L-förmige Kontur mit der inneren
+        Verrundung R6. Werte werden auf Konstruktionswerte wie 8,000 mm gefangen. Das Profil muss
+        geschlossen sein; Lücken listet der Bereich auf. <strong>Skizze beenden</strong> klicken.
+      </p>
+      <h2>7. Körper extrudieren</h2>
+      <p>
+        Werkzeug <strong>Extrusion</strong> (<code>E</code>). <em>Skizze 1</em> und
+        <em>Symmetrisch</em> wählen. Der Abstand wird aus der Ausdehnung des Scans übernommen (80
+        mm). <em>Neuer Körper</em> beibehalten und <strong>OK</strong> klicken.
+        <em>Körper 1</em> erscheint unter <em>Körper</em>; Volumen und Gültigkeit stehen in den
+        Eigenschaften, wenn er ausgewählt ist.
+      </p>
+      <h2>8. Bohrungen schneiden und Kanten verrunden</h2>
+      <ol>
+        <li>
+          Auf der Oberseite der Grundplatte eine Skizze mit zwei Kreisen an den eingepassten
+          Bohrungsachsen anlegen und mit <em>Abziehen</em> durch die Grundplatte extrudieren. Ebenso
+          die Bohrung im Steg.
+        </li>
+        <li>
+          Werkzeug <strong>Verrundung</strong>: die beiden senkrechten vorderen Kanten der
+          Grundplatte anklicken. <em>Radius aus Scan</em> passt einen Zylinder an den Scan entlang
+          der Kanten ein und schlägt 8,000 mm vor. <strong>OK</strong> klicken.
+        </li>
+      </ol>
+      <h2>9. Abweichung prüfen</h2>
+      <p>
+        Arbeitsschritt <em>Prüfen</em>, Werkzeug <strong>Abweichung</strong> (<code>D</code>). Der
+        Scan wird nach seinem Abstand zum Körper eingefärbt: grün innerhalb der Toleranz, wärmere
+        Farben, wo der Scan außerhalb liegt, kühlere, wo er innerhalb liegt. Die Legende zeigt den
+        Anteil der Punkte in der Toleranz. Große farbige Flächen bedeuten, dass ein Element fehlt
+        oder ein Wert nicht stimmt; das Element im Verlauf bearbeiten und erneut prüfen.
+      </p>
+      <h2>10. STEP exportieren</h2>
+      <p>
+        Werkzeug <strong>STEP exportieren …</strong> (<code>Strg+E</code>).
+        <em>Körper 1</em> wählen, <em>AP214</em> beibehalten und die Datei speichern. Die Datei wird
+        vor dem Ersetzen einer vorhandenen Datei neu eingelesen und mit dem Modell verglichen. Die
+        Statusleiste bestätigt Dateiname und Größe.
+      </p>
+      <p>
+        Mit <code>Strg+S</code> das Projekt speichern, um später weiterzuarbeiten. Die Projektdatei
+        enthält Scan, Bereiche, Ausrichtung und jeden Schritt des Verlaufs.
+      </p>
+    </main>
+  </body>
+</html>

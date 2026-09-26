@@ -1,3 +1,19 @@
 {
-  "label": "Repair"
+  "label": "Repair",
+  "tooltip": "Welds duplicate vertices, removes broken triangles and makes the orientation consistent.",
+  "steps": {
+    "weld": "Weld duplicate vertices",
+    "degenerate": "Remove triangles without area",
+    "duplicates": "Remove duplicate triangles",
+    "winding": "Make orientation consistent",
+    "orientation": "Orient outward"
+  },
+  "nothingToDo": "The scan has no defects these steps fix.",
+  "nonOrientable_one": "{{count, count}} triangle lies at a non-orientable spot and stays unchanged.",
+  "nonOrientable_other": "{{count, count}} triangles lie at non-orientable spots and stay unchanged.",
+  "shared": {
+    "scan": "Scan",
+    "facesAfter": "Triangles afterwards"
+  },
+  "help": "The numbers next to the steps show what the repair changes on the current scan; affected triangles are marked red. Each step can be turned off. Orient outward only turns parts whose inside is unambiguous."
 }

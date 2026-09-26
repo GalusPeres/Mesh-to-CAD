@@ -1,0 +1,132 @@
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  font-weight: var(--weight-semibold);
+  cursor: help;
+}
+
+.scale {
+  position: relative;
+  display: flex;
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  width: 12px;
+  outline: 1px solid var(--border);
+}
+
+.band {
+  width: 100%;
+}
+
+.ticks {
+  position: relative;
+  width: 48px;
+  margin-left: var(--space-6);
+}
+
+.tick {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.bracket {
+  position: absolute;
+  left: 70px;
+  width: var(--space-6);
+  border: 1px solid var(--text-secondary);
+  border-left: 0;
+}
+
+.bracketLabel {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-6));
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.scale:has(.bracket) {
+  width: 190px;
+}
+
+.swatches {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.swatchItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  white-space: nowrap;
+}
+
+.swatch,
+.splitSwatch {
+  display: inline-flex;
+  flex-direction: column;
+  width: 12px;
+  height: 12px;
+  outline: 1px solid var(--border);
+}
+
+.splitSwatch > span {
+  flex: 1;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  column-gap: var(--space-8);
+  row-gap: var(--space-2);
+  margin: 0;
+}
+
+.stats dt {
+  color: var(--text-secondary);
+}
+
+.stats dd {
+  margin: 0;
+  text-align: right;
+}
+
+.stats .share {
+  grid-column: span 2;
+  text-align: left;
+}
+
+.max,
+.stale {
+  margin: 0;
+}
+
+.stale {
+  color: var(--text-secondary);
+}

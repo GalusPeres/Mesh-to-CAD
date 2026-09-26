@@ -1,3 +1,5 @@
 {
-  "name": "Kombination"
+  "name": "Kombination",
+  "tools_one": "{{count}} Werkzeugkörper",
+  "tools_other": "{{count}} Werkzeugkörper"
 }

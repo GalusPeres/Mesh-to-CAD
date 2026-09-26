@@ -1,17 +1,23 @@
 """LO-RANSAC for selections that contain other surfaces or junk.
 
 Hypotheses come from minimal point-normal samples and are scored on a
-subsample of at most 20 000 points: a point counts when it lies within `eps` of
+subsample of at most 10 000 points: a point counts when it lies within `eps` of
 the surface and its normal agrees with the surface normal within 25 degrees.
-The number of hypotheses adapts to the best inlier ratio found so far. The best
-hypothesis is then refined by alternating least-squares refits and consensus on
-all points with a threshold that shrinks from 3 eps to eps (local
-optimisation), which repairs the poor axis of a noisy minimal sample.
-Background: `.work/research/algorithms-mesh.md` 3.4.
+A hypothesis is first checked on 400 of those points and dropped early when it
+cannot come close to the best one. The number of hypotheses adapts to the best
+inlier ratio found so far.
+
+Local optimisation is what makes this work with noisy normals: every new best
+hypothesis is refitted by least squares on its consensus set, which repairs
+the poor axis of a noisy minimal sample and raises the inlier ratio, so the
+adaptive budget shrinks quickly. The winner is finally refined by alternating
+refits and consensus on all points with a threshold that shrinks from 3 eps to
+eps. Background: `.work/research/algorithms-mesh.md` 3.4.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,7 +43,11 @@ MIN_SAMPLE: dict[PrimitiveKind, int] = {
     "cone": 3,
     "torus": 12,
 }
-SCORE_POINTS = 20_000
+SCORE_POINTS = 10_000
+PRETEST_POINTS = 400
+PRETEST_SHARE = 0.6
+"""A hypothesis whose pretest ratio is below this share of the best ratio is dropped."""
+LOCAL_POINTS = 3_000
 MAX_HYPOTHESES = 3_000
 SUCCESS_PROBABILITY = 0.999
 NORMAL_ANGLE_DEG = 25.0
@@ -119,6 +129,30 @@ def consensus(
     return mask
 
 
+def _optimised(
+    kind: PrimitiveKind,
+    candidate: Primitive,
+    count: int,
+    points: FloatArray,
+    normals: FloatArray,
+    eps: float,
+    cos_tol: float,
+    rng: np.random.Generator,
+) -> tuple[Primitive, int]:
+    """Refit a new best hypothesis on its consensus set; keep whichever explains more points."""
+    near = np.nonzero(consensus(candidate, points, normals, 3.0 * eps, cos_tol))[0]
+    if len(near) < max(MIN_SAMPLE[kind], 10):
+        return candidate, count
+    if len(near) > LOCAL_POINTS:
+        near = rng.choice(near, LOCAL_POINTS, replace=False)
+    try:
+        refined = fit_primitive(kind, points[near], normals[near], rng).primitive
+    except FitError:
+        return candidate, count
+    refined_count = int(consensus(refined, points, normals, eps, cos_tol).sum())
+    return (refined, refined_count) if refined_count > count else (candidate, count)
+
+
 def ransac(
     kind: PrimitiveKind,
     points: FloatArray,
@@ -126,26 +160,39 @@ def ransac(
     eps: float,
     rng: np.random.Generator,
     local_steps: int = 3,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> RansacResult:
-    """Robust fit of one primitive type; raises `FitError` if no hypothesis is found."""
+    """Robust fit of one primitive type; raises `FitError` if no hypothesis is found.
+
+    `eps` is the inlier distance (about three times the scan noise).
+    `check_cancelled` is called regularly so a superseded preview stops early.
+    """
     cos_tol = float(np.cos(np.radians(NORMAL_ANGLE_DEG)))
     need = MIN_SAMPLE[kind]
     if len(points) < need:
         raise FitError("too few points for RANSAC")
     score = rng.choice(len(points), min(len(points), SCORE_POINTS), replace=False)
     ps, ns = points[score], normals[score]
+    pretest = min(len(ps), PRETEST_POINTS)
     best: Primitive | None = None
     best_count = 0
     budget = MAX_HYPOTHESES if kind != "torus" else MAX_HYPOTHESES // 20
     iteration = 0
     while iteration < budget:
         iteration += 1
+        if check_cancelled is not None and iteration % 64 == 0:
+            check_cancelled()
         sample = rng.choice(len(ps), need, replace=False)
         candidate = _minimal(kind, ps[sample], ns[sample], rng)
         if candidate is None:
             continue
+        if best_count:
+            quick = int(consensus(candidate, ps[:pretest], ns[:pretest], eps, cos_tol).sum())
+            if quick / pretest < PRETEST_SHARE * best_count / len(ps):
+                continue
         count = int(consensus(candidate, ps, ns, eps, cos_tol).sum())
         if count > best_count:
+            candidate, count = _optimised(kind, candidate, count, ps, ns, eps, cos_tol, rng)
             best, best_count = candidate, count
             ratio = best_count / len(ps)
             needed = np.log(1 - SUCCESS_PROBABILITY) / np.log1p(-(ratio**need) + 1e-15)

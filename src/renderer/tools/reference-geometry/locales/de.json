@@ -1,3 +1,47 @@
 {
-  "label": "Hilfsgeometrie"
+  "label": "Hilfsgeometrie",
+  "help": "Art der Hilfsgeometrie wählen und die Eingaben in der Liste, im Projektbaum oder im Ansichtsfenster anklicken. Abstand und Winkel lassen sich eingeben oder an Pfeil und Bogen ziehen. Ebenen dienen als Skizzenebene und Extrusionsgrenze, Achsen als Drehachse und zum Ausrichten.",
+  "definition": "Art",
+  "types": {
+    "offsetPlane": "Versetzte Ebene",
+    "planeThroughAxis": "Ebene durch Achse",
+    "midPlane": "Mittelebene",
+    "axisFromPlanes": "Achse aus zwei Ebenen"
+  },
+  "slots": {
+    "offsetPlane": {
+      "plane": "Ebene"
+    },
+    "planeThroughAxis": {
+      "axis": "Achse"
+    },
+    "midPlane": {
+      "a": "Erste Ebene",
+      "b": "Zweite Ebene"
+    },
+    "axisFromPlanes": {
+      "a": "Erste Ebene",
+      "b": "Zweite Ebene"
+    }
+  },
+  "origin": {
+    "XY": "XY-Ebene",
+    "YZ": "YZ-Ebene",
+    "XZ": "XZ-Ebene",
+    "X": "X-Achse",
+    "Y": "Y-Achse",
+    "Z": "Z-Achse"
+  },
+  "pick": "Auswählen …",
+  "pickHint": {
+    "plane": "Ebene im Projektbaum oder im Ansichtsfenster anklicken.",
+    "axis": "Achse oder Zylinder im Projektbaum oder im Ansichtsfenster anklicken."
+  },
+  "distance": "Abstand",
+  "angle": "Winkel",
+  "incomplete": "Eingaben fehlen.",
+  "created": {
+    "plane": "Ebene berechnet.",
+    "axis": "Achse berechnet."
+  }
 }

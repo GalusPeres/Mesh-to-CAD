@@ -1,3 +1,28 @@
 {
-  "label": "Verrundung"
+  "label": "Verrundung",
+  "help": "Kanten eines Körpers im Ansichtsfenster anklicken; erneutes Klicken entfernt eine Kante. Art und Größe wählen. Radius aus Scan passt einen Zylinder an die Scan-Dreiecke entlang der Kanten ein und übernimmt den gefangenen Radius. Die Kanten bleiben erhalten, wenn sich vorherige Schritte ändern.",
+  "body": "Körper",
+  "noBodyYet": "Noch keine Kante gewählt",
+  "edges": "Kanten",
+  "edgeCount_one": "{{count}} Kante gewählt",
+  "edgeCount_other": "{{count}} Kanten gewählt",
+  "edge": "Kante {{number}}",
+  "removeEdge": "Kante entfernen",
+  "pickHint": "Kanten im Ansichtsfenster anklicken.",
+  "notices": {
+    "otherBody": "Alle Kanten müssen zu einem Körper gehören. Für einen anderen Körper zuerst die Kanten entfernen.",
+    "ownEdge": "Diese Kante entsteht erst durch diese Verrundung.",
+    "notOnBody": "Dieser Körper entsteht erst nach diesem Schritt."
+  },
+  "mode": "Art",
+  "modes": {
+    "fillet": "Verrundung",
+    "chamfer": "Fase"
+  },
+  "radius": "Radius",
+  "distance": "Abstand",
+  "fromScan": "Radius aus Scan",
+  "measuring": "Radius wird aus dem Scan bestimmt …",
+  "measured": "Aus dem Scan: {{value, length}} (gemessen {{measured, length}})",
+  "tooFewFaces": "Radius aus Scan nicht möglich: zu wenige Scan-Dreiecke an den Kanten ({{count}}, mindestens {{min}}). Näher an die Kanten zoomen."
 }

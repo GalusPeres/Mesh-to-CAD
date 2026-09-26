@@ -1,9 +1,11 @@
 """Mesh reduction with fast_simplification in a child process.
 
-fast_simplification is not thread-safe, cannot be interrupted and may print to
-stdout, which carries the protocol. It therefore runs in a spawned child whose
-stdout is moved to stderr before anything is imported; the parent polls for the
-result and kills the child when the job is cancelled.
+fast_simplification keeps its state in C++ globals, cannot be interrupted and may
+print to stdout, which carries the protocol. It therefore runs in a spawned child
+process. The child inherits the kernel's standard output, which already points at
+stderr (`m2c_kernel.main`), and moves fd 1 to stderr once more before it imports
+the library. The parent polls for the result and kills the child when the job is
+cancelled, so a cancel takes effect within one polling interval.
 """
 
 from __future__ import annotations
@@ -16,9 +18,9 @@ from multiprocessing.connection import Connection
 import numpy as np
 import numpy.typing as npt
 
-from m2c_kernel.mesh.load import RawMesh
+from m2c_kernel.mesh.load import RawMesh, compact
 from m2c_kernel.mesh.remap import nearest_centroid_map
-from m2c_kernel.mesh.repair import MeshChange
+from m2c_kernel.mesh.repair import MeshChange, remove_degenerate_faces, remove_duplicate_faces
 
 AGGRESSIVENESS = 5.0
 _POLL_S = 0.05
@@ -33,17 +35,26 @@ class DecimationError(Exception):
 def decimate(
     mesh: RawMesh, target_faces: int, check_cancelled: Callable[[], None] = lambda: None
 ) -> MeshChange:
-    """Reduce to at most `target_faces` faces; the face map is by nearest centroid."""
+    """Reduce to at most `target_faces` faces.
+
+    Quadric decimation merges faces, so there is no exact face map: every new face
+    maps to the old face with the nearest centroid. Degenerate and duplicate faces
+    that the collapse can leave behind are removed as part of the step.
+    """
     if target_faces >= len(mesh.faces):
-        n = len(mesh.faces)
-        return MeshChange(mesh, np.arange(n, dtype=np.int64), np.zeros(n, dtype=bool))
+        return MeshChange.identity(
+            mesh, {"facesBefore": len(mesh.faces), "facesAfter": len(mesh.faces)}
+        )
     vertices, faces = _run_in_child(
         mesh.vertices.astype(np.float32), mesh.faces.astype(np.int32), target_faces, check_cancelled
     )
-    reduced = _compact(RawMesh(vertices.astype(np.float64), faces.astype(np.int64)))
-    new_to_old = nearest_centroid_map(_centroids(mesh), _centroids(reduced))
-    counts = {"facesBefore": len(mesh.faces), "facesAfter": len(reduced.faces)}
-    return MeshChange(reduced, new_to_old, np.zeros(len(reduced.faces), dtype=bool), counts)
+    reduced = RawMesh(vertices.astype(np.float64), faces.astype(np.int64))
+    cleaned = remove_degenerate_faces(reduced)
+    cleaned = cleaned.then(remove_duplicate_faces(cleaned.mesh))
+    result = compact(cleaned.mesh)
+    new_to_old = nearest_centroid_map(_centroids(mesh), _centroids(result))
+    counts = {"facesBefore": len(mesh.faces), "facesAfter": len(result.faces)}
+    return MeshChange(result, new_to_old, np.zeros(len(result.faces), dtype=bool), counts)
 
 
 def _run_in_child(
@@ -100,13 +111,6 @@ def _child_main(
         sender.send(repr(error))
     finally:
         sender.close()
-
-
-def _compact(mesh: RawMesh) -> RawMesh:
-    used = np.zeros(len(mesh.vertices), dtype=bool)
-    used[mesh.faces.ravel()] = True
-    new_index = np.cumsum(used) - 1
-    return RawMesh(mesh.vertices[used], new_index[mesh.faces].astype(np.int64))
 
 
 def _centroids(mesh: RawMesh) -> npt.NDArray[np.float64]:
