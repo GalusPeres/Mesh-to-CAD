@@ -40,6 +40,7 @@ export class ItemLayer {
   private previewToken = 0;
   private highlighted: HighlightTarget = null;
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
+  private bodyEdgesVisible = true;
 
   constructor(
     private readonly context: () => DisplayContext,
@@ -72,8 +73,22 @@ export class ItemLayer {
       this.items.set(item.key, object);
       this.group.add(object.object);
     }
+    this.applyEdgeVisibility();
     this.applyHighlight();
     this.invalidate();
+  }
+
+  /** Body edges (the seams between B-Rep faces) follow the display mode, as in CAD programs. */
+  setBodyEdgesVisible(visible: boolean): void {
+    this.bodyEdgesVisible = visible;
+    this.applyEdgeVisibility();
+    this.invalidate();
+  }
+
+  private applyEdgeVisibility(): void {
+    for (const object of this.all()) {
+      if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;
+    }
   }
 
   /**
@@ -101,6 +116,7 @@ export class ItemLayer {
     this.removePreview(owner);
     objects.forEach((object) => this.previewGroup.add(object.object));
     this.previews.set(owner, { objects, token });
+    this.applyEdgeVisibility();
     this.applyHighlight();
     this.invalidate();
   }

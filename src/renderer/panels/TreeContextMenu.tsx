@@ -67,9 +67,14 @@ export function runTreeAction(
     case 'unsuppress':
       if (featureId) void toggleSuppressed(featureId);
       break;
-    case 'delete':
-      if (featureId) void requestDelete(featureId);
+    case 'delete': {
+      const owner =
+        ref?.kind === 'body'
+          ? snapshot.status.bodies.find((body) => body.id === ref.id)?.owner
+          : featureId;
+      if (owner) void requestDelete(owner);
       break;
+    }
   }
 }
 

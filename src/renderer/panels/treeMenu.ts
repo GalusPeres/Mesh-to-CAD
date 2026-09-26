@@ -38,7 +38,9 @@ export function treeMenuActions(node: ProjectNode, context: TreeMenuContext): Tr
   const suppress: TreeMenuAction[] = feature
     ? [node.state === 'suppressed' ? 'unsuppress' : 'suppress']
     : [];
-  const remove: TreeMenuAction[] = feature ? ['delete'] : [];
+  // A body is deleted through the feature that created it (with the usual question
+  // when other features use it).
+  const remove: TreeMenuAction[] = feature || node.ref?.kind === 'body' ? ['delete'] : [];
   return [edit, visibility, suppress, remove].filter((group) => group.length > 0);
 }
 

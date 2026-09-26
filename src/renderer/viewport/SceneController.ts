@@ -236,6 +236,7 @@ export class SceneController implements Viewport {
   setDisplay(mode: DisplayMode, deviationVisible: boolean): void {
     this.display = { mode, deviationVisible };
     this.scan.setDisplay(mode, deviationVisible, this.theme.text);
+    this.items.setBodyEdgesVisible(mode !== 'shaded');
   }
 
   setTolerance(tolerance: number): void {
