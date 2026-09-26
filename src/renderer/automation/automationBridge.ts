@@ -1,0 +1,59 @@
+// Answers the requests of the local automation interface (docs/AUTOMATION.md):
+// the parts of the application state that only the user interface owns, such as
+// the view, the open tool and the triangle selection. Document changes do not
+// come through here; automation clients send them to the kernel directly.
+
+import type { AutomationAction } from '@shared/automation';
+
+import { allCommands, commandById, runCommand } from '../app/commands/registry';
+import { i18n } from '../i18n';
+import { replaceSelection } from '../selection/api';
+import { selectionStore } from '../selection/selectionStore';
+import { documentStore } from '../state/documentStore';
+import { toolStore } from '../state/toolStore';
+
+async function handle(action: AutomationAction): Promise<unknown> {
+  switch (action.type) {
+    case 'state':
+      return {
+        revision: documentStore.getState().snapshot?.revision ?? null,
+        activeTool: toolStore.getState().activeToolId,
+        selectedFaces: selectionStore.getState().count,
+      };
+    case 'listCommands':
+      return allCommands().map((command) => ({
+        id: command.id,
+        label: i18n.t(command.label),
+        enabled: command.isEnabled ? command.isEnabled() : true,
+      }));
+    case 'runCommand': {
+      const command = commandById(action.id);
+      if (!command) throw new Error(`unknown command: ${action.id}`);
+      if (command.isEnabled && !command.isEnabled()) {
+        throw new Error(`command not available right now: ${action.id}`);
+      }
+      await runCommand(command);
+      return { ran: action.id };
+    }
+    case 'selectFaces': {
+      const scan = documentStore.getState().snapshot?.document.scan;
+      if (!scan) throw new Error('no scan loaded');
+      replaceSelection(scan.key, scan.faceCount, Uint32Array.from(action.faces));
+      return { selectedFaces: action.faces.length };
+    }
+  }
+}
+
+export function installAutomationBridge(): void {
+  window.m2c.automation.onRequest(({ requestId, action }) => {
+    handle(action).then(
+      (result) => window.m2c.automation.respond({ requestId, ok: true, result }),
+      (error: unknown) =>
+        window.m2c.automation.respond({
+          requestId,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+    );
+  });
+}

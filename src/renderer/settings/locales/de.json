@@ -55,5 +55,8 @@
     "licenseText": "Mesh-to-CAD steht unter der MIT-Lizenz. Die enthaltenen Komponenten stehen unter ihren eigenen Lizenzen.",
     "showLicenses": "Lizenzen anzeigen",
     "logs": "Protokollordner"
-  }
+  },
+  "automation": "Automatisierung",
+  "automationEnabled": "Steuerung durch KI-Assistenten erlauben (MCP)",
+  "automationHint": "Nur Programme auf diesem Rechner können die App dann steuern: Scans laden, Formen einpassen, exportieren. Einrichtung: docs/AUTOMATION.md."
 }

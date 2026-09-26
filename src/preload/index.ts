@@ -17,6 +17,7 @@ import type {
   TitleBarColors,
   Unsubscribe,
 } from '@shared/bridge';
+import type { AutomationRequest, AutomationResponse } from '@shared/automation';
 import { IPC } from '@shared/ipc';
 import type { Settings, SettingsPatch } from '@shared/settings';
 
@@ -63,6 +64,10 @@ const bridge: M2CBridge = {
     setTitle: (title: string) => ipcRenderer.send(IPC.windowSetTitle, title),
     onBeforeClose: (listener) => subscribe<void>(IPC.windowBeforeClose, listener),
     confirmClose: () => ipcRenderer.send(IPC.windowConfirmClose),
+  },
+  automation: {
+    onRequest: (listener) => subscribe<AutomationRequest>(IPC.automationRequest, listener),
+    respond: (response: AutomationResponse) => ipcRenderer.send(IPC.automationResponse, response),
   },
   app: {
     info: () => ipcRenderer.invoke(IPC.appInfo) as ReturnType<M2CBridge['app']['info']>,

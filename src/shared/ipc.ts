@@ -23,6 +23,8 @@ export const IPC = {
   appInfo: 'app:info',
   appLog: 'app:log',
   appOpenHelp: 'app:openHelp',
+  automationRequest: 'automation:request',
+  automationResponse: 'automation:response',
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

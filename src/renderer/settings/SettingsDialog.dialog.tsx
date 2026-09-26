@@ -81,6 +81,15 @@ function SettingsDialog() {
         onChange={(clearAfterFit) => void updateSettings({ selection: { clearAfterFit } })}
       />
 
+      <h3 className={styles.heading}>{t('automation')}</h3>
+      <Checkbox
+        checked={settings.automation.enabled}
+        label={t('automationEnabled')}
+        testId="settings-automation"
+        onChange={(enabled) => void updateSettings({ automation: { enabled } })}
+      />
+      <p className={styles.hint}>{t('automationHint')}</p>
+
       <h3 className={styles.heading}>{t('tools')}</h3>
       <p className={styles.hint}>{t('toolOptionsHint')}</p>
       <Button

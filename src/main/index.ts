@@ -6,6 +6,7 @@ import { IPC } from '@shared/ipc';
 import { TITLE_BAR_COLORS } from '@shared/theme';
 
 import { APP_ORIGIN, APP_URL, registerAppScheme, serveRenderer } from './appProtocol';
+import { AutomationServer } from './automation';
 import { FileActions } from './files';
 import { registerIpc } from './ipc';
 import { KernelHost } from './kernel/KernelHost';
@@ -105,6 +106,19 @@ function startApplication(): void {
     },
   };
 
+  const automation = new AutomationServer({
+    kernel,
+    window: () => mainWindow,
+    log,
+    infoPath: path.join(app.getPath('userData'), 'automation.json'),
+    version: app.getVersion(),
+  });
+  const syncAutomation = () => {
+    const wanted = settings.get().automation.enabled || process.env.M2C_AUTOMATION === '1';
+    const change = wanted ? automation.start() : automation.stop();
+    change.catch((error: unknown) => log.error('automation interface', error));
+  };
+
   let closeConfirmed = false;
   registerIpc({
     window: () => mainWindow,
@@ -119,6 +133,7 @@ function startApplication(): void {
     resourcesDirectory: resourcesDirectory(),
     onSettingsChanged: () => {
       nativeTheme.themeSource = settings.get().theme;
+      syncAutomation();
     },
     onConfirmClose: () => {
       closeConfirmed = true;
@@ -154,7 +169,7 @@ function startApplication(): void {
     if (quitting) return;
     quitting = true;
     event.preventDefault();
-    void kernel.stop().finally(() => {
+    void Promise.allSettled([automation.stop(), kernel.stop()]).finally(() => {
       // Delete the session only after the kernel exited: Windows cannot remove
       // files that another process still has open.
       deleteSession(sessionDirectory);
@@ -165,4 +180,5 @@ function startApplication(): void {
   app.on('window-all-closed', () => app.quit());
 
   kernel.start().catch((error: unknown) => log.error('kernel start failed', error));
+  syncAutomation();
 }
