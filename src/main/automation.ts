@@ -21,10 +21,14 @@ import { decodeBuffers, encodeBuffers } from '@shared/protocol/codec';
 import type { KernelHost } from './kernel/KernelHost';
 import type { Logger } from './logging';
 
-const MAX_BODY_BYTES = 8 * 1024 * 1024;
+/** Face selections of a full scan (up to 2 million indices) must fit into one request. */
+const MAX_BODY_BYTES = 64 * 1024 * 1024;
 const UI_TIMEOUT_MS = 60_000;
-/** Typed arrays up to this length are returned in full, longer ones as a summary. */
-const INLINE_ARRAY_LENGTH = 4096;
+/**
+ * Typed arrays up to this length are returned in full (face selections, which clients
+ * send back as fit input); only scene geometry is longer and comes as a summary.
+ */
+const INLINE_ARRAY_LENGTH = 2_000_000;
 
 const TYPED = {
   uint8: Uint8Array,

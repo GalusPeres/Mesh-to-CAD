@@ -55,6 +55,10 @@ test('an MCP client loads, aligns, fits, surfaces and exports through the runnin
     json(await call('align_auto'));
     const bounds = json(await call('scan_bounds')) as { min: number[]; max: number[] };
 
+    // A selection larger than any summary limit comes back complete.
+    const all = json(await call('select_region', { min: bounds.min, max: bounds.max }));
+    expect(all.selectedTriangles).toBe(2 * 120 * 48);
+
     // The top of the torus: the triangles near the highest point, facing up.
     const top = bounds.max[2]!;
     const fitted = json(
