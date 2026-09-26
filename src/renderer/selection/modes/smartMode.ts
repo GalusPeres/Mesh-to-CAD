@@ -15,11 +15,11 @@ import {
   setSelectionOptions,
 } from '../selectionOptions';
 import type { SelectionMode } from './types';
+import { clearOnEmptyClick, isClick } from './emptyClick';
 
 export const SMART_DWELL_MS = 300;
 export const SMART_LANE = 'regions.grow:select-smart';
 /** A press that moves farther than this is a camera drag, not a click. */
-const CLICK_SLOP_PX = 4;
 /** Ctrl + wheel changes the tolerance by this factor per notch. */
 const TOLERANCE_STEP = 1.25;
 
@@ -160,8 +160,9 @@ export function createSmartMode(viewport: Viewport): SelectionMode {
       const started = press;
       press = null;
       if (!started) return false;
-      const moved = Math.hypot(event.screen.x - started.at.x, event.screen.y - started.at.y);
-      if (moved <= CLICK_SLOP_PX) void commit(event.screen, started.ctrl || event.ctrl);
+      if (!isClick(started.at, event.screen)) return true;
+      const remove = started.ctrl || event.ctrl;
+      if (!clearOnEmptyClick(viewport, event.screen, remove)) void commit(event.screen, remove);
       return true;
     },
     onWheel(event) {

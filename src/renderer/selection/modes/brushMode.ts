@@ -8,6 +8,7 @@ import { updateGesture } from '../gestureStore';
 import { Stroke, withoutHidden } from '../selectionActions';
 import { resizeBrush, selectionOptionsStore } from '../selectionOptions';
 import { strokeSamples } from '../screenShapes';
+import { clearOnEmptyClick, isClick } from './emptyClick';
 import type { SelectionMode } from './types';
 
 /** Samples are spaced at this fraction of the radius, so the painted band has no gaps. */
@@ -16,6 +17,7 @@ const SAMPLE_SPACING = 0.5;
 export function createBrushMode(viewport: Viewport): SelectionMode {
   let stroke: Stroke | null = null;
   let last: ScreenPoint | null = null;
+  let start: ScreenPoint | null = null;
   let pending: ScreenPoint[] = [];
   let frame = 0;
 
@@ -49,6 +51,7 @@ export function createBrushMode(viewport: Viewport): SelectionMode {
       if (event.button !== 0 || event.alt) return false;
       stroke = new Stroke(event.ctrl ? 0 : 1);
       last = event.screen;
+      start = event.screen;
       updateGesture({ pointer: event.screen, removing: event.ctrl });
       queue([event.screen]);
       return true;
@@ -61,8 +64,12 @@ export function createBrushMode(viewport: Viewport): SelectionMode {
       last = event.screen;
       return true;
     },
-    onPointerUp() {
+    onPointerUp(event) {
+      const clicked = start !== null && isClick(start, event.screen);
+      const removing = stroke?.value === 0;
+      start = null;
       finish();
+      if (clicked) clearOnEmptyClick(viewport, event.screen, removing);
       return true;
     },
     onWheel(event) {

@@ -7,6 +7,7 @@ import { reportFailure } from '../reportFailure';
 import { currentScan, setSelected, withoutHidden } from '../selectionActions';
 import { selectionOptionsStore } from '../selectionOptions';
 import { LassoPath, polygonArea, rectanglePolygon } from '../screenShapes';
+import { clearOnEmptyClick, isClick } from './emptyClick';
 import type { SelectionMode } from './types';
 
 /** Shapes smaller than this (square pixels) are treated as a click and ignored. */
@@ -72,11 +73,14 @@ export function createShapeMode(viewport: Viewport, shape: ShapeKind): Selection
       updateGesture({ removing: event.ctrl });
       return false;
     },
-    onPointerUp() {
+    onPointerUp(event) {
+      const clicked =
+        from !== null && to !== null ? isClick(from, to) : lasso !== null && lasso.pointCount <= 1;
       const polygon = lasso ? lasso.polygon() : from && to ? rectanglePolygon(from, to) : null;
       const remove = removing;
       reset();
-      if (polygon && polygon.length >= 6) void select(polygon, remove);
+      if (clicked) clearOnEmptyClick(viewport, event.screen, remove);
+      else if (polygon && polygon.length >= 6) void select(polygon, remove);
       return true;
     },
   };

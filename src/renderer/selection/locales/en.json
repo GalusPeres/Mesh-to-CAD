@@ -3,7 +3,8 @@
     "selected_one": "{{formatted}} triangle selected",
     "selected_other": "{{formatted}} triangles selected",
     "hidden_one": "{{formatted}} hidden",
-    "hidden_other": "{{formatted}} hidden"
+    "hidden_other": "{{formatted}} hidden",
+    "clear": "Clear selection (Ctrl+D)"
   },
   "hints": {
     "select-brush": "Left mouse button: add · Ctrl: remove · [ ]: brush size · Right mouse button: orbit",
