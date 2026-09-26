@@ -179,7 +179,7 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
     if (!draft.body || draft.edges.length === 0 || !isPositiveLength(size)) return null;
     return { targetBody: draft.body, edges: draft.edges, mode, size };
   }, [draft.body, draft.edges, mode, size]);
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'fillet',
     'fillet',
     editTarget,
@@ -250,7 +250,7 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
           </>
         )}
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

@@ -21,6 +21,9 @@ import { emptySketch, scanCenter, sectionFor } from './planeChoice';
 import { SketchStep } from './SketchStep';
 import { FIT_LANE, useSketchDraft } from './useSketchDraft';
 
+/** Stable fallback, so the store selector does not return a new array on every call. */
+const NO_FEATURES: readonly never[] = [];
+
 const TOOL_ID = 'section-sketch';
 
 function isRefitRequest(activation: unknown): boolean {
@@ -35,7 +38,7 @@ function storedSketch(feature: Feature | undefined): SketchParams | null {
 export function SketchPanel({ activation, editTarget, close }: ToolPanelProps) {
   const { t } = useTranslation(['tools', 'common']);
   const format = useFormatter();
-  const features = useDocument((state) => state.snapshot?.document.features ?? []);
+  const features = useDocument((state) => state.snapshot?.document.features ?? NO_FEATURES);
   const hasScan = useDocument((state) => !!state.snapshot?.document.scan);
   const edited = editTarget ? features.find((feature) => feature.id === editTarget) : undefined;
 

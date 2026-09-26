@@ -1,6 +1,58 @@
 {
   "status": {
-    "selected_one": "{{formatted}} ausgewählt",
-    "selected_other": "{{formatted}} ausgewählt"
+    "selected_one": "{{formatted}} Dreieck ausgewählt",
+    "selected_other": "{{formatted}} Dreiecke ausgewählt",
+    "hidden_one": "{{formatted}} ausgeblendet",
+    "hidden_other": "{{formatted}} ausgeblendet"
+  },
+  "hints": {
+    "select-brush": "Linke Maustaste: hinzufügen · Strg: entfernen · [ ]: Pinselgröße · Rechte Maustaste: drehen",
+    "select-brushRemoving": "Linke Maustaste: entfernen · [ ]: Pinselgröße · Rechte Maustaste: drehen",
+    "select-smart": "Klicken: Fläche hinzufügen · Strg+Klicken: entfernen · Strg+Mausrad: Toleranz",
+    "select-smartRemoving": "Klicken: Fläche entfernen · Strg+Mausrad: Toleranz",
+    "select-lasso": "Linke Maustaste ziehen: Form zeichnen · Strg: entfernen · Esc: Lasso beenden",
+    "select-lassoRemoving": "Linke Maustaste ziehen: aus Auswahl entfernen · Esc: Lasso beenden",
+    "select-rectangle": "Linke Maustaste ziehen: Rechteck aufziehen · Strg: entfernen · Esc: Rechteck beenden",
+    "select-rectangleRemoving": "Linke Maustaste ziehen: aus Auswahl entfernen · Esc: Rechteck beenden",
+    "smartBusy": "Fläche wird ermittelt …",
+    "smartFound_one": "{{formatted}} Dreieck",
+    "smartFound_other": "{{formatted}} Dreiecke"
+  },
+  "options": {
+    "title": "Auswahloptionen",
+    "brushSize": "Pinselgröße",
+    "pixels": "px",
+    "visibleOnly": "Nur sichtbare",
+    "throughPart": "Durch das Teil",
+    "smartMode": "Art der Fläche",
+    "modePrimitive": "Form",
+    "modeSmooth": "Glatt",
+    "tolerance": "Toleranz",
+    "automatic": "Automatisch"
+  },
+  "commands": {
+    "selectAllVisible": "Alle sichtbaren auswählen",
+    "clear": "Auswahl aufheben",
+    "invert": "Auswahl umkehren",
+    "grow": "Auswahl erweitern",
+    "shrink": "Auswahl verkleinern",
+    "hide": "Auswahl ausblenden",
+    "showAll": "Alle Dreiecke einblenden",
+    "isolate": "Auswahl isolieren",
+    "saveAsRegion": "Auswahl als Bereich speichern",
+    "selectRegion": "Bereich auswählen",
+    "addToRegion": "Auswahl zum Bereich hinzufügen",
+    "removeFromRegion": "Auswahl aus Bereich entfernen",
+    "mergeRegions": "Bereiche zusammenführen",
+    "renameRegion": "Bereich umbenennen …",
+    "deleteRegions": "Bereich löschen"
+  },
+  "regions": {
+    "defaultName": "Bereich {{number}}",
+    "saved_one": "Bereich mit {{count, count}} Dreieck gespeichert.",
+    "saved_other": "Bereich mit {{count, count}} Dreiecken gespeichert.",
+    "renameTitle": "Bereich umbenennen",
+    "name": "Name",
+    "renameHint": "Ohne Namen heißt der Bereich wieder „Bereich N“."
   }
 }

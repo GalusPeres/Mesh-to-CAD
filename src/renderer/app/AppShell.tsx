@@ -6,7 +6,7 @@ import { ProjectTree } from '../panels/ProjectTree';
 import { useDocument } from '../state/documentStore';
 import { useTools } from '../state/toolStore';
 import { ToolHost } from '../tools/framework/ToolHost';
-import { handleImportResponse } from '../tools/import-mesh/importFlow';
+import { openDroppedFile } from '../tools/import-mesh/importFlow';
 import { ViewportCanvas } from '../viewport/ViewportCanvas';
 import styles from './AppShell.module.css';
 import { EmptyState } from './empty-state/EmptyState';
@@ -34,7 +34,7 @@ export function AppShell() {
     event.preventDefault();
     setDropping(false);
     const file = event.dataTransfer.files[0];
-    if (file) void window.m2c.files.dropped(file).then(handleImportResponse);
+    if (file) void openDroppedFile(file);
   };
 
   return (

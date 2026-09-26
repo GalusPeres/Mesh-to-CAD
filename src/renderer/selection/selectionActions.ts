@@ -44,8 +44,8 @@ function apply(change: SelectionChange): SelectionChange {
   const mask = ownedMask('mask', scan.faceCount);
   const selected = setFaces(mask, change.selected, 1);
   const deselected = setFaces(mask, change.deselected, 0);
-  let hidden = new Uint32Array();
-  let shown = new Uint32Array();
+  let hidden: Uint32Array = new Uint32Array();
+  let shown: Uint32Array = new Uint32Array();
   if (change.hidden.length || change.shown.length) {
     const hiddenMask = ownedMask('hidden', scan.faceCount);
     hidden = setFaces(hiddenMask, change.hidden, 1);
@@ -104,7 +104,9 @@ export class Stroke {
 
   add(faces: Uint32Array): void {
     if (!this.scanKey || currentScan()?.key !== this.scanKey) return;
-    const applied = apply(this.value ? { ...NO_CHANGE, selected: faces } : { ...NO_CHANGE, deselected: faces });
+    const applied = apply(
+      this.value ? { ...NO_CHANGE, selected: faces } : { ...NO_CHANGE, deselected: faces },
+    );
     const changed = this.value ? applied.selected : applied.deselected;
     if (changed.length) this.changed.push(changed);
   }
@@ -156,4 +158,11 @@ export function hiddenMask(): Uint8Array | null {
   const scan = currentScan();
   const hidden = selectionStore.getState().hidden;
   return scan && hidden?.length === scan.faceCount ? hidden : null;
+}
+
+/** The faces that are not hidden (picking through the part can reach hidden faces). */
+export function withoutHidden(faces: Uint32Array): Uint32Array {
+  const hidden = hiddenMask();
+  if (!hidden) return faces;
+  return faces.filter((face) => !hidden[face]);
 }

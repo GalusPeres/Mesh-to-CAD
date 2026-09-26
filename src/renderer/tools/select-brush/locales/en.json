@@ -1,3 +1,5 @@
 {
-  "label": "Brush"
+  "label": "Brush",
+  "tooltip": "Select the triangles under the brush. Ctrl removes.",
+  "help": "Hold the left mouse button and paint over the scan; hold Ctrl to remove. Change the brush size with [ and ] or Ctrl+mouse wheel. Visible only skips covered triangles. Every stroke can be undone with Ctrl+Z; Esc ends the brush."
 }

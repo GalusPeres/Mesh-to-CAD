@@ -79,7 +79,7 @@ test('a 2M-face scan becomes interactive quickly and brush samples stay fast', a
   test.setTimeout(300_000);
   const stl = path.join(mkdtempSync(path.join(tmpdir(), 'm2c-perf-')), 'torus-2m.stl');
   writeLargeTorus(stl);
-  const { app, page } = await launchApp();
+  const { app, page } = await launchApp({ gpu: true });
   const report: Record<string, unknown> = { faces: FACES };
 
   try {

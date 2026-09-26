@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
@@ -52,6 +53,8 @@ export interface FileActionContext {
 
 export class FileActions {
   private readonly lastFolder = new Map<FileAction, string>();
+  /** Opaque tokens for *Ordner öffnen*: the renderer never sees the written path. */
+  private readonly revealPaths = new Map<string, string>();
 
   constructor(private readonly context: FileActionContext) {}
 
@@ -69,7 +72,22 @@ export class FileActions {
     const { exampleId: _exampleId, ...rest } = extra;
     const response = await this.callKernel(spec.method, { ...rest, path: chosen });
     if (response.ok && spec.recent) this.context.recent.remember(chosen, spec.recent);
+    if (response.ok && spec.dialog === 'save') {
+      const token = randomUUID();
+      this.revealPaths.set(token, chosen);
+      while (this.revealPaths.size > 20) {
+        const oldest = this.revealPaths.keys().next().value;
+        if (oldest === undefined) break;
+        this.revealPaths.delete(oldest);
+      }
+      return { ...response, revealToken: token };
+    }
     return response;
+  }
+
+  /** The file written by a save action, for a token returned by `run`. */
+  revealPath(token: unknown): string | null {
+    return typeof token === 'string' ? (this.revealPaths.get(token) ?? null) : null;
   }
 
   /** A file dropped onto the window: meshes are imported, projects opened. */

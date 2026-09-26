@@ -1,0 +1,32 @@
+.hint {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}
+
+.progress {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.pass {
+  color: var(--success);
+}
+
+.fail {
+  flex: none;
+  color: var(--warning);
+}

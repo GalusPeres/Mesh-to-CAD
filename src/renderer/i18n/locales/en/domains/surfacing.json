@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "tooFewFaces": "Cannot create auto surfaces: too few triangles ({{count, count}}, at least {{min, count}}).",
+    "cageFailed": "Cannot create auto surfaces: the scan gives no closed control cage. Repair the scan (fill holes, remove small parts) and try again.",
+    "shapeInvalid": "Cannot create auto surfaces: the surfaces do not form a valid body. Choose more smoothing or another detail level.",
+    "notAutoSurface": "The element is not an auto surface."
+  },
+  "issues": {
+    "openSurface": "The scan is open. The result is a surface, not a body. Fill the holes first to get a body.",
+    "partsIgnored": "Only the largest part was processed; {{count, count}} other parts were left out."
+  },
+  "progress": {
+    "cage": "Building control cage",
+    "fitting": "Fitting control cage to the scan",
+    "patches": "Creating B-spline surfaces",
+    "shape": "Joining surfaces into a body",
+    "deviation": "Computing deviation"
+  }
+}

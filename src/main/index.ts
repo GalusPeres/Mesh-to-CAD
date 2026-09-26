@@ -28,8 +28,11 @@ import { createMainWindow } from './window';
 
 if (testMode) {
   // CI machines have no GPU; SwiftShader keeps WebGL available for the end-to-end tests.
-  app.commandLine.appendSwitch('use-angle', 'swiftshader');
-  app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+  // The viewport performance test measures the real GPU instead (`M2C_E2E_GPU=1`).
+  if (process.env.M2C_E2E_GPU !== '1') {
+    app.commandLine.appendSwitch('use-angle', 'swiftshader');
+    app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+  }
   app.setPath(
     'userData',
     path.join(app.getPath('temp'), 'mesh-to-cad-e2e-profile', String(process.pid)),

@@ -53,6 +53,16 @@
       "X": "X axis",
       "Y": "Y axis",
       "Z": "Z axis"
+    },
+    "deviation": {
+      "noise": "Scan noise",
+      "rms": "RMS",
+      "max": "Maximum",
+      "withinTolerance": "Within tolerance",
+      "points": "Scan points",
+      "pass": "Within tolerance",
+      "fail": "Out of tolerance",
+      "poor": "Only {{share}} % of the scan points at the body lie within the tolerance ±{{tolerance}}. Check the parameters."
     }
   }
 }

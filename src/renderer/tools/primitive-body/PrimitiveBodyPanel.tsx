@@ -93,7 +93,7 @@ export function PrimitiveBodyPanel({ editTarget, close }: ToolPanelProps) {
       targetBody: operation === 'newBody' ? null : targetBody,
     };
   }, [fit, problem, lengthValid, extentKind, margin, start, length, operation, targetBody]);
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'primitive-body',
     'primitiveBody',
     editTarget,
@@ -179,7 +179,7 @@ export function PrimitiveBodyPanel({ editTarget, close }: ToolPanelProps) {
         />
         <InputProblemMessage problem={problem} />
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

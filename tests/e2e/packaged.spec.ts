@@ -3,6 +3,9 @@
 // get wrong: the bundled kernel starts, the example scans and licences are installed,
 // and the renderer is sandboxed.
 
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 import { launchApp } from './support/app';
@@ -22,19 +25,16 @@ test('the packaged app starts its kernel and opens the bundled example', async (
     );
     expect(sandboxed).toBe(true);
 
-    const installed = await app.evaluate(async () => {
-      const { existsSync } = await import('node:fs');
-      const { join } = await import('node:path');
-      const resources = process.resourcesPath;
-      return [
-        'kernel/m2c-kernel.exe',
-        'examples/bracket.stl',
-        'help/de/index.html',
-        'help/en/getting-started.html',
-        'licenses/INDEX.txt',
-        'licenses/occt/LGPL-2.1.txt',
-      ].filter((file) => !existsSync(join(resources, file)));
-    });
+    // The main process has no dynamic `import()` when packaged, so the files are checked here.
+    const resources = await app.evaluate(() => process.resourcesPath);
+    const installed = [
+      'kernel/m2c-kernel.exe',
+      'examples/bracket.stl',
+      'help/de/index.html',
+      'help/en/getting-started.html',
+      'licenses/INDEX.txt',
+      'licenses/occt/LGPL-2.1.txt',
+    ].filter((file) => !existsSync(path.join(resources, file)));
     expect(installed).toEqual([]);
 
     await expect(page.getByTestId('empty-open-example')).toBeEnabled();

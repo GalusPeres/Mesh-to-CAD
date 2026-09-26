@@ -123,9 +123,12 @@ test('aligns the scan automatically', async () => {
   await expect(page.getByTestId('tree-node-alignment')).toBeVisible();
 });
 
-test.fixme('segments the scan into regions', async () => {
+test('segments the scan into regions', async () => {
   await page.getByTestId('stage-model').click();
   await page.getByTestId('tool-segment').click();
+  await expect(page.getByTestId('panel-segment')).toBeVisible();
+  // The preview runs on its own; OK is enabled once it has found regions.
+  await expect(page.getByTestId('panel-ok')).toBeEnabled({ timeout: 60_000 });
   await commitPanel(page);
   await expect(page.getByTestId('tree-group-regions')).toBeVisible();
 });

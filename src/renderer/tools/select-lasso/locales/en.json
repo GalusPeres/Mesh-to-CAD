@@ -1,3 +1,5 @@
 {
-  "label": "Lasso"
+  "label": "Lasso",
+  "tooltip": "Select the triangles inside a drawn shape.",
+  "help": "Hold the left mouse button and draw a shape around the triangles; hold Ctrl to remove. Through the part also selects covered triangles, for example to clean up stray points."
 }

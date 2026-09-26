@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "tooFewFaces": "Auto-Flächen nicht möglich: zu wenige Dreiecke ({{count, count}}, mindestens {{min, count}}).",
+    "cageFailed": "Auto-Flächen nicht möglich: Aus dem Scan entsteht kein geschlossenes Kontrollnetz. Scan reparieren (Löcher füllen, kleine Teile entfernen) und erneut versuchen.",
+    "shapeInvalid": "Auto-Flächen nicht möglich: Die Flächen ergeben keinen gültigen Körper. Mehr Glättung oder eine andere Detailstufe wählen.",
+    "notAutoSurface": "Das Element ist keine Auto-Fläche."
+  },
+  "issues": {
+    "openSurface": "Der Scan ist offen. Das Ergebnis ist eine Fläche, kein Körper. Für einen Körper vorher Löcher füllen.",
+    "partsIgnored": "Nur das größte Teil wurde verarbeitet; {{count, count}} weitere Teile wurden ausgelassen."
+  },
+  "progress": {
+    "cage": "Kontrollnetz erzeugen",
+    "fitting": "Kontrollnetz an den Scan anpassen",
+    "patches": "B-Spline-Flächen erzeugen",
+    "shape": "Flächen zum Körper verbinden",
+    "deviation": "Abweichung berechnen"
+  }
+}

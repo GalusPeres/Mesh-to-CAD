@@ -30,7 +30,6 @@ async function start(): Promise<void> {
   window.addEventListener('unhandledrejection', (event) =>
     bridge.app.log({ level: 'error', message: String(event.reason) }),
   );
-  bridge.window.onBeforeClose(() => bridge.window.confirmClose());
 
   startDocumentSync();
   if (bridge.app.testMode) installTestHooks();

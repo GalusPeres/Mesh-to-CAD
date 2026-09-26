@@ -1,0 +1,24 @@
+{
+  "name": "Auto-Flächen",
+  "summary": "{{detail}}, {{patches}} Flächen",
+  "detail": "Detail",
+  "details": {
+    "coarse": "Grob",
+    "medium": "Mittel",
+    "fine": "Fein"
+  },
+  "smoothing": "Glättung",
+  "smoothingLevels": {
+    "low": "Gering",
+    "medium": "Mittel",
+    "high": "Stark"
+  },
+  "stats": {
+    "patches": "Flächen",
+    "rms": "Abweichung RMS",
+    "max": "Abweichung max.",
+    "shape": "Ergebnis",
+    "solid": "Körper",
+    "openSurface": "Offene Fläche"
+  }
+}

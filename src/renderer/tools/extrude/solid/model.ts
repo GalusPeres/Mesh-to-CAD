@@ -143,3 +143,29 @@ export function storedParams<T>(
 export function isPositiveLength(value: number | null): value is number {
   return value !== null && Number.isFinite(value) && value >= 0.001;
 }
+
+interface PreviewLike {
+  featureId: string | null;
+  items: readonly { key: string; owner: string }[];
+}
+
+/** `body:<resultKey>:…` (body tessellation) and `src:<resultKey>:<n>` (display sources). */
+const ITEM_KEY = /^(?:body|src):(r:[0-9a-f]+):/;
+
+/**
+ * Result key of the previewed feature, which `inspection.previewDeviation` needs.
+ * Taken from `resultKey` once `doc.preview` returns it (interface request T6 #2), until
+ * then from the scene item keys the preview registers for that feature.
+ */
+export function previewResultKey(
+  preview: PreviewLike & { resultKey?: string | null },
+): string | null {
+  if (preview.resultKey) return preview.resultKey;
+  if (preview.featureId === null) return null;
+  for (const item of preview.items) {
+    if (item.owner !== preview.featureId) continue;
+    const match = ITEM_KEY.exec(item.key);
+    if (match) return match[1] ?? null;
+  }
+  return null;
+}

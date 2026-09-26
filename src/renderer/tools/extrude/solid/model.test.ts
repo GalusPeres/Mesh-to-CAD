@@ -10,6 +10,7 @@ import {
   isPlane,
   isPositiveLength,
   isSketch,
+  previewResultKey,
   storedParams,
   targetProblem,
   toolsProblem,
@@ -127,5 +128,28 @@ describe('lengths', () => {
     expect(isPositiveLength(0)).toBe(false);
     expect(isPositiveLength(Number.NaN)).toBe(false);
     expect(isPositiveLength(null)).toBe(false);
+  });
+});
+
+describe('previewResultKey', () => {
+  const body = (key: string, owner = 'f3') => ({ key, owner });
+
+  it('prefers the result key doc.preview returns', () => {
+    expect(previewResultKey({ featureId: 'f3', items: [], resultKey: 'r:abc' })).toBe('r:abc');
+  });
+
+  it('reads the key of the previewed feature from its body and source items', () => {
+    const items = [
+      body('body:r:0f1e:f1:t0.02-0.2:faces', 'f1'),
+      body('body:r:9f3e:f3:t0.02-0.2:faces'),
+      body('src:r:9f3e:0'),
+    ];
+    expect(previewResultKey({ featureId: 'f3', items })).toBe('r:9f3e');
+    expect(previewResultKey({ featureId: 'f3', items: [body('src:r:77aa:1')] })).toBe('r:77aa');
+  });
+
+  it('gives null without a feature or matching item', () => {
+    expect(previewResultKey({ featureId: null, items: [body('src:r:9f3e:0')] })).toBeNull();
+    expect(previewResultKey({ featureId: 'f3', items: [body('scan:1')] })).toBeNull();
   });
 });

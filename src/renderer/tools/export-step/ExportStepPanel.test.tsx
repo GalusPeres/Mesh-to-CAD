@@ -97,7 +97,7 @@ describe('STEP export panel', () => {
       result: { fileName: 'halterung.step', bytes: 188_416, bodies: 1, triangles: null },
       buffers: [],
       revealToken: 'token-1',
-    } as Awaited<ReturnType<M2CBridge['files']['run']>>);
+    });
     (window as unknown as { m2c: unknown }).m2c = { files: { run, reveal } };
     container = document.createElement('div');
     document.body.append(container);
@@ -133,7 +133,10 @@ describe('STEP export panel', () => {
     expect((byTestId('export-body-f9') as HTMLInputElement).disabled).toBe(true);
     expect(text).toContain('halterung');
 
-    await act(async () => (byTestId('panel-ok') as HTMLButtonElement).click());
+    await act(async () => {
+      (byTestId('panel-ok') as HTMLButtonElement).click();
+      await Promise.resolve();
+    });
     await settle();
 
     expect(run).toHaveBeenCalledWith(

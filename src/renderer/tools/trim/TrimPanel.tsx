@@ -84,7 +84,7 @@ export function TrimPanel({ editTarget, close }: ToolPanelProps) {
     () => (targetBody ? { targetBody, tool, keep } : null),
     [targetBody, tool, keep],
   );
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'trim',
     'trim',
     editTarget,
@@ -152,7 +152,7 @@ export function TrimPanel({ editTarget, close }: ToolPanelProps) {
           />
         </PropertyRow>
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

@@ -67,7 +67,7 @@ export function CombinePanel({ editTarget, close }: ToolPanelProps) {
     () => (targetBody && !problem ? { targetBody, tools, operation, keepTools } : null),
     [targetBody, problem, tools, operation, keepTools],
   );
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'combine',
     'combine',
     editTarget,
@@ -143,7 +143,7 @@ export function CombinePanel({ editTarget, close }: ToolPanelProps) {
         />
         <InputProblemMessage problem={bodies.length < 2 ? null : problem} />
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

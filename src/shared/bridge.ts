@@ -21,7 +21,8 @@ export interface KernelErrorPayload {
 }
 
 export type RawResponse =
-  { ok: true; result: unknown; buffers: ArrayBuffer[] } | { ok: false; error: KernelErrorPayload };
+  | { ok: true; result: unknown; buffers: ArrayBuffer[]; revealToken?: string }
+  | { ok: false; error: KernelErrorPayload };
 
 export type KernelEvent =
   | { type: 'progress'; clientId: number; fraction: number | null; stage: string }

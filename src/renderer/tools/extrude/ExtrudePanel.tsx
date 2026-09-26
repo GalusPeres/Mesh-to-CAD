@@ -132,7 +132,7 @@ export function ExtrudePanel({ editTarget, close }: ToolPanelProps) {
     targetBody,
   ]);
 
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'extrude',
     'extrude',
     editTarget,
@@ -316,7 +316,7 @@ export function ExtrudePanel({ editTarget, close }: ToolPanelProps) {
         />
         <InputProblemMessage problem={problem} />
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

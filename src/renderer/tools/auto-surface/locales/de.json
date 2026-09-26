@@ -1,0 +1,39 @@
+{
+  "label": "Auto-Flächen",
+  "tooltip": "Organischen Scan automatisch in B-Spline-Flächen und einen Volumenkörper umwandeln.",
+  "help": "Für organische Formen ohne Regelgeometrie. Ein Kontrollnetz wird an den Scan angepasst; aus jedem Viereck entsteht eine B-Spline-Fläche, alle Flächen zusammen bilden bei einem geschlossenen Scan einen gültigen Körper. Fein folgt dem Scan genauer, braucht aber länger und ergibt mehr Flächen; stärkere Glättung beruhigt verrauschte Scans. Offene Scans vorher mit Löcher füllen schließen.",
+  "source": "Eingabe",
+  "sources": {
+    "scan": "Ganzer Scan",
+    "selection": "Auswahl"
+  },
+  "triangles": "Dreiecke",
+  "selectionMissing": "Dreiecke mit Pinsel oder Flächenauswahl markieren (mindestens {{min}}).",
+  "inputsFirst": "Eingabe vervollständigen.",
+  "detail": "Detail",
+  "details": {
+    "coarse": "Grob",
+    "medium": "Mittel",
+    "fine": "Fein"
+  },
+  "smoothing": "Glättung",
+  "smoothingLevels": {
+    "low": "Gering",
+    "medium": "Mittel",
+    "high": "Stark"
+  },
+  "stop": "Abbrechen",
+  "stopped": "Berechnung abgebrochen.",
+  "compute": "Berechnen",
+  "result": {
+    "patches": "Flächen",
+    "rms": "Abweichung RMS",
+    "p95": "Abweichung 95 %",
+    "max": "Abweichung max.",
+    "shape": "Ergebnis",
+    "validSolid": "Gültiger Körper",
+    "invalidSolid": "Ungültiger Körper",
+    "openSurface": "Offene Fläche",
+    "volume": "Volumen"
+  }
+}

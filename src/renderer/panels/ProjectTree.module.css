@@ -11,7 +11,7 @@
 
 .tree {
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
 }
 
 .warning {

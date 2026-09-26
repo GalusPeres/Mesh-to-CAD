@@ -2,18 +2,24 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import type { DocOp } from '@shared/protocol/generated/document-ops';
 import type { FeatureTypeId } from '@shared/protocol/generated/index';
+import type { PreviewDeviationResult } from '@shared/protocol/generated/inspection';
 
+import { usePreviewDeviation } from '../../../inspection/usePreviewDeviation';
 import { kernel } from '../../../kernel/kernel';
 import { currentRevision, useDocument } from '../../../state/documentStore';
 import { getViewport } from '../../../viewport/api';
 import { type CommitState, type PreviewState, useCommit, usePreview } from '../../framework/hooks';
 import type { ResultOf } from '../../../kernel/KernelClient';
+import { previewResultKey } from './model';
 
 export type SolidPreview = PreviewState<ResultOf<'doc.preview'>>;
+export type SolidDeviation = PreviewState<PreviewDeviationResult>;
 
 export interface SolidFeature {
   preview: SolidPreview;
   commit: CommitState;
+  /** Deviation of the previewed bodies from the scan; idle while there is no body. */
+  deviation: SolidDeviation;
   /** True when the last preview of the current parameters produced a usable feature. */
   previewOk: boolean;
 }
@@ -21,7 +27,8 @@ export interface SolidFeature {
 /**
  * Preview and commit of one solid feature (ARCHITECTURE.md 4.7): `doc.preview` in the
  * lane `doc.preview:<toolId>` 150 ms after the last change, preview items drawn with
- * `viewport.setPreviewItems`, and `doc.apply` with the same operation on OK.
+ * `viewport.setPreviewItems`, then `inspection.previewDeviation` for the changed bodies
+ * in the lane `inspection.previewDeviation:<toolId>`, and `doc.apply` with the same operation on OK.
  * `params` must be memoised; null (invalid input) shows no preview.
  */
 export function useSolidFeature(
@@ -64,5 +71,11 @@ export function useSolidFeature(
   const commit = useCommit(apply);
 
   const state = preview.status === 'ok' ? preview.result.status?.state : undefined;
-  return { preview, commit, previewOk: state === 'ok' || state === 'warning' };
+  const previewOk = state === 'ok' || state === 'warning';
+  const resultKey =
+    preview.status === 'ok' && previewOk && preview.result.bodies.length > 0
+      ? previewResultKey(preview.result)
+      : null;
+  const deviation = usePreviewDeviation(resultKey, toolId);
+  return { preview, commit, deviation, previewOk };
 }

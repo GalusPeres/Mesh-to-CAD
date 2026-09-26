@@ -1,0 +1,39 @@
+{
+  "label": "Auto surfaces",
+  "tooltip": "Turn an organic scan into B-spline surfaces and a solid body automatically.",
+  "help": "For organic shapes without regular geometry. A control cage is fitted to the scan; every quad becomes a B-spline surface, and for a closed scan all surfaces together form a valid body. Fine follows the scan more closely but takes longer and gives more surfaces; more smoothing calms noisy scans. Close open scans with Fill holes first.",
+  "source": "Input",
+  "sources": {
+    "scan": "Whole scan",
+    "selection": "Selection"
+  },
+  "triangles": "Triangles",
+  "selectionMissing": "Mark triangles with the brush or face selection (at least {{min}}).",
+  "inputsFirst": "Complete the input.",
+  "detail": "Detail",
+  "details": {
+    "coarse": "Coarse",
+    "medium": "Medium",
+    "fine": "Fine"
+  },
+  "smoothing": "Smoothing",
+  "smoothingLevels": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "stop": "Cancel",
+  "stopped": "Computation cancelled.",
+  "compute": "Compute",
+  "result": {
+    "patches": "Surfaces",
+    "rms": "Deviation RMS",
+    "p95": "Deviation 95 %",
+    "max": "Deviation max.",
+    "shape": "Result",
+    "validSolid": "Valid body",
+    "invalidSolid": "Invalid body",
+    "openSurface": "Open surface",
+    "volume": "Volume"
+  }
+}

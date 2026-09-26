@@ -6,8 +6,9 @@
   overflow: hidden;
 }
 
+/* Segments share the width by content, so a longer label is not cut while a short one has room. */
 .segment {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   padding: 0 var(--space-6);
   border: none;

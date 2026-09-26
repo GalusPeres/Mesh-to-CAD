@@ -94,7 +94,7 @@ export function RevolvePanel({ editTarget, close }: ToolPanelProps) {
       targetBody: operation === 'newBody' ? null : targetBody,
     };
   }, [sketch, problem, angleValid, stored, axis, angle, operation, targetBody]);
-  const { preview, commit, previewOk } = useSolidFeature(
+  const { preview, commit, deviation, previewOk } = useSolidFeature(
     'revolve',
     'revolve',
     editTarget,
@@ -177,7 +177,7 @@ export function RevolvePanel({ editTarget, close }: ToolPanelProps) {
         />
         <InputProblemMessage problem={problem} />
       </PanelSection>
-      <SolidResult preview={preview} commitError={commit.error} />
+      <SolidResult preview={preview} commitError={commit.error} deviation={deviation} />
     </ToolPanel>
   );
 }

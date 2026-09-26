@@ -53,6 +53,16 @@
       "X": "X-Achse",
       "Y": "Y-Achse",
       "Z": "Z-Achse"
+    },
+    "deviation": {
+      "noise": "Scanrauschen",
+      "rms": "RMS",
+      "max": "Maximum",
+      "withinTolerance": "In Toleranz",
+      "points": "Scanpunkte",
+      "pass": "In Toleranz",
+      "fail": "Außerhalb der Toleranz",
+      "poor": "Nur {{share}} % der Scanpunkte am Körper liegen in der Toleranz ±{{tolerance}}. Parameter prüfen."
     }
   }
 }

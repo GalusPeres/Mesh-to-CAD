@@ -21,7 +21,10 @@ export const NO_CHANGE: SelectionChange = {
 
 export function isEmptyChange(change: SelectionChange): boolean {
   return (
-    change.selected.length + change.deselected.length + change.hidden.length + change.shown.length ===
+    change.selected.length +
+      change.deselected.length +
+      change.hidden.length +
+      change.shown.length ===
     0
   );
 }

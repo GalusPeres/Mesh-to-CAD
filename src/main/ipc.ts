@@ -172,6 +172,10 @@ export function registerIpc(context: IpcContext): void {
       defaultName: typeof dialogText.defaultName === 'string' ? dialogText.defaultName : undefined,
     });
   });
+  on(IPC.filesReveal, (_event, token) => {
+    const file = context.files.revealPath(token);
+    if (file && existsSync(file)) shell.showItemInFolder(file);
+  });
   handle(IPC.filesDropped, (_event, filePath) => context.files.openDropped(filePath));
   handle(IPC.filesOpenRecent, (_event, recentId) => context.files.openRecent(recentId));
   handle(IPC.recentList, () => context.recent.list());

@@ -1,0 +1,24 @@
+{
+  "name": "Auto surfaces",
+  "summary": "{{detail}}, {{patches}} surfaces",
+  "detail": "Detail",
+  "details": {
+    "coarse": "Coarse",
+    "medium": "Medium",
+    "fine": "Fine"
+  },
+  "smoothing": "Smoothing",
+  "smoothingLevels": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "stats": {
+    "patches": "Surfaces",
+    "rms": "Deviation RMS",
+    "max": "Deviation max.",
+    "shape": "Result",
+    "solid": "Body",
+    "openSurface": "Open surface"
+  }
+}

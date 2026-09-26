@@ -139,9 +139,10 @@ describe('deviation panel', () => {
     expect(text).toContain('In Toleranz97,7 %');
     expect(text).toContain('Ohne Daten1');
 
-    await act(async () =>
-      (container.querySelector('[data-testid="panel-ok"]') as HTMLButtonElement).click(),
-    );
+    await act(async () => {
+      (container.querySelector('[data-testid="panel-ok"]') as HTMLButtonElement).click();
+      await Promise.resolve();
+    });
     expect(close).toHaveBeenCalled();
     expect(calls).toHaveLength(1);
   });

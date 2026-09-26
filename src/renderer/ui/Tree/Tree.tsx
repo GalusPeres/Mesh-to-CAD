@@ -135,8 +135,20 @@ export function Tree({
               {hasChildren && <Chevron size={16} aria-hidden />}
             </span>
             {Icon && <Icon className={styles.icon} size={16} aria-hidden />}
-            <span className={styles.label}>{node.label}</span>
-            {node.secondary && <span className={styles.secondary}>{node.secondary}</span>}
+            <span
+              className={styles.label}
+              title={typeof node.label === 'string' ? node.label : undefined}
+            >
+              {node.label}
+            </span>
+            {node.secondary && (
+              <span
+                className={styles.secondary}
+                title={typeof node.secondary === 'string' ? node.secondary : undefined}
+              >
+                {node.secondary}
+              </span>
+            )}
             {node.status}
           </div>
         );

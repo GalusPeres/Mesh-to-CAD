@@ -1,16 +1,18 @@
 {
   "errors": {
-    "unknownRegion": "The region no longer exists.",
     "noScan": "No scan loaded.",
+    "staleScan": "The scan has changed. Make the selection again.",
     "invalidFace": "Invalid triangle selected.",
-    "emptySelection": "The selection is empty.",
-    "tooManyRegions": "Too many regions. Increase the tolerance.",
-    "noSurface": "No connected surface found."
+    "emptySelection": "The selection is empty. Select triangles first.",
+    "unknownRegion": "The region no longer exists.",
+    "mergeNeedsTwo": "Select at least two regions to merge.",
+    "tooManyRegions": "Too many regions. Lower the sensitivity or raise the minimum size."
   },
   "progress": {
     "analysing": "Analysing scan",
-    "reducing": "Simplifying",
-    "growing": "Growing region",
+    "reducing": "Simplifying scan",
+    "growing": "Finding regions",
+    "refining": "Refining borders",
     "transferring": "Transferring regions"
   }
 }

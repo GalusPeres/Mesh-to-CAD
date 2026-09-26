@@ -1,9 +1,11 @@
+import { Check, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { ErrorInfo } from '@shared/protocol/generated/document-results';
 import type { BodyOperation } from '@shared/protocol/generated/features-common';
 
 import { useFormatter } from '../../../i18n/useFormatter';
+import { effectiveNoise } from '../../../inspection/toleranceModel';
 import { describeError } from '../../../kernel/describeError';
 import type { KernelFailure } from '../../../kernel/KernelFailure';
 import { InlineMessage } from '../../../ui/InlineMessage/InlineMessage';
@@ -11,8 +13,10 @@ import { PanelSection } from '../../../ui/PanelSection/PanelSection';
 import { PropertyRow, PropertyValue } from '../../../ui/PropertyRow/PropertyRow';
 import { SegmentedControl } from '../../../ui/SegmentedControl/SegmentedControl';
 import { Select } from '../../../ui/Select/Select';
+import { useDocument } from '../../../state/documentStore';
 import { type BodyOption, type InputProblem, OPERATIONS, needsTarget } from './model';
-import type { SolidPreview } from './useSolidFeature';
+import styles from './SolidSections.module.css';
+import type { SolidDeviation, SolidPreview } from './useSolidFeature';
 
 const KEY = 'tools:extrude.solid';
 
@@ -109,10 +113,73 @@ function featureError(error: ErrorInfo, t: ReturnType<typeof useTranslation>['t'
 interface ResultProps {
   preview: SolidPreview;
   commitError: KernelFailure | null;
+  /** Deviation of the previewed body from the scan (`useSolidFeature`). */
+  deviation?: SolidDeviation;
 }
 
-/** The _Ergebnis_ section: state of the preview, errors and warnings, body volume. */
-export function SolidResult({ preview, commitError }: ResultProps) {
+/**
+ * Deviation of the previewed body from the scan (DESIGN.md 5.3): scan noise, RMS,
+ * maximum, share within tolerance with the verdict, and the points compared. Shows
+ * nothing until the summary arrives or when there is no scan to compare with.
+ */
+function DeviationList({ deviation }: { deviation: SolidDeviation }) {
+  const { t } = useTranslation();
+  const format = useFormatter();
+  const noise = useDocument((state) =>
+    state.snapshot
+      ? effectiveNoise(
+          state.snapshot.document.settings,
+          state.snapshot.document.scan?.noise ?? null,
+        )
+      : null,
+  );
+  if (deviation.status !== 'ok') return null;
+  const { stats, points } = deviation.result;
+  if (stats.count === 0 || stats.within === null) return null;
+  const maximum = Math.max(Math.abs(stats.min ?? 0), Math.abs(stats.max ?? 0));
+  const Verdict = stats.passed ? Check : TriangleAlert;
+  const verdictLabel = t(`${KEY}.deviation.${stats.passed ? 'pass' : 'fail'}`);
+  return (
+    <div data-testid="solid-deviation">
+      {noise !== null && (
+        <PropertyValue label={t(`${KEY}.deviation.noise`)} value={format.length(noise)} />
+      )}
+      {stats.rms !== null && (
+        <PropertyValue label={t(`${KEY}.deviation.rms`)} value={format.length(stats.rms)} />
+      )}
+      <PropertyValue label={t(`${KEY}.deviation.max`)} value={format.length(maximum)} />
+      <PropertyValue
+        label={t(`${KEY}.deviation.withinTolerance`)}
+        value={
+          <span className={styles.verdict}>
+            {format.percent(stats.within)}
+            <Verdict
+              size={12}
+              role="img"
+              aria-label={verdictLabel}
+              className={stats.passed ? styles.pass : styles.fail}
+            />
+          </span>
+        }
+      />
+      <PropertyValue label={t(`${KEY}.deviation.points`)} value={format.count(points)} />
+      {!stats.passed && (
+        <p className={styles.message} role="status">
+          <TriangleAlert size={16} aria-hidden className={styles.fail} />
+          <span>
+            {t(`${KEY}.deviation.poor`, {
+              share: format.number(stats.within * 100, 1),
+              tolerance: format.length(stats.tolerance),
+            })}
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The _Ergebnis_ section: state of the preview, errors and warnings, body volume, deviation. */
+export function SolidResult({ preview, commitError, deviation }: ResultProps) {
   const { t } = useTranslation();
   const format = useFormatter();
   const status = preview.status === 'ok' ? preview.result.status : null;
@@ -143,6 +210,7 @@ export function SolidResult({ preview, commitError }: ResultProps) {
           value={format.volume(body.volume)}
         />
       ))}
+      {preview.status === 'ok' && deviation && <DeviationList deviation={deviation} />}
       {commitError && (
         <InlineMessage severity="error" details={commitError.details}>
           {describeError(commitError, t)}

@@ -86,7 +86,10 @@ describe('tolerance status item', () => {
       (segment) => segment.textContent === 'Zoll',
     ) as HTMLElement;
     act(() => inch.click());
-    await act(async () => byTestId('tolerance-apply')?.click());
+    await act(async () => {
+      byTestId('tolerance-apply')?.click();
+      await Promise.resolve();
+    });
 
     expect(calls).toEqual([
       {
