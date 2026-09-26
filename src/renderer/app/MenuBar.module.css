@@ -1,0 +1,20 @@
+.bar {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.trigger {
+  height: var(--control-height);
+  padding: 0 var(--space-8);
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+}
+
+.trigger:hover,
+.trigger[data-state='open'] {
+  background: var(--bg-hover);
+}

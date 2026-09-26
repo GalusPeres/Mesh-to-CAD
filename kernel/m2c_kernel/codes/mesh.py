@@ -1,0 +1,20 @@
+"""Codes of mesh import and preparation."""
+
+from enum import StrEnum
+
+
+class ErrorCode(StrEnum):
+    FILE_NOT_FOUND = "mesh.fileNotFound"
+    FILE_TOO_LARGE = "mesh.fileTooLarge"
+    UNSUPPORTED_FORMAT = "mesh.unsupportedFormat"
+    READ_FAILED = "mesh.readFailed"
+    EMPTY = "mesh.empty"
+    TOO_MANY_FACES = "mesh.tooManyFaces"
+    REDUCTION_REQUIRED = "mesh.reductionRequired"
+    UNKNOWN_IMPORT = "mesh.unknownImport"
+
+
+class ProgressStage(StrEnum):
+    READING = "mesh.reading"
+    WELDING = "mesh.welding"
+    ESTIMATING_NOISE = "mesh.estimatingNoise"

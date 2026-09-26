@@ -1,0 +1,82 @@
+.shell {
+  display: grid;
+  grid-template-rows: var(--title-bar-height) var(--tool-row-height) 1fr var(--status-bar-height);
+  height: 100vh;
+  min-width: 1280px;
+}
+
+.workspace {
+  display: grid;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-panel);
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  height: var(--panel-header-height);
+  flex: none;
+  margin: 0;
+  padding: 0 var(--panel-padding);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.overlay-top-left,
+.overlay-top-right,
+.overlay-right,
+.overlay-bottom-left {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.overlay-top-left {
+  top: var(--space-8);
+  left: var(--space-8);
+}
+
+.overlay-top-right {
+  top: var(--space-8);
+  right: var(--space-8);
+}
+
+.overlay-right {
+  top: 104px;
+  right: var(--space-8);
+}
+
+.overlay-bottom-left {
+  bottom: var(--space-8);
+  left: var(--space-8);
+}
+
+.dropHint {
+  position: absolute;
+  inset: var(--space-8);
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+  color: var(--text);
+  pointer-events: none;
+}

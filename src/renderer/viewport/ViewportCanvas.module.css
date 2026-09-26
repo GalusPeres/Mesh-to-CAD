@@ -1,0 +1,11 @@
+.viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--viewport-bg);
+}
+
+.viewport canvas {
+  display: block;
+  outline: none;
+}

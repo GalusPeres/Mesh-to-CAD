@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "unsupportedInput": "The chosen item does not provide suitable geometry."
+  }
+}

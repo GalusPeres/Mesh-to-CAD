@@ -1,0 +1,12 @@
+{
+  "errors": {
+    "invalidResult": "The result is not a valid body.",
+    "occtUnavailable": "The geometry library could not be loaded."
+  },
+  "issues": {
+    "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm)."
+  },
+  "progress": {
+    "tessellating": "Preparing the display"
+  }
+}

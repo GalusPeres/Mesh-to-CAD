@@ -1,0 +1,9 @@
+{
+  "name": "Reference",
+  "kinds": {
+    "offsetPlane": "Plane",
+    "midPlane": "Mid-plane",
+    "planeThroughAxis": "Plane through axis",
+    "axisFromPlanes": "Axis"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "internal": "Interner Fehler im Rechenprozess. Details stehen im Protokoll.",
+    "invalidParams": "Ungültige Eingabe: {{field}}.",
+    "unknownMethod": "Der Rechenprozess kennt den Befehl {{method}} nicht.",
+    "notAllowed": "Befehl {{method}} ist hier nicht erlaubt.",
+    "cancelled": "Berechnung abgebrochen.",
+    "superseded": "Berechnung durch eine neuere ersetzt.",
+    "busy": "Eine lange Berechnung läuft. Die Vorschau folgt danach.",
+    "notImplemented": "Diese Funktion ist noch nicht verfügbar.",
+    "stopped": "Rechenprozess beendet. Das Projekt ist unverändert.",
+    "startFailed": "Der Rechenprozess konnte nicht gestartet werden. Details stehen im Protokoll.",
+    "protocolMismatch": "Rechenprozess und Anwendung passen nicht zusammen. Mesh-to-CAD neu installieren."
+  },
+  "progress": {
+    "native": "Berechnung läuft",
+    "working": "Arbeitet"
+  }
+}

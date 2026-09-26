@@ -1,0 +1,16 @@
+{
+  "numberField": {
+    "invalid": "Not a valid number.",
+    "ambiguous": "Ambiguous: enter decimals with a point (for example 1.25)."
+  },
+  "discardDraft": {
+    "title": "Discard changes?",
+    "text": "The changes in {{tool}} will be lost.",
+    "discard": "Discard"
+  },
+  "snapList": {
+    "label": "Snapped values",
+    "measured": "measured {{value}}",
+    "remove": "Remove snap: {{name}}"
+  }
+}

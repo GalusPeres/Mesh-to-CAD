@@ -1,0 +1,25 @@
+.empty {
+  position: absolute;
+  top: 33%;
+  left: 12%;
+  width: 360px;
+  max-width: calc(100% - var(--space-32));
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-title);
+  line-height: var(--line-title);
+  font-weight: var(--weight-semibold);
+}
+
+.text {
+  margin: 0 0 var(--space-16);
+  color: var(--text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}

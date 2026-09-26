@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "emptySection": "The section does not intersect the scan."
+  },
+  "issues": {
+    "profileOpen_one": "Profile open: 1 gap.",
+    "profileOpen_other": "Profile open: {{count}} gaps."
+  }
+}

@@ -1,0 +1,25 @@
+.wrapper {
+  position: relative;
+}
+
+.select {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-24) 0 var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  appearance: none;
+}
+
+.select:disabled {
+  color: var(--text-disabled);
+}
+
+.chevron {
+  position: absolute;
+  top: 4px;
+  right: var(--space-4);
+  color: var(--text-secondary);
+  pointer-events: none;
+}

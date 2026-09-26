@@ -1,0 +1,13 @@
+{
+  "label": "Scan importieren",
+  "command": "Scan importieren …",
+  "dialogTitle": "Scan importieren",
+  "filterName": "Scans (STL, OBJ, PLY)",
+  "file": "Datei",
+  "triangles": "Dreiecke",
+  "unit": "Einheit der Datei",
+  "size": "Abmessungen",
+  "unitHint": "Der Scan ist sehr klein. Vermutlich ist er in Metern gespeichert; die Einheit prüfen.",
+  "reductionRequired": "Der Scan hat mehr als 2.000.000 Dreiecke und muss vor dem Import reduziert werden.",
+  "help": "Die Datei enthält keine Einheit. Die Einheit so wählen, dass die Abmessungen zum realen Teil passen. Mit OK wird der Scan zum Ausgangspunkt eines neuen Projekts."
+}

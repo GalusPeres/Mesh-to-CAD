@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "emptySection": "Der Schnitt trifft den Scan nicht."
+  },
+  "issues": {
+    "profileOpen_one": "Profil offen: 1 Lücke.",
+    "profileOpen_other": "Profil offen: {{count}} Lücken."
+  }
+}

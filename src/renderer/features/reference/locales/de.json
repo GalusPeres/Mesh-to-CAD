@@ -1,0 +1,9 @@
+{
+  "name": "Hilfsgeometrie",
+  "kinds": {
+    "offsetPlane": "Ebene",
+    "midPlane": "Mittelebene",
+    "planeThroughAxis": "Ebene durch Achse",
+    "axisFromPlanes": "Achse"
+  }
+}

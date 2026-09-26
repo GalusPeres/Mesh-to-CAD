@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden."
+  }
+}

@@ -1,0 +1,25 @@
+.row {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  align-items: center;
+  min-height: var(--control-height);
+}
+
+.label {
+  padding-right: var(--space-8);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.control {
+  min-width: 0;
+}
+
+.value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

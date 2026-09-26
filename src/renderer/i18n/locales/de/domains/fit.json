@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "tooFewFaces": "Form nicht einpassbar: Auswahl zu klein ({{count, count}} Dreiecke, mindestens {{min, count}}).",
+    "didNotConverge": "Form nicht einpassbar: Die Berechnung findet keine Lösung. Auswahl prüfen oder anderen Typ wählen."
+  }
+}

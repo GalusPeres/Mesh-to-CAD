@@ -1,0 +1,6 @@
+{
+  "status": {
+    "selected_one": "{{formatted}} ausgewählt",
+    "selected_other": "{{formatted}} ausgewählt"
+  }
+}

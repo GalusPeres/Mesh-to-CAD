@@ -1,0 +1,38 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--tool-button-height);
+  min-width: var(--tool-button-height);
+  justify-content: center;
+  padding: 0 var(--space-6);
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-body);
+  white-space: nowrap;
+}
+
+.withLabel {
+  padding: 0 var(--space-8);
+}
+
+.button:hover {
+  background: var(--bg-hover);
+}
+
+.button:active {
+  background: var(--bg-pressed);
+}
+
+.active,
+.active:hover {
+  background: var(--bg-selected);
+  color: var(--accent-text);
+}
+
+.button[aria-disabled='true'] {
+  color: var(--text-disabled);
+  background: transparent;
+}

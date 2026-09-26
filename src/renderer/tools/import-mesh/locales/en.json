@@ -1,0 +1,13 @@
+{
+  "label": "Import scan",
+  "command": "Import scan …",
+  "dialogTitle": "Import scan",
+  "filterName": "Scans (STL, OBJ, PLY)",
+  "file": "File",
+  "triangles": "Triangles",
+  "unit": "Unit of the file",
+  "size": "Dimensions",
+  "unitHint": "The scan is very small. It is probably stored in metres; check the unit.",
+  "reductionRequired": "The scan has more than 2,000,000 triangles and must be reduced before import.",
+  "help": "The file does not store a unit. Choose the unit that makes the dimensions match the real part. OK makes the scan the starting point of a new project."
+}

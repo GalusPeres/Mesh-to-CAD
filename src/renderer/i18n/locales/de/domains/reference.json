@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "unsupportedInput": "Das gewählte Element liefert keine passende Geometrie."
+  }
+}

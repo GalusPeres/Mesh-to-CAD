@@ -1,0 +1,9 @@
+# Runtime dependencies of the geometry kernel. Pinned exactly; every version was
+# verified on Windows 11 x64 with Python 3.12.10 (see docs/ARCHITECTURE.md, 6.3).
+numpy==2.5.3
+scipy==1.18.1
+trimesh==5.1.0
+networkx==3.7
+fast-simplification==0.2.0
+cadquery-ocp==8.0.1.0.0
+rtree==1.4.1

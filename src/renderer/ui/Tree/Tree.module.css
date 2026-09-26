@@ -1,0 +1,53 @@
+.tree {
+  padding: var(--space-4) 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--control-height);
+  padding-right: var(--space-8);
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--bg-hover);
+}
+
+.selected,
+.selected:hover {
+  background: var(--bg-selected);
+}
+
+.tree:not(:focus-within) .selected {
+  background: var(--bg-selected-subtle);
+}
+
+.muted .label {
+  color: var(--text-disabled);
+}
+
+.chevron {
+  display: inline-flex;
+  width: 16px;
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.icon {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.secondary {
+  margin-left: auto;
+  padding-left: var(--space-8);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}

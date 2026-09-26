@@ -1,0 +1,32 @@
+# Local research and scratch work
+.work/
+
+# Environments and dependencies
+.venv/
+node_modules/
+
+# Build output
+dist/
+release/
+out/
+resources/examples/
+resources/licenses/
+
+# Test and tool output
+test-results/
+playwright-report/
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+*.log
+
+# Editors and operating systems
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.m2c.bak
+.DS_Store
+Thumbs.db

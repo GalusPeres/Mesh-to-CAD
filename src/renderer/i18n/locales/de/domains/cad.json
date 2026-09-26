@@ -1,0 +1,12 @@
+{
+  "errors": {
+    "invalidResult": "Das Ergebnis ist kein gültiger Körper.",
+    "occtUnavailable": "Die Geometriebibliothek konnte nicht geladen werden."
+  },
+  "issues": {
+    "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm)."
+  },
+  "progress": {
+    "tessellating": "Darstellung wird berechnet"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Form",
+  "kinds": {
+    "plane": "Ebene",
+    "cylinder": "Zylinder",
+    "cone": "Kegel",
+    "sphere": "Kugel",
+    "torus": "Torus"
+  }
+}

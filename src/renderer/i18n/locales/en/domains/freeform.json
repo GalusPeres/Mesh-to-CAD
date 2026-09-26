@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "tooCurved": "Cannot create a freeform patch: the region is curved too much."
+  }
+}

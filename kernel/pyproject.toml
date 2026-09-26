@@ -1,0 +1,66 @@
+# Tool configuration for the geometry kernel. The kernel is not an installable
+# package: it runs from this folder (dev) or as a PyInstaller build (release).
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "N", "RUF", "A", "D"]
+ignore = [
+  "D100", # module docstrings are optional
+  "D104", # package docstrings are optional
+  "D105", # magic methods need no docstring
+  "D107", # __init__ is documented on the class
+  "D203", # conflicts with D211
+  "D213", # conflicts with D212
+  "N803", # argument names like V, F follow the maths
+  "N806", # variable names like V, F follow the maths
+  "RUF001", # the multiplication sign and similar characters are intentional in text
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Docstrings are required for the public API of algorithm modules (`api.py`) and for the
+# protocol commands; everywhere else a docstring is written where it explains something.
+"!m2c_kernel/{**/api.py,commands/*.py}" = ["D101", "D102", "D103"]
+# Parameter and result dataclasses of commands are described by the method docstring.
+"m2c_kernel/commands/*.py" = ["D101"]
+"tests/**" = ["D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["m2c_kernel", "tests"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+files = ["m2c_kernel"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true
+warn_return_any = true
+strict_equality = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["OCP.*", "trimesh.*", "fast_simplification.*", "rtree.*", "networkx.*", "scipy.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+  "slow: long-running tests (full-size meshes); excluded by default",
+  "occt: needs Open CASCADE (OCP)",
+  "frozen: runs against the PyInstaller build given by M2C_KERNEL_EXE",
+]
+filterwarnings = ["error::DeprecationWarning:m2c_kernel.*"]

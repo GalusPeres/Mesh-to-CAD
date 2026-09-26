@@ -1,0 +1,102 @@
+{
+  "appName": "Mesh-to-CAD",
+  "untitled": "Unbenannt",
+  "menu": {
+    "file": "Datei",
+    "edit": "Bearbeiten",
+    "view": "Ansicht",
+    "help": "Hilfe",
+    "more": "Mehr"
+  },
+  "stages": {
+    "label": "Arbeitsschritte",
+    "prepare": "Vorbereiten",
+    "align": "Ausrichten",
+    "model": "Modellieren",
+    "inspect": "Prüfen"
+  },
+  "toolGroups": {
+    "history": "Verlauf",
+    "selection": "Auswahl",
+    "mesh": "Scan",
+    "analysis": "Analyse",
+    "regions": "Bereiche",
+    "align": "Ausrichtung",
+    "fit": "Formen",
+    "reference": "Hilfsgeometrie",
+    "sketch": "Skizze",
+    "solid": "Körper",
+    "freeform": "Freiform",
+    "inspect": "Prüfen",
+    "export": "Export",
+    "view": "Ansicht"
+  },
+  "actions": {
+    "ok": "OK",
+    "cancel": "Abbrechen",
+    "apply": "Anwenden",
+    "close": "Schließen",
+    "restart": "Neu starten",
+    "help": "Hilfe",
+    "details": "Details"
+  },
+  "commands": {
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "quit": "Beenden",
+    "settings": "Einstellungen…",
+    "about": "Über Mesh-to-CAD"
+  },
+  "panels": {
+    "project": "Projekt",
+    "properties": "Eigenschaften",
+    "noSelection": "Keine Auswahl",
+    "noSelectionHint": "Objekt im Projektbaum oder im Ansichtsfenster auswählen."
+  },
+  "sections": {
+    "input": "Eingabe",
+    "parameters": "Parameter",
+    "options": "Optionen",
+    "result": "Ergebnis",
+    "howTo": "So geht's"
+  },
+  "status": {
+    "faces_one": "{{formatted}} Dreieck",
+    "faces_other": "{{formatted}} Dreiecke",
+    "computing": "Berechnung läuft …",
+    "cancel": "Berechnung abbrechen",
+    "elapsed": "{{seconds}} s",
+    "kernelStarting": "Rechenprozess startet …",
+    "kernelUnresponsive": "Rechenprozess reagiert nicht",
+    "kernelStopped": "Rechenprozess beendet",
+    "restartKernel": "Rechenprozess neu starten",
+    "kernelRestored": "Rechenprozess neu gestartet. Das Projekt ist unverändert."
+  },
+  "empty": {
+    "title": "Kein Scan geladen",
+    "text": "STL-, OBJ- oder PLY-Datei importieren oder hierher ziehen.",
+    "recent": "Zuletzt verwendet"
+  },
+  "tool": {
+    "notImplemented": "Noch nicht verfügbar",
+    "editing": "Bearbeiten: {{name}}",
+    "computing": "Wird berechnet …"
+  },
+  "units": {
+    "mm": "mm",
+    "cm": "cm",
+    "m": "m",
+    "in": "Zoll"
+  },
+  "theme": {
+    "system": "System",
+    "dark": "Dunkel",
+    "light": "Hell"
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "dropFile": "Datei hier ablegen",
+  "unexpectedError": "Unerwarteter Fehler. Details stehen im Protokoll."
+}

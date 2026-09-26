@@ -1,0 +1,17 @@
+{
+  "commands": {
+    "fitAll": "Fit all",
+    "standardViews": "Standard views",
+    "perspective": "Perspective",
+    "cycleVisibility": "Scan / bodies / both"
+  },
+  "views": {
+    "front": "Front",
+    "back": "Back",
+    "left": "Left",
+    "right": "Right",
+    "top": "Top",
+    "bottom": "Bottom",
+    "iso": "Isometric"
+  }
+}

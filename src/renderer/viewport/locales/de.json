@@ -1,0 +1,17 @@
+{
+  "commands": {
+    "fitAll": "Alles zeigen",
+    "standardViews": "Standardansichten",
+    "perspective": "Perspektive",
+    "cycleVisibility": "Scan / Körper / beide"
+  },
+  "views": {
+    "front": "Vorne",
+    "back": "Hinten",
+    "left": "Links",
+    "right": "Rechts",
+    "top": "Oben",
+    "bottom": "Unten",
+    "iso": "Isometrisch"
+  }
+}

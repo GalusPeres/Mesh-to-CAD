@@ -1,0 +1,14 @@
+.empty {
+  padding: var(--panel-padding);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-body);
+  font-weight: var(--weight-semibold);
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-secondary);
+}

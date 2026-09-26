@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "tooFewFaces": "Cannot fit a shape: selection too small ({{count, count}} triangles, at least {{min, count}}).",
+    "didNotConverge": "Cannot fit a shape: the computation finds no solution. Check the selection or choose another type."
+  }
+}

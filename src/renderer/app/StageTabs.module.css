@@ -1,0 +1,32 @@
+.tabs {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.tab {
+  position: relative;
+  padding: 0 var(--space-12);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--text);
+}
+
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: var(--space-8);
+  right: var(--space-8);
+  bottom: 0;
+  height: 2px;
+  background: var(--accent);
+}

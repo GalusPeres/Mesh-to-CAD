@@ -1,0 +1,10 @@
+{
+  "name": "Shape",
+  "kinds": {
+    "plane": "Plane",
+    "cylinder": "Cylinder",
+    "cone": "Cone",
+    "sphere": "Sphere",
+    "torus": "Torus"
+  }
+}

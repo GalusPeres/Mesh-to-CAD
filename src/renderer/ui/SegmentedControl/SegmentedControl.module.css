@@ -1,0 +1,33 @@
+.control {
+  display: flex;
+  height: var(--control-height);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.segment {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-6);
+  border: none;
+  border-left: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segment:first-child {
+  border-left: none;
+}
+
+.segment:hover {
+  background: var(--bg-hover);
+}
+
+.segment[aria-checked='true'] {
+  background: var(--bg-selected);
+  color: var(--accent-text);
+}

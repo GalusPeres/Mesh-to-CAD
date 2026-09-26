@@ -1,0 +1,14 @@
+.track {
+  width: 80px;
+  height: 4px;
+  background: var(--border);
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.indeterminate {
+  opacity: 0.45;
+}

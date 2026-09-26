@@ -1,0 +1,12 @@
+dist/
+release/
+node_modules/
+kernel/
+.work/
+.venv/
+test-results/
+playwright-report/
+coverage/
+package-lock.json
+src/shared/protocol/generated/
+tests/fixtures/frame-vectors.json

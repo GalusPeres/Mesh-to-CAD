@@ -1,0 +1,18 @@
+{
+  "errors": {
+    "noScan": "No scan loaded.",
+    "staleRevision": "The project changed in the meantime. Run the action again.",
+    "revisionGone": "This step is no longer kept in the history.",
+    "unknownFeature": "Item {{feature}} does not exist.",
+    "unknownFeatureType": "Unknown item type {{type}}.",
+    "forwardReference": "{{feature}} cannot refer to the later item {{reference}}.",
+    "hasDependents_one": "The item is used by one other item.",
+    "hasDependents_other": "The item is used by {{count}} other items.",
+    "limitExceeded": "At most {{limit, count}} items per project.",
+    "featureNotImplemented": "This item type is not available yet.",
+    "inputUnavailable": "Input {{feature}} is not available."
+  },
+  "progress": {
+    "rebuilding": "Rebuilding the history"
+  }
+}

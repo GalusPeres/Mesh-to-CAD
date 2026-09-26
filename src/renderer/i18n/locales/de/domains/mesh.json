@@ -1,0 +1,17 @@
+{
+  "errors": {
+    "fileNotFound": "Import fehlgeschlagen: Die Datei wurde nicht gefunden.",
+    "fileTooLarge": "Import fehlgeschlagen: Die Datei ist größer als 1 GB.",
+    "unsupportedFormat": "Import fehlgeschlagen: Dateityp {{suffix}} wird nicht unterstützt (STL, OBJ, PLY).",
+    "readFailed": "Import fehlgeschlagen: {{fileName}} ist keine gültige STL-, OBJ- oder PLY-Datei.",
+    "empty": "Import fehlgeschlagen: {{fileName}} enthält keine Dreiecke.",
+    "tooManyFaces": "Import fehlgeschlagen: {{faces, count}} Dreiecke, höchstens {{maxFaces, count}}.",
+    "reductionRequired": "Der Scan hat {{faces, count}} Dreiecke. Zum Arbeiten auf höchstens {{maxFaces, count}} reduzieren.",
+    "unknownImport": "Der Import ist nicht mehr verfügbar. Datei erneut öffnen."
+  },
+  "progress": {
+    "reading": "Datei wird gelesen",
+    "welding": "Eckpunkte werden verbunden",
+    "estimatingNoise": "Scanrauschen wird bestimmt"
+  }
+}

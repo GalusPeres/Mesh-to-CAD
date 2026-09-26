@@ -1,0 +1,73 @@
+{
+  "name": "mesh-to-cad",
+  "productName": "Mesh-to-CAD",
+  "version": "0.1.0",
+  "description": "Turn 3D-scan meshes into editable CAD solids and export them as STEP.",
+  "license": "MIT",
+  "author": "Mesh-to-CAD contributors",
+  "homepage": "https://github.com/GalusPeres/Mesh-to-CAD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GalusPeres/Mesh-to-CAD.git"
+  },
+  "private": true,
+  "type": "module",
+  "main": "dist/main/index.cjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/start.mjs",
+    "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write . && node scripts/py.mjs -m ruff format kernel",
+    "test": "vitest run",
+    "test:e2e": "npm run build && playwright test",
+    "kernel:test": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel -m \"not slow\"",
+    "kernel:test:all": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel",
+    "kernel:lint": "node scripts/py.mjs -m ruff check kernel && node scripts/py.mjs -m ruff format --check kernel && node scripts/py.mjs --cwd kernel -m mypy",
+    "codegen": "node scripts/py.mjs -m m2c_kernel.protocol.codegen",
+    "codegen:check": "node scripts/py.mjs -m m2c_kernel.protocol.codegen --check",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run kernel:lint && npm run kernel:test && npm run codegen:check && node scripts/check-versions.mjs",
+    "build:kernel": "node scripts/build-kernel.mjs",
+    "dist": "npm run build && npm run build:kernel && electron-builder --win"
+  },
+  "dependencies": {
+    "@radix-ui/react-context-menu": "2.3.7",
+    "@radix-ui/react-dialog": "1.1.23",
+    "@radix-ui/react-dropdown-menu": "2.1.24",
+    "@radix-ui/react-slider": "1.4.7",
+    "@radix-ui/react-tooltip": "1.2.16",
+    "i18next": "26.4.2",
+    "lucide-react": "1.48.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-i18next": "17.0.15",
+    "three": "0.186.1",
+    "three-mesh-bvh": "0.9.15",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.6.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.12.0",
+    "happy-dom": "20.14.5",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.70.1",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}

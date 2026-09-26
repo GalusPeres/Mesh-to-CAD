@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "parallelInputs": "Cannot align: the second face is parallel to the first."
+  }
+}

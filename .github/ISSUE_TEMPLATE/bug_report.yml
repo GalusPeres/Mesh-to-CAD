@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please search the existing issues first. Report security problems privately (see SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: Mesh-to-CAD version
+      description: Shown under Hilfe > Über Mesh-to-CAD, or the commit if you built from source.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Import a scan with ...
+        2. Open "Form einpassen" ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the message text and its details, if any.
+    validations:
+      required: true
+  - type: input
+    id: scan
+    attributes:
+      label: Scan size
+      description: File format and triangle count, if a scan is involved.
+      placeholder: STL, 1,204,566 triangles
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt
+      description: From %LOCALAPPDATA%\Mesh-to-CAD\logs (main.log and kernel.log).
+      render: text
+  - type: markdown
+    attributes:
+      value: |
+        Attach a sample file only if it may be public.

@@ -1,0 +1,16 @@
+{
+  "numberField": {
+    "invalid": "Keine gültige Zahl.",
+    "ambiguous": "Mehrdeutig: Dezimalstellen mit Komma eingeben (z. B. 1,25)."
+  },
+  "discardDraft": {
+    "title": "Änderungen verwerfen?",
+    "text": "Die Änderungen in {{tool}} gehen verloren.",
+    "discard": "Verwerfen"
+  },
+  "snapList": {
+    "label": "Gefangene Werte",
+    "measured": "gemessen {{value}}",
+    "remove": "Fangen aufheben: {{name}}"
+  }
+}

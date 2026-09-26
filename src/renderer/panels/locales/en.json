@@ -1,0 +1,20 @@
+{
+  "project": "Project",
+  "tree": {
+    "scan": "Scan",
+    "faces_one": "{{formatted}} triangle",
+    "faces_other": "{{formatted}} triangles",
+    "regions": "Regions ({{count}})",
+    "region": "Region {{number}}",
+    "bodies": "Bodies ({{count}})",
+    "body": "Body {{number}}",
+    "history": "History",
+    "alignment": "Alignment"
+  },
+  "properties": {
+    "file": "File",
+    "triangles": "Triangles",
+    "vertices": "Vertices",
+    "noise": "Scan noise"
+  }
+}

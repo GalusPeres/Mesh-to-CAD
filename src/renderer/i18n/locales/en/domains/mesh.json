@@ -1,0 +1,17 @@
+{
+  "errors": {
+    "fileNotFound": "Import failed: the file was not found.",
+    "fileTooLarge": "Import failed: the file is larger than 1 GB.",
+    "unsupportedFormat": "Import failed: file type {{suffix}} is not supported (STL, OBJ, PLY).",
+    "readFailed": "Import failed: {{fileName}} is not a valid STL, OBJ or PLY file.",
+    "empty": "Import failed: {{fileName}} contains no triangles.",
+    "tooManyFaces": "Import failed: {{faces, count}} triangles, at most {{maxFaces, count}}.",
+    "reductionRequired": "The scan has {{faces, count}} triangles. Reduce it to at most {{maxFaces, count}} to work with it.",
+    "unknownImport": "The import is no longer available. Open the file again."
+  },
+  "progress": {
+    "reading": "Reading the file",
+    "welding": "Joining vertices",
+    "estimatingNoise": "Estimating the scan noise"
+  }
+}

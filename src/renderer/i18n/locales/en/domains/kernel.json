@@ -1,0 +1,19 @@
+{
+  "errors": {
+    "internal": "Internal error in the geometry process. The log contains the details.",
+    "invalidParams": "Invalid input: {{field}}.",
+    "unknownMethod": "The geometry process does not know the command {{method}}.",
+    "notAllowed": "Command {{method}} is not allowed here.",
+    "cancelled": "Computation cancelled.",
+    "superseded": "Computation replaced by a newer one.",
+    "busy": "A long computation is running. The preview follows afterwards.",
+    "notImplemented": "This function is not available yet.",
+    "stopped": "Geometry process stopped. The project is unchanged.",
+    "startFailed": "The geometry process could not be started. The log contains the details.",
+    "protocolMismatch": "The geometry process does not match the application. Reinstall Mesh-to-CAD."
+  },
+  "progress": {
+    "native": "Computing",
+    "working": "Working"
+  }
+}

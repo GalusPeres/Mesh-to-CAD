@@ -1,0 +1,102 @@
+{
+  "appName": "Mesh-to-CAD",
+  "untitled": "Untitled",
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "help": "Help",
+    "more": "More"
+  },
+  "stages": {
+    "label": "Workflow stages",
+    "prepare": "Prepare",
+    "align": "Align",
+    "model": "Model",
+    "inspect": "Inspect"
+  },
+  "toolGroups": {
+    "history": "History",
+    "selection": "Selection",
+    "mesh": "Scan",
+    "analysis": "Analysis",
+    "regions": "Regions",
+    "align": "Alignment",
+    "fit": "Shapes",
+    "reference": "Reference geometry",
+    "sketch": "Sketch",
+    "solid": "Bodies",
+    "freeform": "Freeform",
+    "inspect": "Inspect",
+    "export": "Export",
+    "view": "View"
+  },
+  "actions": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "apply": "Apply",
+    "close": "Close",
+    "restart": "Restart",
+    "help": "Help",
+    "details": "Details"
+  },
+  "commands": {
+    "undo": "Undo",
+    "redo": "Redo",
+    "quit": "Exit",
+    "settings": "Settings…",
+    "about": "About Mesh-to-CAD"
+  },
+  "panels": {
+    "project": "Project",
+    "properties": "Properties",
+    "noSelection": "Nothing selected",
+    "noSelectionHint": "Select an object in the project tree or the viewport."
+  },
+  "sections": {
+    "input": "Input",
+    "parameters": "Parameters",
+    "options": "Options",
+    "result": "Result",
+    "howTo": "How it works"
+  },
+  "status": {
+    "faces_one": "{{formatted}} triangle",
+    "faces_other": "{{formatted}} triangles",
+    "computing": "Computing …",
+    "cancel": "Cancel computation",
+    "elapsed": "{{seconds}} s",
+    "kernelStarting": "Geometry process starting …",
+    "kernelUnresponsive": "Geometry process not responding",
+    "kernelStopped": "Geometry process stopped",
+    "restartKernel": "Restart geometry process",
+    "kernelRestored": "Geometry process restarted. The project is unchanged."
+  },
+  "empty": {
+    "title": "No scan loaded",
+    "text": "Import an STL, OBJ or PLY file or drag it here.",
+    "recent": "Recent"
+  },
+  "tool": {
+    "notImplemented": "Not available yet",
+    "editing": "Edit: {{name}}",
+    "computing": "Computing …"
+  },
+  "units": {
+    "mm": "mm",
+    "cm": "cm",
+    "m": "m",
+    "in": "in"
+  },
+  "theme": {
+    "system": "System",
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "language": {
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "dropFile": "Drop the file here",
+  "unexpectedError": "Unexpected error. The log contains the details."
+}

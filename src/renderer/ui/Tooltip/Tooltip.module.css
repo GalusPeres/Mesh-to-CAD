@@ -1,0 +1,29 @@
+.content {
+  max-width: 280px;
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-floating);
+  color: var(--text);
+  font-size: var(--text-body);
+  line-height: var(--line-body);
+  animation: fade-in var(--fade-duration) ease-out;
+  z-index: 50;
+}
+
+.shortcut {
+  margin-left: var(--space-8);
+  color: var(--text-secondary);
+}
+
+.description {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

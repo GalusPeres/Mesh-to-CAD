@@ -1,0 +1,48 @@
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-scrim);
+  z-index: 60;
+}
+
+.dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 400px;
+  max-height: calc(100vh - var(--space-32) * 2);
+  display: flex;
+  flex-direction: column;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-floating);
+  z-index: 61;
+}
+
+.wide {
+  width: 560px;
+}
+
+.title {
+  margin: 0;
+  padding: var(--space-12) var(--space-16) var(--space-8);
+  font-size: var(--text-title);
+  line-height: var(--line-title);
+  font-weight: var(--weight-semibold);
+}
+
+.body {
+  padding: 0 var(--space-16) var(--space-12);
+  overflow: auto;
+  font-size: var(--text-header);
+  line-height: var(--line-header);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16) var(--space-12);
+}

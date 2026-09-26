@@ -1,0 +1,5 @@
+{
+  "errors": {
+    "parallelInputs": "Ausrichtung nicht möglich: Die zweite Fläche ist parallel zur ersten."
+  }
+}

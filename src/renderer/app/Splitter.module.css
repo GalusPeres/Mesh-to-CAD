@@ -1,0 +1,20 @@
+.splitter {
+  position: relative;
+  width: 1px;
+  background: var(--border);
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.splitter::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  width: 5px;
+}
+
+.splitter:hover {
+  background: var(--border-strong);
+}

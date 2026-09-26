@@ -1,0 +1,28 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--title-bar-height);
+  padding-left: var(--space-8);
+  /* Leave room for the native caption buttons drawn over the right end. */
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  background: var(--bg-app);
+  -webkit-app-region: drag;
+}
+
+.mark {
+  width: 16px;
+  height: 16px;
+  margin-right: var(--space-4);
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--space-4);
+  background: var(--border);
+}

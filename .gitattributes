@@ -1,0 +1,9 @@
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.stl binary
+*.ply binary
+*.m2c binary
+*.npy binary
+*.step -diff

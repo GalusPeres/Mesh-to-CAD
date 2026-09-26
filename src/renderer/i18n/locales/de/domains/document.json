@@ -1,0 +1,18 @@
+{
+  "errors": {
+    "noScan": "Kein Scan geladen.",
+    "staleRevision": "Das Projekt wurde inzwischen geändert. Aktion erneut ausführen.",
+    "revisionGone": "Dieser Schritt ist nicht mehr im Verlauf gespeichert.",
+    "unknownFeature": "Element {{feature}} existiert nicht.",
+    "unknownFeatureType": "Unbekannter Elementtyp {{type}}.",
+    "forwardReference": "{{feature}} kann nicht auf das spätere Element {{reference}} verweisen.",
+    "hasDependents_one": "Das Element wird von einem weiteren Element verwendet.",
+    "hasDependents_other": "Das Element wird von {{count}} weiteren Elementen verwendet.",
+    "limitExceeded": "Höchstens {{limit, count}} Elemente je Projekt.",
+    "featureNotImplemented": "Dieser Elementtyp ist noch nicht verfügbar.",
+    "inputUnavailable": "Eingabe {{feature}} ist nicht verfügbar."
+  },
+  "progress": {
+    "rebuilding": "Verlauf wird neu berechnet"
+  }
+}

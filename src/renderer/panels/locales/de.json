@@ -1,0 +1,20 @@
+{
+  "project": "Projekt",
+  "tree": {
+    "scan": "Scan",
+    "faces_one": "{{formatted}} Dreieck",
+    "faces_other": "{{formatted}} Dreiecke",
+    "regions": "Bereiche ({{count}})",
+    "region": "Bereich {{number}}",
+    "bodies": "Körper ({{count}})",
+    "body": "Körper {{number}}",
+    "history": "Verlauf",
+    "alignment": "Ausrichtung"
+  },
+  "properties": {
+    "file": "Datei",
+    "triangles": "Dreiecke",
+    "vertices": "Eckpunkte",
+    "noise": "Scanrauschen"
+  }
+}

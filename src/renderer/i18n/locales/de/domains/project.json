@@ -1,0 +1,6 @@
+{
+  "errors": {
+    "corrupt": "Projekt kann nicht geöffnet werden: Die Datei ist beschädigt.",
+    "unsupportedVersion": "Projekt kann nicht geöffnet werden: Es wurde mit einer neueren Version erstellt."
+  }
+}
