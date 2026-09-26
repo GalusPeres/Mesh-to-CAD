@@ -33,7 +33,12 @@ clients:
 }
 ```
 
-`M2C_AUTOMATION_INFO` points the server to a different `automation.json` (the end-to-end
+Use forward slashes in the paths of such a configuration; some clients pass the arguments
+through a shell that removes backslashes.
+
+The server looks for `automation.json` in `%APPDATA%Mesh-to-CAD` and in the per-package
+AppData copies of MSIX-packaged apps (the Claude desktop app is one), and uses the newest file
+whose process is still running. `M2C_AUTOMATION_INFO` points the server to a different `automation.json` (the end-to-end
 test uses this).
 
 ## Tools

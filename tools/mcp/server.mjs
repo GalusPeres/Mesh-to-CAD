@@ -10,7 +10,7 @@
 // Coordinates are part coordinates in millimetres (after the alignment), the
 // same as the application shows.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -20,21 +20,51 @@ import { z } from 'zod';
 
 const PRODUCT = 'Mesh-to-CAD';
 
-function infoPath() {
-  if (process.env.M2C_AUTOMATION_INFO) return process.env.M2C_AUTOMATION_INFO;
-  const appData = process.env.APPDATA ?? path.join(os.homedir(), 'AppData', 'Roaming');
-  return path.join(appData, PRODUCT, 'automation.json');
+/**
+ * Where the app may have published automation.json. Besides %APPDATA%, apps that
+ * run inside an MSIX package (such as the Claude desktop app, which may also have
+ * started Mesh-to-CAD) see a per-package copy of AppData.
+ */
+function infoCandidates() {
+  if (process.env.M2C_AUTOMATION_INFO) return [process.env.M2C_AUTOMATION_INFO];
+  const home = os.homedir();
+  const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
+  const localAppData = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local');
+  const candidates = [path.join(appData, PRODUCT, 'automation.json')];
+  const packages = path.join(localAppData, 'Packages');
+  if (existsSync(packages)) {
+    for (const name of readdirSync(packages)) {
+      candidates.push(
+        path.join(packages, name, 'LocalCache', 'Roaming', PRODUCT, 'automation.json'),
+      );
+    }
+  }
+  return candidates;
 }
 
-function connection() {
+function processAlive(pid) {
   try {
-    return JSON.parse(readFileSync(infoPath(), 'utf8'));
+    process.kill(pid, 0);
+    return true;
   } catch {
+    return false;
+  }
+}
+
+/** Port and token of the running app: the newest automation.json whose process is alive. */
+function connection() {
+  const live = infoCandidates()
+    .filter((file) => existsSync(file))
+    .map((file) => ({ info: JSON.parse(readFileSync(file, 'utf8')), time: statSync(file).mtimeMs }))
+    .filter(({ info }) => processAlive(info.pid))
+    .sort((a, b) => b.time - a.time);
+  if (live.length === 0) {
     throw new Error(
       `${PRODUCT} is not reachable. Start the app and enable "Steuerung durch KI-Assistenten ` +
-        `erlauben (MCP)" in Datei > Einstellungen (${infoPath()} is missing).`,
+        `erlauben (MCP)" in Datei > Einstellungen > Automatisierung.`,
     );
   }
+  return live[0].info;
 }
 
 /** One request to the application's automation interface. */
