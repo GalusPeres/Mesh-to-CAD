@@ -91,9 +91,18 @@ and fitting. They exchange binary messages over standard input and output. The d
 described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and the user interface in
 [docs/DESIGN.md](docs/DESIGN.md).
 
+## Automation (MCP)
+
+AI assistants can operate the app through a Model Context Protocol server
+(`tools/mcp/server.mjs`): load a scan, align it, fit shapes, create Auto-Flächen, export
+STEP and take screenshots, all live in the open window and undoable. Enable it in
+**Datei → Einstellungen → Automatisierung**; setup and tools are described in
+[docs/AUTOMATION.md](docs/AUTOMATION.md).
+
 ## Documentation
 
 - [Measured results](docs/RESULTS.md)
+- [Automation and MCP server](docs/AUTOMATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Design system](docs/DESIGN.md)
 - [Contributing](CONTRIBUTING.md)

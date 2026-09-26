@@ -96,9 +96,18 @@ Netzverarbeitung und das Einpassen nutzt. Sie tauschen binäre Nachrichten über
 und -ausgabe aus. Details stehen in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) und
 [docs/DESIGN.md](docs/DESIGN.md).
 
+## Automatisierung (MCP)
+
+KI-Assistenten können die App über einen MCP-Server (`tools/mcp/server.mjs`) bedienen:
+Scan laden, ausrichten, Formen einpassen, Auto-Flächen erzeugen, STEP exportieren und
+Screenshots holen, live im offenen Fenster und rückgängig machbar. Einschalten unter
+**Datei → Einstellungen → Automatisierung**; Einrichtung und Werkzeuge stehen in
+[docs/AUTOMATION.md](docs/AUTOMATION.md) (englisch).
+
 ## Dokumentation
 
 - [Messergebnisse](docs/RESULTS.md) (englisch)
+- [Automatisierung und MCP-Server](docs/AUTOMATION.md) (englisch)
 - [Architektur](docs/ARCHITECTURE.md) (englisch)
 - [Designsystem](docs/DESIGN.md) (englisch)
 - [Mitwirken](CONTRIBUTING.md) (englisch)
