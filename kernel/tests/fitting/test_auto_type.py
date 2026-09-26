@@ -59,3 +59,14 @@ def test_an_explicit_kind_is_fitted_even_if_another_fits_better() -> None:
     assert outcome.primitive.type == "plane"
     assert not outcome.stats.passed
     assert outcome.alternatives[0].kind == "cylinder"
+
+
+def test_an_almost_flat_patch_is_a_plane_not_a_huge_sphere() -> None:
+    # 40 mm across on a 20 m sphere: the bow is 0.01 mm, below the scan noise. A scanned
+    # remote control top looks like this; the automatic choice must say plane.
+    span = 40.0 / 20_000.0
+    patch = noisy_patch("sphere", span, span, 7, radius=20_000.0)
+    outcome = run_fit(
+        patch.mesh(), np.arange(len(patch.faces)), FitRequest(snap=False), np.random.default_rng(7)
+    )
+    assert outcome.primitive.type == "plane"

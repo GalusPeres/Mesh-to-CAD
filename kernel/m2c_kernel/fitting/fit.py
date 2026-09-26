@@ -36,6 +36,8 @@ from m2c_kernel.geometry import FloatArray, frame_from_axis, unit, vec3
 MAX_REFINE_POINTS = 30_000
 TRIAL_POINTS = 4_000
 TYPE_PENALTY = 1.15
+DEGENERATE_RADIUS_RATIO = 20.0
+"""A curved fit whose radius exceeds this multiple of the selection size is a flat surface."""
 """A type with more parameters must lower the robust sigma by this factor to win."""
 
 MIN_CONE_HALF_ANGLE = np.radians(0.5)
@@ -318,6 +320,24 @@ def fit_primitive(
         raise FitError(f"{kind} fit failed: {error}") from error
 
 
+def is_degenerate(primitive: Primitive, extent: float) -> bool:
+    """Whether a curved fit is, over a selection of this size, a plane in disguise.
+
+    Almost flat scan regions (a remote control's top, a slightly warped plate) fit a
+    sphere or cylinder with a radius of kilometres about as well as a plane; the
+    automatic choice must not prefer such a fit.
+    """
+    limit = DEGENERATE_RADIUS_RATIO * max(extent, 1e-9)
+    match primitive:
+        case Sphere(radius=radius) | Cylinder(radius=radius):
+            return radius > limit
+        case Torus(major_radius=major, minor_radius=minor):
+            return major > limit or minor > limit
+        case Cone(half_angle=half_angle):
+            return bool(half_angle > np.radians(89.0))
+    return False
+
+
 def trial_fits(
     points: FloatArray,
     normals: FloatArray,
@@ -334,6 +354,7 @@ def trial_fits(
     """
     count = min(len(points), TRIAL_POINTS)
     sample = rng.choice(len(points), count, replace=False)
+    extent = float(np.linalg.norm(np.ptp(points[sample], axis=0)))
     best: FitResult | None = None
     trials: list[FitResult] = []
     for kind in kinds:
@@ -347,6 +368,8 @@ def trial_fits(
         if not np.isfinite(trial.sigma):
             continue
         trials.append(trial)
+        if is_degenerate(trial.primitive, extent):
+            continue
         if best is None or trial.sigma * TYPE_PENALTY < best.sigma:
             best = trial
     trials.sort(key=lambda trial: trial.sigma)
