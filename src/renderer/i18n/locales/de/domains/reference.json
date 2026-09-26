@@ -1,5 +1,9 @@
 {
   "errors": {
-    "unsupportedInput": "Das gewählte Element liefert keine passende Geometrie."
+    "unsupportedInput": "Das gewählte Element liefert keine passende Geometrie.",
+    "notAPlane": "Das gewählte Element ist keine Ebene.",
+    "notAnAxis": "Das gewählte Element hat keine Achse.",
+    "parallelPlanes": "Die Ebenen sind parallel und schneiden sich nicht.",
+    "notParallel": "Die Ebenen sind nicht parallel."
   }
 }

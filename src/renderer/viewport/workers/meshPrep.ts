@@ -65,16 +65,17 @@ export function faceAdjacency(indices: Uint32Array, vertexCount: number): Int32A
   const low = (edge: number) => {
     const face = edge - (edge % 3);
     const a = indices[edge] ?? 0;
-    const b = indices[face + ((edge % 3) + 1) % 3] ?? 0;
+    const b = indices[face + (((edge % 3) + 1) % 3)] ?? 0;
     return a < b ? a : b;
   };
   const high = (edge: number) => {
     const face = edge - (edge % 3);
     const a = indices[edge] ?? 0;
-    const b = indices[face + ((edge % 3) + 1) % 3] ?? 0;
+    const b = indices[face + (((edge % 3) + 1) % 3)] ?? 0;
     return a < b ? b : a;
   };
-  for (let edge = 0; edge < edgeCount; edge += 1) start[low(edge) + 1] = (start[low(edge) + 1] ?? 0) + 1;
+  for (let edge = 0; edge < edgeCount; edge += 1)
+    start[low(edge) + 1] = (start[low(edge) + 1] ?? 0) + 1;
   for (let vertex = 0; vertex < vertexCount; vertex += 1)
     start[vertex + 1] = (start[vertex + 1] ?? 0) + (start[vertex] ?? 0);
   const fill = start.slice(0, vertexCount);

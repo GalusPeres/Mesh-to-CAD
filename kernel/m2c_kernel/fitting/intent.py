@@ -44,7 +44,10 @@ GLOBAL_AXES: dict[str, FloatArray] = {
 
 @dataclass(frozen=True)
 class AppliedSnap:
-    """A snap that was kept. For directions, `value` and `measured` are angles to the target in degrees."""
+    """A snap that was kept.
+
+    For directions, `value` and `measured` are angles to the target in degrees.
+    """
 
     id: SnapId
     kind: SnapKind
@@ -65,7 +68,7 @@ def _value(primitive: Primitive, name: SnapId) -> float | None:
     match primitive, name:
         case Plane(origin=origin, normal=normal), "offset":
             return float(np.asarray(origin) @ np.asarray(normal))
-        case (Sphere(radius=radius) | Cylinder(radius=radius)), "radius":
+        case ((Sphere(radius=radius) | Cylinder(radius=radius)), "radius"):
             return float(radius)
         case Cone(half_angle=half_angle), "halfAngle":
             return float(np.degrees(half_angle))
@@ -163,7 +166,9 @@ def snap_fit(
                 current, c = trial, candidate
                 snaps.append(AppliedSnap("direction", "direction", 0.0, angle, uncertainty, name))
 
-    axis_parallel = (d := direction_of(current.primitive)) is not None and global_axis_of(d) is not None
+    axis_parallel = (d := direction_of(current.primitive)) is not None and global_axis_of(
+        d
+    ) is not None
     for name in _values_of(current.primitive):
         if name in rejected or _is_fixed(c, name):
             continue

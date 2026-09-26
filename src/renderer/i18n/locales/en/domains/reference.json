@@ -1,5 +1,9 @@
 {
   "errors": {
-    "unsupportedInput": "The chosen item does not provide suitable geometry."
+    "unsupportedInput": "The chosen item does not provide suitable geometry.",
+    "notAPlane": "The selected element is not a plane.",
+    "notAnAxis": "The selected element has no axis.",
+    "parallelPlanes": "The planes are parallel and do not intersect.",
+    "notParallel": "The planes are not parallel."
   }
 }

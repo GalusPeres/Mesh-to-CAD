@@ -3,15 +3,32 @@
 export const CAD_ERROR_CODES = [
   'cad.invalidResult',
   'cad.occtUnavailable',
+  'cad.profileOpen',
+  'cad.axisCrossesProfile',
+  'cad.axisNotInPlane',
+  'cad.planeParallel',
+  'cad.planeBehind',
+  'cad.emptyResult',
+  'cad.booleanFailed',
+  'cad.filletFailed',
+  'cad.edgeNotFound',
+  'cad.targetRequired',
+  'cad.unsupportedTool',
+  'cad.noExtent',
+  'cad.taperUnsupported',
 ] as const;
 export type CadErrorCode = (typeof CAD_ERROR_CODES)[number];
 
 export const CAD_ISSUE_CODES = [
   'cad.highTolerance',
+  'cad.splitFacesKept',
 ] as const;
 export type CadIssueCode = (typeof CAD_ISSUE_CODES)[number];
 
 export const CAD_PROGRESS_STAGES = [
   'cad.tessellating',
+  'cad.modelling',
+  'cad.boolean',
+  'cad.fillet',
 ] as const;
 export type CadProgressStage = (typeof CAD_PROGRESS_STAGES)[number];

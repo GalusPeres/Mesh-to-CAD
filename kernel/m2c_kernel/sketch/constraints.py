@@ -7,6 +7,7 @@ refitted entities, so consecutive entities share identical endpoints.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -14,7 +15,16 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import least_squares
 
-from m2c_kernel.sketch.model import Arc, Chain, Circle, Constraint, Entity, FixedValue, FloatArray, Line
+from m2c_kernel.sketch.model import (
+    Arc,
+    Chain,
+    Circle,
+    Constraint,
+    Entity,
+    FixedValue,
+    FloatArray,
+    Line,
+)
 
 WEIGHT = 1e4
 
@@ -62,20 +72,28 @@ def _tangent_gap(a: Entity, b: Entity) -> float:
 
 
 def infer_constraints(chains: Sequence[Chain], opts: ConstraintOptions) -> list[Constraint]:
-    """Horizontal/vertical, parallel, perpendicular, collinear, equal radius, concentric, tangent."""
+    """Infer constraints between entities.
+
+    Horizontal/vertical, parallel, perpendicular, collinear, equal radius, concentric, tangent.
+    """
     constraints: list[Constraint] = []
     lines = [e for c in chains for e in c.entities if isinstance(e, Line)]
     rounds = [e for c in chains for e in c.entities if not isinstance(e, Line)]
 
     groups: list[list[Line]] = []
     for line in sorted(lines, key=_direction_angle):
-        if groups and _angle_gap(_direction_angle(groups[-1][0]), _direction_angle(line)) < opts.angle_tol:
+        if (
+            groups
+            and _angle_gap(_direction_angle(groups[-1][0]), _direction_angle(line)) < opts.angle_tol
+        ):
             groups[-1].append(line)
         else:
             groups.append([line])
-    if len(groups) > 1 and _angle_gap(
-        _direction_angle(groups[0][0]), _direction_angle(groups[-1][0])
-    ) < opts.angle_tol:
+    if (
+        len(groups) > 1
+        and _angle_gap(_direction_angle(groups[0][0]), _direction_angle(groups[-1][0]))
+        < opts.angle_tol
+    ):
         groups[0] = groups.pop() + groups[0]
 
     free_groups: list[list[Line]] = []
@@ -100,7 +118,8 @@ def infer_constraints(chains: Sequence[Chain], opts: ConstraintOptions) -> list[
                 (
                     c
                     for c in carriers
-                    if abs(line.offset * math.cos(c.angle - line.angle) - c.offset) < opts.center_tol
+                    if abs(line.offset * math.cos(c.angle - line.angle) - c.offset)
+                    < opts.center_tol
                 ),
                 None,
             )
@@ -118,7 +137,7 @@ def infer_constraints(chains: Sequence[Chain], opts: ConstraintOptions) -> list[
                 constraints.append(Constraint("perpendicular", (gi[0].id, gj[0].id)))
 
     order = sorted(rounds, key=lambda e: e.radius)
-    for a, b in zip(order, order[1:], strict=False):
+    for a, b in itertools.pairwise(order):
         if abs(a.radius - b.radius) < opts.radius_tol:
             constraints.append(Constraint("equalRadius", (a.id, b.id)))
     for i, a in enumerate(rounds):
@@ -235,7 +254,9 @@ def solve(
 
     if not entities:
         return
-    result = least_squares(residuals, np.array(x0, dtype=np.float64), method="lm", xtol=1e-12, ftol=1e-12)
+    result = least_squares(
+        residuals, np.array(x0, dtype=np.float64), method="lm", xtol=1e-12, ftol=1e-12
+    )
     for eid, e in entities.items():
         v = unpack(result.x, eid)
         if isinstance(e, Line):
@@ -252,7 +273,9 @@ def line_line(a: Line, b: Line, hint: FloatArray) -> FloatArray:
     return result
 
 
-def line_circle(line: Line, center: FloatArray, radius: float, hint: FloatArray, tangent: bool) -> FloatArray:
+def line_circle(
+    line: Line, center: FloatArray, radius: float, hint: FloatArray, tangent: bool
+) -> FloatArray:
     n = line.normal
     foot = center - (center @ n - line.offset) * n
     if tangent:

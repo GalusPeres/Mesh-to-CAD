@@ -89,7 +89,13 @@ def find_snaps(
                     if snap is not None:
                         point = (0.0, snap.value) if coordinate == 1 else (snap.value, 0.0)
                         kind = "y" if coordinate == 1 else "x"
-                        add(entity, kind, measured, u, FixedValue(entity.id, "through", snap.value, point))
+                        add(
+                            entity,
+                            kind,
+                            measured,
+                            u,
+                            FixedValue(entity.id, "through", snap.value, point),
+                        )
                 else:
                     direction = math.degrees((entity.angle + math.pi / 2) % math.pi)
                     length = max(float(np.linalg.norm(entity.end - entity.start)), 1e-6)

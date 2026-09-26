@@ -69,7 +69,7 @@ class FitAlternative:
 class FitRequest:
     kind: PrimitiveKind | Literal["auto"] = "auto"
     robust: bool = False
-    constraints: Constraints = Constraints()
+    constraints: Constraints = field(default_factory=Constraints)
     direction_locked: bool = False
     snap: bool = True
     rejected: frozenset[str] = frozenset()
@@ -98,7 +98,7 @@ def selection_points(
     faces = faces[(faces >= 0) & (faces < len(mesh.faces))]
     used = faces[~mesh.synthetic[faces]]
     if len(used) < MIN_FIT_FACES:
-        raise KernelError(ErrorCode.TOO_FEW_FACES, {"count": int(len(used)), "min": MIN_FIT_FACES})
+        raise KernelError(ErrorCode.TOO_FEW_FACES, {"count": len(used), "min": MIN_FIT_FACES})
     vertices = np.unique(mesh.faces[used].ravel())
     return used, mesh.vertices[vertices], mesh.jet.normals[vertices]
 
@@ -184,8 +184,10 @@ def run_fit(
     all_states[used] = used_states
     valid = (requested >= 0) & (requested < len(mesh.faces))
     states = np.where(valid, all_states[np.where(valid, requested, 0)], 0).astype(np.uint8)
-    inlier_ratio = float(inliers.mean()) if inliers is not None else float(
-        np.mean(np.abs(distances) <= 3.0 * max(sigma, 1e-4))
+    inlier_ratio = (
+        float(inliers.mean())
+        if inliers is not None
+        else float(np.mean(np.abs(distances) <= 3.0 * max(sigma, 1e-4)))
     )
     stats = FitStats(
         noise=float(noise),
@@ -196,8 +198,8 @@ def run_fit(
         within_tolerance=within,
         tolerance=float(tolerance),
         passed=within >= VERDICT_SHARE,
-        face_count=int(len(used)),
-        point_count=int(len(points)),
+        face_count=len(used),
+        point_count=len(points),
     )
     return FitOutcome(
         primitive=final.primitive,

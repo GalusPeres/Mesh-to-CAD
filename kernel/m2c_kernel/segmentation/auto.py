@@ -469,7 +469,9 @@ def _try_fit(
         return None
 
 
-def _drop_empty(labels: IntArray, slots: list[FitResult | None]) -> tuple[IntArray, list[FitResult]]:
+def _drop_empty(
+    labels: IntArray, slots: list[FitResult | None]
+) -> tuple[IntArray, list[FitResult]]:
     keep = [index for index, fit in enumerate(slots) if fit is not None]
     remap = np.full(len(slots) + 1, -1, dtype=np.int64)
     remap[keep] = np.arange(len(keep))

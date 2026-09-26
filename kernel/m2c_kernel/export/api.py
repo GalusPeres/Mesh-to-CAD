@@ -59,6 +59,7 @@ class StepCheck:
 
     @property
     def passed(self) -> bool:
+        """Whether the re-read file matches the exported bodies."""
         return (
             self.valid
             and self.solids == self.expected_solids
@@ -108,6 +109,7 @@ def _write_step_file(
 
 
 def read_step(path: Path) -> TopoDS_Shape:
+    """Read a STEP file into one shape."""
     reader = STEPControl_Reader()
     if reader.ReadFile(str(path)) != IFSelect_RetDone:
         raise ExportError("verify", f"STEP read failed: {path}")
@@ -116,6 +118,7 @@ def read_step(path: Path) -> TopoDS_Shape:
 
 
 def verify_step(path: Path, bodies: Mapping[str, Body]) -> StepCheck:
+    """Re-read a written STEP file and compare it with the exported bodies."""
     loaded = check_solid(read_step(path))
     checks = [check_solid(body.shape) for body in bodies.values()]
     expected_volume = sum(check.volume for check in checks)

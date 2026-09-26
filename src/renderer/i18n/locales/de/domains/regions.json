@@ -1,5 +1,16 @@
 {
   "errors": {
-    "unknownRegion": "Der Bereich existiert nicht mehr."
+    "unknownRegion": "Der Bereich existiert nicht mehr.",
+    "noScan": "Kein Scan geladen.",
+    "invalidFace": "Ungültiges Dreieck gewählt.",
+    "emptySelection": "Die Auswahl ist leer.",
+    "tooManyRegions": "Zu viele Bereiche. Toleranz erhöhen.",
+    "noSurface": "Keine zusammenhängende Fläche gefunden."
+  },
+  "progress": {
+    "analysing": "Scan analysieren",
+    "reducing": "Vereinfachen",
+    "growing": "Bereich erweitern",
+    "transferring": "Bereiche übertragen"
   }
 }

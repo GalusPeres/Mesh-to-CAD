@@ -20,7 +20,10 @@ export function sectionSegments(
     for (let corner = 0; corner < 3; corner += 1) {
       const o = base + corner * 3;
       const value =
-        (positions[o] ?? 0) * nx + (positions[o + 1] ?? 0) * ny + (positions[o + 2] ?? 0) * nz - offset;
+        (positions[o] ?? 0) * nx +
+        (positions[o + 1] ?? 0) * ny +
+        (positions[o + 2] ?? 0) * nz -
+        offset;
       distance[corner] = value;
       if (value > 0) above += 1;
     }

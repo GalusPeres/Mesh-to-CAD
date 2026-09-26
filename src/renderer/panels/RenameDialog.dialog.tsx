@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '../ui/Button/Button';
@@ -11,8 +11,11 @@ import { closeTreeDialogs, renameFeature, useTreeDialogs } from './treeActions';
 function RenameDialog() {
   const { t } = useTranslation(['panels', 'common']);
   const rename = useTreeDialogs((state) => state.rename);
-  const [name, setName] = useState('');
-  useEffect(() => setName(rename?.name ?? ''), [rename]);
+  // Keyed by the feature, so the field starts with the current name each time it opens.
+  const [draft, setDraft] = useState<{ key: string; name: string } | null>(null);
+  const key = rename?.featureId ?? '';
+  const name = draft?.key === key ? draft.name : (rename?.name ?? '');
+  const setName = (value: string) => setDraft({ key, name: value });
 
   const submit = (event?: FormEvent) => {
     event?.preventDefault();

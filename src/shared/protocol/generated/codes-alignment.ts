@@ -2,10 +2,17 @@
 
 export const ALIGNMENT_ERROR_CODES = [
   'alignment.parallelInputs',
+  'alignment.noPoint',
+  'alignment.inputNotFound',
+  'alignment.unsupportedInput',
+  'alignment.fitFailed',
+  'alignment.invalidParams',
 ] as const;
 export type AlignmentErrorCode = (typeof ALIGNMENT_ERROR_CODES)[number];
 
-export const ALIGNMENT_ISSUE_CODES = [] as const;
+export const ALIGNMENT_ISSUE_CODES = [
+  'alignment.pcaFallback',
+] as const;
 export type AlignmentIssueCode = (typeof ALIGNMENT_ISSUE_CODES)[number];
 
 export const ALIGNMENT_PROGRESS_STAGES = [] as const;

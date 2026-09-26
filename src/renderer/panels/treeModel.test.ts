@@ -26,10 +26,24 @@ beforeAll(async () => {
 const blob = { id: 'b', byteLength: 0 } as never;
 
 function region(id: string, label: number, kind: Region['kind'], rms: number | null = 0.02) {
-  return { id, label, name: null, kind, rms, faceCount: 100, area: 10, colorIndex: label } as Region;
+  return {
+    id,
+    label,
+    name: null,
+    kind,
+    rms,
+    faceCount: 100,
+    area: 10,
+    colorIndex: label,
+  } as Region;
 }
 
-function fit(id: string, kind: string, extra: Partial<Feature> = {}, sourceRegion?: string): Feature {
+function fit(
+  id: string,
+  kind: string,
+  extra: Partial<Feature> = {},
+  sourceRegion?: string,
+): Feature {
   return {
     id,
     type: 'fit',
@@ -69,7 +83,7 @@ function makeDocument(features: Feature[], regions: Region[] = []): Document {
     regions: { labels: null, items: regions },
     features,
     settings: { tolerance: 0.1, snapUnits: 'metric', noiseOverride: null, deviationMaxDistance: 1 },
-  } as Document;
+  };
 }
 
 function build(
@@ -138,7 +152,11 @@ describe('buildProjectTree', () => {
       bodies: [],
     };
     const nodes = build(
-      makeDocument([fit('f1', 'plane'), fit('f2', 'plane', { suppressed: true }), fit('f3', 'plane')]),
+      makeDocument([
+        fit('f1', 'plane'),
+        fit('f2', 'plane', { suppressed: true }),
+        fit('f3', 'plane'),
+      ]),
       status,
     );
     expect(findNode(nodes, 'feature:f1')?.state).toBe('warning');

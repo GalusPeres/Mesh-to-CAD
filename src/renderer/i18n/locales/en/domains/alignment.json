@@ -1,5 +1,13 @@
 {
   "errors": {
-    "parallelInputs": "Cannot align: the second face is parallel to the first."
+    "parallelInputs": "Cannot align: the second face is parallel to the first.",
+    "noPoint": "Cannot align: no origin point selected.",
+    "inputNotFound": "Cannot align: a selected element no longer exists.",
+    "unsupportedInput": "Cannot align: this element cannot be used as a reference.",
+    "fitFailed": "Cannot align: no suitable plane found in the scan.",
+    "invalidParams": "Cannot align: invalid input."
+  },
+  "issues": {
+    "pcaFallback": "No distinct planes found; aligned to principal axes."
   }
 }

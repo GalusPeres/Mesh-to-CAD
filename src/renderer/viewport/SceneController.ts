@@ -26,6 +26,8 @@ import { createHandleFactory } from './handles';
 import { SCENE_COLORS } from './palette';
 import { PointerRouter } from './PointerRouter';
 import { ScanMesh } from './scanMesh';
+import { prepareScan } from './workers/prepareScan';
+import { settingsStore } from '../state/settingsStore';
 import { ScanProxy, computeScanTopology, facesInCircle, facesInPolygon } from './scanPicking';
 
 export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
@@ -91,7 +93,11 @@ export class SceneController implements Viewport {
       this.handleGroup,
     );
 
-    this.rig = new CameraRig(this.scene, canvas, () => this.invalidate());
+    this.rig = new CameraRig(this.scene, canvas, {
+      pickPivot: (at) => this.pick(at, { kinds: ['scan', 'body'] })?.point ?? null,
+      invertWheel: () => settingsStore.getState().navigation.invertWheel,
+      onChange: () => this.invalidate(),
+    });
     this.pointer = new PointerRouter(canvas, (enabled) => this.rig.setNavigationEnabled(enabled));
     canvas.addEventListener('auxclick', (event) => {
       if (event.button === 1 && event.detail === 2) this.fitAll();
@@ -168,7 +174,13 @@ export class SceneController implements Viewport {
     } else {
       const payload = byKey.get(scanEntry.key);
       if (needsScan && payload?.type === 'scan') {
-        this.replaceScan(new ScanMesh(payload, scanEntry.key, () => this.invalidate()));
+        const prepared = await prepareScan({
+          positions: payload.positions,
+          normals: payload.normals,
+          indices: payload.indices,
+        });
+        if (token !== this.syncToken) return;
+        this.replaceScan(new ScanMesh(payload, prepared, scanEntry.key, () => this.invalidate()));
       }
       // Positions are relative to the scan origin in scan coordinates; the
       // alignment transform places them in part coordinates.

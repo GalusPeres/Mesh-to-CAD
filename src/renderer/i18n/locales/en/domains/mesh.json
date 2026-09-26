@@ -7,11 +7,19 @@
     "empty": "Import failed: {{fileName}} contains no triangles.",
     "tooManyFaces": "Import failed: {{faces, count}} triangles, at most {{maxFaces, count}}.",
     "reductionRequired": "The scan has {{faces, count}} triangles. Reduce it to at most {{maxFaces, count}} to work with it.",
-    "unknownImport": "The import is no longer available. Open the file again."
+    "unknownImport": "The import is no longer available. Open the file again.",
+    "noScan": "No scan loaded.",
+    "staleSelection": "The selection belongs to an older scan state. Select again.",
+    "nothingLeft": "Nothing of the scan would remain.",
+    "decimationFailed": "Reduction failed."
   },
   "progress": {
     "reading": "Reading the file",
     "welding": "Joining vertices",
-    "estimatingNoise": "Estimating the scan noise"
+    "estimatingNoise": "Estimating the scan noise",
+    "repairing": "Repairing",
+    "decimating": "Reducing",
+    "fillingHoles": "Filling holes",
+    "inspecting": "Inspecting"
   }
 }

@@ -1,12 +1,29 @@
 {
   "errors": {
     "invalidResult": "Das Ergebnis ist kein gültiger Körper.",
-    "occtUnavailable": "Die Geometriebibliothek konnte nicht geladen werden."
+    "occtUnavailable": "Die Geometriebibliothek konnte nicht geladen werden.",
+    "profileOpen": "Keine geschlossene Kontur in der Skizze.",
+    "axisCrossesProfile": "Die Drehachse schneidet die Kontur.",
+    "axisNotInPlane": "Die Drehachse liegt nicht in der Skizzenebene.",
+    "planeParallel": "Die Zielebene ist parallel zur Extrusionsrichtung.",
+    "planeBehind": "Die Zielebene liegt hinter der Skizze.",
+    "emptyResult": "Die Operation ergibt keinen Körper.",
+    "booleanFailed": "Die boolesche Operation ist fehlgeschlagen.",
+    "filletFailed": "Die Verrundung ist fehlgeschlagen. Kleineren Radius versuchen.",
+    "edgeNotFound": "Eine gewählte Kante existiert nicht mehr.",
+    "targetRequired": "Zielkörper wählen.",
+    "unsupportedTool": "Dieses Element kann hier nicht verwendet werden.",
+    "noExtent": "Die Ausdehnung kann nicht aus dem Scan bestimmt werden.",
+    "taperUnsupported": "Formschräge wird für diese Extrusion nicht unterstützt."
   },
   "issues": {
-    "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm)."
+    "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm).",
+    "splitFacesKept": "Einige geteilte Flächen konnten nicht zusammengeführt werden."
   },
   "progress": {
-    "tessellating": "Darstellung wird berechnet"
+    "tessellating": "Darstellung wird berechnet",
+    "modelling": "Körper berechnen",
+    "boolean": "Boolesche Operation",
+    "fillet": "Verrunden"
   }
 }

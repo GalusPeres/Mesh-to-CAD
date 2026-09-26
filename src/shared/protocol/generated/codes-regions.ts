@@ -2,11 +2,21 @@
 
 export const REGIONS_ERROR_CODES = [
   'regions.unknownRegion',
+  'regions.noScan',
+  'regions.invalidFace',
+  'regions.emptySelection',
+  'regions.tooManyRegions',
+  'regions.noSurface',
 ] as const;
 export type RegionsErrorCode = (typeof REGIONS_ERROR_CODES)[number];
 
 export const REGIONS_ISSUE_CODES = [] as const;
 export type RegionsIssueCode = (typeof REGIONS_ISSUE_CODES)[number];
 
-export const REGIONS_PROGRESS_STAGES = [] as const;
+export const REGIONS_PROGRESS_STAGES = [
+  'regions.analysing',
+  'regions.reducing',
+  'regions.growing',
+  'regions.transferring',
+] as const;
 export type RegionsProgressStage = (typeof REGIONS_PROGRESS_STAGES)[number];

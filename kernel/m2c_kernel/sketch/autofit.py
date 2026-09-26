@@ -9,7 +9,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from m2c_kernel.sketch import fit2d
-from m2c_kernel.sketch.constraints import ConstraintOptions, infer_constraints, solve, update_junctions
+from m2c_kernel.sketch.constraints import (
+    ConstraintOptions,
+    infer_constraints,
+    solve,
+    update_junctions,
+)
 from m2c_kernel.sketch.model import Arc, Chain, Circle, Constraint, Entity, FloatArray, Line
 from m2c_kernel.sketch.snaps import SnapRecord, find_snaps
 from m2c_kernel.snapping import SnapUnits
@@ -44,7 +49,9 @@ def _entity(kind: str, fit: fit2d.Fit, points: FloatArray, eid: str) -> Entity:
     return Arc(eid, fit.center.copy(), fit.radius, ccw)
 
 
-def fit_chain(raw: FloatArray, closed: bool, tolerance: float, noise: float, ids: list[str]) -> Chain:
+def fit_chain(
+    raw: FloatArray, closed: bool, tolerance: float, noise: float, ids: list[str]
+) -> Chain:
     """Lines and arcs (or one circle) through one section polyline."""
     spacing = _spacing(raw, closed)
     samples = fit2d.resample(raw, spacing, closed)
@@ -104,7 +111,11 @@ def fit_single(points: FloatArray, kind: str, tolerance: float, eid: str) -> tup
     else:
         line = fit2d.fit_line(points)
         arc = fit2d.fit_kind(points, "arc", opts)
-        choice = ("arc", arc) if arc is not None and arc.max_error < 0.5 * line.max_error else ("line", line)
+        choice = (
+            ("arc", arc)
+            if arc is not None and arc.max_error < 0.5 * line.max_error
+            else ("line", line)
+        )
     if choice is None:
         choice = ("line", fit2d.fit_line(points))
     entity = _entity(choice[0], choice[1], points, eid)

@@ -211,9 +211,7 @@ class _PrefixMoments:
         self.scale = float(np.sqrt(np.mean(np.sum((pts - self.center) ** 2, axis=1)))) or 1.0
         x, y = ((pts - self.center) / self.scale).T
         z = x * x + y * y
-        cols = np.column_stack(
-            [np.ones_like(x), x, y, x * x, x * y, y * y, x * z, y * z, z, z * z]
-        )
+        cols = np.column_stack([np.ones_like(x), x, y, x * x, x * y, y * y, x * z, y * z, z, z * z])
         self.sums = np.vstack([np.zeros(cols.shape[1]), np.cumsum(cols, axis=0)])
 
     def _moments(self, i: npt.NDArray[np.int64], j: npt.NDArray[np.int64]) -> FloatArray:
@@ -401,7 +399,9 @@ def split_polyline(
     return pts, segments
 
 
-def _merge_lines(pts: FloatArray, segments: list[Segment], closed: bool, opts: SegmentOptions) -> None:
+def _merge_lines(
+    pts: FloatArray, segments: list[Segment], closed: bool, opts: SegmentOptions
+) -> None:
     """Merge neighbouring lines while their union is one line within tolerance."""
     k = 0
     while k < len(segments) - 1:

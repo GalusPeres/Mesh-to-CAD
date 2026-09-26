@@ -207,9 +207,12 @@ def _tag_swept_faces(
     direction: Vector,
     tag: str,
 ) -> None:
-    """Tag faces the revolve history misses (OCCT returns no `Generated` faces for edges
-    perpendicular to the axis of a full revolve): rotate a point of the face back into the
-    profile plane and take the nearest profile edge."""
+    """Tag faces the revolve history misses.
+
+    OCCT returns no `Generated` faces for edges perpendicular to the axis of a full
+    revolve: rotate a point of the face back into the profile plane and take the
+    nearest profile edge.
+    """
     in_plane = np.cross(frame.normal, direction)
     samples = np.vstack([_edge_samples(edge) for edge, _name in edges])
     if float(np.mean((samples - point) @ in_plane)) < 0:
@@ -223,9 +226,7 @@ def _tag_swept_faces(
         collector.set(collector.face(index), f"{tag}:rev:{name}")
 
 
-def _axis_in_plane(
-    frame: PlaneFrame, point: Vector, direction: Vector
-) -> tuple[Vector, Vector]:
+def _axis_in_plane(frame: PlaneFrame, point: Vector, direction: Vector) -> tuple[Vector, Vector]:
     normal = _unit(frame.normal)
     unit = _unit(direction)
     distance = float(np.dot(np.asarray(point) - frame.origin, normal))
@@ -234,7 +235,9 @@ def _axis_in_plane(
     return np.asarray(point, dtype=np.float64) - distance * normal, unit
 
 
-def _check_axis_side(face: TopoDS_Shape, frame: PlaneFrame, point: Vector, direction: Vector) -> None:
+def _check_axis_side(
+    face: TopoDS_Shape, frame: PlaneFrame, point: Vector, direction: Vector
+) -> None:
     """The profile must lie on one side of the axis (touching it is allowed)."""
     side_normal = np.cross(direction, frame.normal)
     samples = np.vstack([_edge_samples(edge) for edge in profile_edges(face)])
@@ -349,8 +352,8 @@ def fillet_edges(
     body: Body, edges: list[TopoDS_Shape], size: float, chamfer: bool, tag: str
 ) -> Body:
     """Constant-radius fillet or symmetric chamfer; new faces are `<tag>:fillet:<n>`."""
-    maker: Any = BRepFilletAPI_MakeChamfer(body.shape) if chamfer else BRepFilletAPI_MakeFillet(
-        body.shape
+    maker: Any = (
+        BRepFilletAPI_MakeChamfer(body.shape) if chamfer else BRepFilletAPI_MakeFillet(body.shape)
     )
     for edge in edges:
         maker.Add(size, TopoDS.Edge(edge))

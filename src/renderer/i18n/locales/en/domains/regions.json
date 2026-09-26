@@ -1,5 +1,16 @@
 {
   "errors": {
-    "unknownRegion": "The region no longer exists."
+    "unknownRegion": "The region no longer exists.",
+    "noScan": "No scan loaded.",
+    "invalidFace": "Invalid triangle selected.",
+    "emptySelection": "The selection is empty.",
+    "tooManyRegions": "Too many regions. Increase the tolerance.",
+    "noSurface": "No connected surface found."
+  },
+  "progress": {
+    "analysing": "Analysing scan",
+    "reducing": "Simplifying",
+    "growing": "Growing region",
+    "transferring": "Transferring regions"
   }
 }

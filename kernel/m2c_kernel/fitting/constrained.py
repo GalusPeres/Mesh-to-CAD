@@ -91,9 +91,7 @@ def direction_of(primitive: Primitive) -> FloatArray | None:
     return None
 
 
-def _direction(
-    x: _Vector, start: FloatArray, c: Constraints
-) -> Callable[[FloatArray], FloatArray]:
+def _direction(x: _Vector, start: FloatArray, c: Constraints) -> Callable[[FloatArray], FloatArray]:
     if c.direction is not None:
         fixed = unit(c.direction)
         if fixed @ start < 0:
@@ -111,7 +109,9 @@ def _direction(
     return lambda v: unit(start + v[i] * e1 + v[j] * e2)
 
 
-def _scalar(x: _Vector, name: str, fixed: float | None, start: float) -> Callable[[FloatArray], float]:
+def _scalar(
+    x: _Vector, name: str, fixed: float | None, start: float
+) -> Callable[[FloatArray], float]:
     if fixed is not None:
         value = float(fixed)
         return lambda _: value

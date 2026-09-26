@@ -1,12 +1,29 @@
 {
   "errors": {
     "invalidResult": "The result is not a valid body.",
-    "occtUnavailable": "The geometry library could not be loaded."
+    "occtUnavailable": "The geometry library could not be loaded.",
+    "profileOpen": "The sketch has no closed profile.",
+    "axisCrossesProfile": "The axis of revolution crosses the profile.",
+    "axisNotInPlane": "The axis of revolution does not lie in the sketch plane.",
+    "planeParallel": "The target plane is parallel to the extrusion direction.",
+    "planeBehind": "The target plane lies behind the sketch.",
+    "emptyResult": "The operation produces no body.",
+    "booleanFailed": "The boolean operation failed.",
+    "filletFailed": "The fillet failed. Try a smaller radius.",
+    "edgeNotFound": "A selected edge no longer exists.",
+    "targetRequired": "Select a target body.",
+    "unsupportedTool": "This element cannot be used here.",
+    "noExtent": "The extent cannot be derived from the scan.",
+    "taperUnsupported": "Taper is not supported for this extrusion."
   },
   "issues": {
-    "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm)."
+    "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm).",
+    "splitFacesKept": "Some split faces could not be merged."
   },
   "progress": {
-    "tessellating": "Preparing the display"
+    "tessellating": "Preparing the display",
+    "modelling": "Building body",
+    "boolean": "Boolean operation",
+    "fillet": "Filleting"
   }
 }

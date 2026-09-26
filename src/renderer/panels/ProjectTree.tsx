@@ -29,18 +29,20 @@ import menuStyles from '../ui/Menu/Menu.module.css';
 import { FEATURE_VIEWS, featureNames, featureView } from '../features/registry';
 import { useFormatter } from '../i18n/useFormatter';
 import { useDocument } from '../state/documentStore';
-import {
-  hoverObject,
-  selectObjects,
-  useObjectSelection,
-} from '../state/objectSelectionStore';
+import { hoverObject, selectObjects, useObjectSelection } from '../state/objectSelectionStore';
 import { openTool } from '../tools/framework/toolActions';
 import { Checkbox } from '../ui/Checkbox/Checkbox';
 import { PlaneIcon, SphereIcon } from '../ui/icons/customIcons';
 import { Tree, type TreeNode } from '../ui/Tree/Tree';
 import styles from './ProjectTree.module.css';
 import { canEditDocument, requestDelete, startRename, toggleSuppressed } from './treeActions';
-import { buildProjectTree, findNode, nodeIdOf, type ProjectNode, type ProjectNodeIcon } from './treeModel';
+import {
+  buildProjectTree,
+  findNode,
+  nodeIdOf,
+  type ProjectNode,
+  type ProjectNodeIcon,
+} from './treeModel';
 import { setOnlyUnusedRegions, useTreeFilter } from './treeFilterStore';
 import { useViewportHighlight } from './viewportHighlight';
 

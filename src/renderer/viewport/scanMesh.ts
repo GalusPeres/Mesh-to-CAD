@@ -99,7 +99,7 @@ export class ScanMesh implements ScanView {
   };
   private lastColorSource: ColorSource | null = null;
   private deviationVisible = false;
-  private edgeColor = '#000000';
+  private edgeColor: string = SCENE_COLORS.bodyEdgesDark;
   private fullUploadPending = true;
 
   constructor(
@@ -160,8 +160,7 @@ export class ScanMesh implements ScanView {
     const box = new THREE.Box3();
     const point = new THREE.Vector3();
     for (let face = 0; face < this.faceCount; face += 1) {
-      if (((this.flags[face * 3] ?? 0) & (FLAG_SELECTED | FLAG_HIDDEN)) !== FLAG_SELECTED)
-        continue;
+      if (((this.flags[face * 3] ?? 0) & (FLAG_SELECTED | FLAG_HIDDEN)) !== FLAG_SELECTED) continue;
       for (let corner = 0; corner < 3; corner += 1)
         box.expandByPoint(point.fromArray(this.positions, face * 9 + corner * 3));
     }
@@ -237,8 +236,7 @@ export class ScanMesh implements ScanView {
     const buffer = new Float32Array(this.faceCount * 9);
     for (let face = 0; face < this.faceCount; face += 1) {
       const label = labels[face] ?? 0;
-      const color =
-        label === 0 ? base : (colors[(colorIndex[label] ?? 0) % colors.length] ?? base);
+      const color = label === 0 ? base : (colors[(colorIndex[label] ?? 0) % colors.length] ?? base);
       for (let corner = 0; corner < 3; corner += 1) color.toArray(buffer, face * 9 + corner * 3);
     }
     this.setColorSource('regions', buffer);

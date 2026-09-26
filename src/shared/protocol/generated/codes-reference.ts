@@ -2,6 +2,10 @@
 
 export const REFERENCE_ERROR_CODES = [
   'reference.unsupportedInput',
+  'reference.notAPlane',
+  'reference.notAnAxis',
+  'reference.parallelPlanes',
+  'reference.notParallel',
 ] as const;
 export type ReferenceErrorCode = (typeof REFERENCE_ERROR_CODES)[number];
 

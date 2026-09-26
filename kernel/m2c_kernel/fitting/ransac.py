@@ -30,7 +30,13 @@ from m2c_kernel.fitting.primitives import (
 )
 from m2c_kernel.geometry import FloatArray, frame_from_axis, unit, vec3
 
-MIN_SAMPLE: dict[PrimitiveKind, int] = {"plane": 3, "sphere": 2, "cylinder": 2, "cone": 3, "torus": 12}
+MIN_SAMPLE: dict[PrimitiveKind, int] = {
+    "plane": 3,
+    "sphere": 2,
+    "cylinder": 2,
+    "cone": 3,
+    "torus": 12,
+}
 SCORE_POINTS = 20_000
 MAX_HYPOTHESES = 3_000
 SUCCESS_PROBABILITY = 0.999
@@ -75,7 +81,9 @@ def _minimal(
             return None
         t = np.linalg.solve(system, q2 - q1)
         c = q1 + t[0] * m1
-        return Cylinder(origin=vec3(c[0] * e1 + c[1] * e2), axis=vec3(axis), radius=float(abs(t[0])))
+        return Cylinder(
+            origin=vec3(c[0] * e1 + c[1] * e2), axis=vec3(axis), radius=float(abs(t[0]))
+        )
     if kind == "cone":  # three tangent planes meet in the apex; n . a is constant
         try:
             apex = np.linalg.solve(n[:3], (n[:3] * p[:3]).sum(axis=1))

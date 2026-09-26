@@ -37,7 +37,9 @@ def standard_frame(name: str) -> PlaneFrame:
     return PlaneFrame(np.zeros(3), x, np.cross(x, y))
 
 
-def adjust_frame(frame: PlaneFrame, offset: float, x_direction: npt.ArrayLike | None, flip: bool) -> PlaneFrame:
+def adjust_frame(
+    frame: PlaneFrame, offset: float, x_direction: npt.ArrayLike | None, flip: bool
+) -> PlaneFrame:
     """Offset along the normal, optional in-plane X direction, optional flip (mirrors Y)."""
     moved = frame_from_normal(
         frame.origin + offset * frame.normal,
@@ -149,7 +151,9 @@ def planar_section(
     return loops, chains
 
 
-def rotational_frame(point: npt.ArrayLike, direction: npt.ArrayLike, x_hint: npt.ArrayLike | None) -> PlaneFrame:
+def rotational_frame(
+    point: npt.ArrayLike, direction: npt.ArrayLike, x_hint: npt.ArrayLike | None
+) -> PlaneFrame:
     """Half-plane frame: u along the axis, v radial (v >= 0 is the section side)."""
     axis = np.asarray(direction, dtype=np.float64)
     axis = axis / np.linalg.norm(axis)

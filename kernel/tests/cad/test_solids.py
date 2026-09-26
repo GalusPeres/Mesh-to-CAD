@@ -34,7 +34,9 @@ def _box(tag: str = "f1", dx: float = 30.0, dy: float = 20.0, dz: float = 10.0) 
     return extrude([rectangle_profile(0, 0, dx, dy)], np.array([0, 0, 1.0]), dz, 0.0, tag)
 
 
-def _top_edge_refs(body: Body, tag: str = "f1") -> list[tuple[tuple[str, str], tuple[float, float, float]]]:
+def _top_edge_refs(
+    body: Body, tag: str = "f1"
+) -> list[tuple[tuple[str, str], tuple[float, float, float]]]:
     return [((f"{tag}:cap:end", f"{tag}:side:e{k}"), (0.0, 0.0, 0.0)) for k in range(4)]
 
 
@@ -102,7 +104,9 @@ def test_primitives_are_exact() -> None:
 
 def test_fillet_and_chamfer_on_four_top_edges() -> None:
     body = _box()
-    edges = [resolve_edge(body, faces, point, i) for i, (faces, point) in enumerate(_top_edge_refs(body))]
+    edges = [
+        resolve_edge(body, faces, point, i) for i, (faces, point) in enumerate(_top_edge_refs(body))
+    ]
     rounded = fillet_edges(body, edges, 2.0, chamfer=False, tag="f6")
     assert check_solid(rounded.shape).volume == pytest.approx(5917.227, abs=1e-3)
     assert sum(tag.startswith("f6:fillet:") for tag in rounded.face_tags) == 4
@@ -113,7 +117,9 @@ def test_fillet_and_chamfer_on_four_top_edges() -> None:
 
 def test_too_large_fillet_fails_with_a_code() -> None:
     body = _box()
-    edges = [resolve_edge(body, faces, point, i) for i, (faces, point) in enumerate(_top_edge_refs(body))]
+    edges = [
+        resolve_edge(body, faces, point, i) for i, (faces, point) in enumerate(_top_edge_refs(body))
+    ]
     with pytest.raises(KernelError) as failure:
         fillet_edges(body, edges, 12.0, chamfer=False, tag="f6")
     assert failure.value.code == "cad.filletFailed"
@@ -128,7 +134,9 @@ def test_missing_edge_reports_its_index() -> None:
 
 def test_tilted_plane_trim_of_a_sphere() -> None:
     ball = sphere(np.zeros(3), 10.0, "f7")
-    kept, _issues = trim_by_plane(ball, np.array([0, 0, 4.0]), np.array([0, 0.2, 1.0]), "front", "f8")
+    kept, _issues = trim_by_plane(
+        ball, np.array([0, 0, 4.0]), np.array([0, 0.2, 1.0]), "front", "f8"
+    )
     assert check_solid(kept.shape).volume == pytest.approx(925.353, abs=1e-3)
     assert "f8:cut" in kept.face_tags and "f7:surface" in kept.face_tags
 
@@ -161,7 +169,11 @@ def test_cut_splitting_a_tagged_face_keeps_the_tag_and_the_point_picks_the_edge(
 
 def test_empty_cut_is_an_error() -> None:
     with pytest.raises(KernelError) as failure:
-        boolean("intersect", _box("fa", 5, 5, 5), [extrude([rectangle_profile(50, 50, 5, 5)], np.array([0, 0, 1.0]), 5.0, 0.0, "fb")])
+        boolean(
+            "intersect",
+            _box("fa", 5, 5, 5),
+            [extrude([rectangle_profile(50, 50, 5, 5)], np.array([0, 0, 1.0]), 5.0, 0.0, "fb")],
+        )
     assert failure.value.code == "cad.emptyResult"
 
 

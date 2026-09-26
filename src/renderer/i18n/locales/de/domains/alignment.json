@@ -1,5 +1,13 @@
 {
   "errors": {
-    "parallelInputs": "Ausrichtung nicht möglich: Die zweite Fläche ist parallel zur ersten."
+    "parallelInputs": "Ausrichtung nicht möglich: Die zweite Fläche ist parallel zur ersten.",
+    "noPoint": "Ausrichten nicht möglich: Kein Ursprungspunkt gewählt.",
+    "inputNotFound": "Ausrichten nicht möglich: Ein gewähltes Element existiert nicht mehr.",
+    "unsupportedInput": "Ausrichten nicht möglich: Dieses Element kann nicht als Referenz dienen.",
+    "fitFailed": "Ausrichten nicht möglich: Keine passende Ebene im Scan gefunden.",
+    "invalidParams": "Ausrichten nicht möglich: Ungültige Eingaben."
+  },
+  "issues": {
+    "pcaFallback": "Keine eindeutigen Ebenen gefunden; nach Hauptachsen ausgerichtet."
   }
 }

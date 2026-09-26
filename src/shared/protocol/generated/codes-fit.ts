@@ -3,10 +3,13 @@
 export const FIT_ERROR_CODES = [
   'fit.tooFewFaces',
   'fit.didNotConverge',
+  'fit.invalidRelation',
 ] as const;
 export type FitErrorCode = (typeof FIT_ERROR_CODES)[number];
 
-export const FIT_ISSUE_CODES = [] as const;
+export const FIT_ISSUE_CODES = [
+  'fit.poorFit',
+] as const;
 export type FitIssueCode = (typeof FIT_ISSUE_CODES)[number];
 
 export const FIT_PROGRESS_STAGES = [] as const;

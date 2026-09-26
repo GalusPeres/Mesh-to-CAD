@@ -7,11 +7,19 @@
     "empty": "Import fehlgeschlagen: {{fileName}} enthält keine Dreiecke.",
     "tooManyFaces": "Import fehlgeschlagen: {{faces, count}} Dreiecke, höchstens {{maxFaces, count}}.",
     "reductionRequired": "Der Scan hat {{faces, count}} Dreiecke. Zum Arbeiten auf höchstens {{maxFaces, count}} reduzieren.",
-    "unknownImport": "Der Import ist nicht mehr verfügbar. Datei erneut öffnen."
+    "unknownImport": "Der Import ist nicht mehr verfügbar. Datei erneut öffnen.",
+    "noScan": "Kein Scan geladen.",
+    "staleSelection": "Die Auswahl gehört zu einem älteren Stand des Scans. Neu auswählen.",
+    "nothingLeft": "Nach dem Löschen bliebe vom Scan nichts übrig.",
+    "decimationFailed": "Reduzieren fehlgeschlagen."
   },
   "progress": {
     "reading": "Datei wird gelesen",
     "welding": "Eckpunkte werden verbunden",
-    "estimatingNoise": "Scanrauschen wird bestimmt"
+    "estimatingNoise": "Scanrauschen wird bestimmt",
+    "repairing": "Reparieren",
+    "decimating": "Reduzieren",
+    "fillingHoles": "Löcher schließen",
+    "inspecting": "Prüfen"
   }
 }

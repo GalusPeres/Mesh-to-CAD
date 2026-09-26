@@ -2,11 +2,18 @@
 
 export const EXPORT_ERROR_CODES = [
   'export.writeFailed',
+  'export.noBody',
+  'export.unknownBody',
+  'export.blocked',
+  'export.verifyFailed',
 ] as const;
 export type ExportErrorCode = (typeof EXPORT_ERROR_CODES)[number];
 
 export const EXPORT_ISSUE_CODES = [] as const;
 export type ExportIssueCode = (typeof EXPORT_ISSUE_CODES)[number];
 
-export const EXPORT_PROGRESS_STAGES = [] as const;
+export const EXPORT_PROGRESS_STAGES = [
+  'export.writing',
+  'export.verifying',
+] as const;
 export type ExportProgressStage = (typeof EXPORT_PROGRESS_STAGES)[number];

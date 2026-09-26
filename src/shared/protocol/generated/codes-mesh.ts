@@ -9,6 +9,10 @@ export const MESH_ERROR_CODES = [
   'mesh.tooManyFaces',
   'mesh.reductionRequired',
   'mesh.unknownImport',
+  'mesh.noScan',
+  'mesh.staleSelection',
+  'mesh.nothingLeft',
+  'mesh.decimationFailed',
 ] as const;
 export type MeshErrorCode = (typeof MESH_ERROR_CODES)[number];
 
@@ -19,5 +23,9 @@ export const MESH_PROGRESS_STAGES = [
   'mesh.reading',
   'mesh.welding',
   'mesh.estimatingNoise',
+  'mesh.repairing',
+  'mesh.decimating',
+  'mesh.fillingHoles',
+  'mesh.inspecting',
 ] as const;
 export type MeshProgressStage = (typeof MESH_PROGRESS_STAGES)[number];

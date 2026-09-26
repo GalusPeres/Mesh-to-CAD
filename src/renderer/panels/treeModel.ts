@@ -155,17 +155,17 @@ export function buildProjectTree(input: TreeModelInput): ProjectNode[] {
         .map((operation, index) => ({ operation, index }))
         .filter(({ operation }) => operation.op !== 'import')
         .map(({ operation, index }) => ({
-        id: `operation:${index}`,
-        label: t('panels:operations.' + operation.op, {
-          defaultValue: operation.op,
-          count: operation.counts.faces ?? operation.counts.count ?? 0,
-          formatted: format.count(operation.counts.faces ?? operation.counts.count ?? 0),
-        }),
-        icon: 'operation',
-        state: 'ok',
-        ref: null,
-        testId: `tree-node-operation-${index}`,
-      })),
+          id: `operation:${index}`,
+          label: t('panels:operations.' + operation.op, {
+            defaultValue: operation.op,
+            count: operation.counts.faces ?? operation.counts.count ?? 0,
+            formatted: format.count(operation.counts.faces ?? operation.counts.count ?? 0),
+          }),
+          icon: 'operation',
+          state: 'ok',
+          ref: null,
+          testId: `tree-node-operation-${index}`,
+        })),
     },
   ];
 
@@ -199,16 +199,14 @@ export function buildProjectTree(input: TreeModelInput): ProjectNode[] {
     ref: null,
     testId: 'tree-group-origin',
     children: [
-      ...(['XY', 'YZ', 'XZ'] as const).map(
-        (plane): ProjectNode => ({
-          id: `origin:${plane}`,
-          label: plane,
-          icon: 'plane',
-          state: 'ok',
-          ref: null,
-          testId: `tree-node-origin-${plane}`,
-        }),
-      ),
+      ...(['XY', 'YZ', 'XZ'] as const).map((plane): ProjectNode => ({
+        id: `origin:${plane}`,
+        label: plane,
+        icon: 'plane',
+        state: 'ok',
+        ref: null,
+        testId: `tree-node-origin-${plane}`,
+      })),
       {
         id: 'origin:axes',
         label: t('panels:tree.axes'),

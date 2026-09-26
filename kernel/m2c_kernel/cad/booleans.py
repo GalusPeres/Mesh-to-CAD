@@ -79,9 +79,7 @@ def boolean(kind: BooleanKind, target: Body, tools: list[Body]) -> BooleanResult
         collector = TagCollector(healed)
         collector.fill_by_proximity(sources)
         return BooleanResult(collector.body())
-    return BooleanResult(
-        _tagged(raw, None, sources), (Issue(IssueCode.SPLIT_FACES_KEPT),)
-    )
+    return BooleanResult(_tagged(raw, None, sources), (Issue(IssueCode.SPLIT_FACES_KEPT),))
 
 
 def heal(shape: TopoDS_Shape) -> TopoDS_Shape | None:

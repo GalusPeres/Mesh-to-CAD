@@ -75,9 +75,13 @@ def grow_region(
     if not analysis.usable[seed_face]:
         return GrownRegion(np.zeros(0, dtype=np.int64), None, None)
     if mode == "smooth":
-        return GrownRegion(np.nonzero(grow_smooth(analysis, seed_face, max_angle_deg))[0], None, None)
+        return GrownRegion(
+            np.nonzero(grow_smooth(analysis, seed_face, max_angle_deg))[0], None, None
+        )
     if mode == "normal":
-        return GrownRegion(np.nonzero(grow_normal(analysis, seed_face, max_angle_deg))[0], None, None)
+        return GrownRegion(
+            np.nonzero(grow_normal(analysis, seed_face, max_angle_deg))[0], None, None
+        )
     limit = tolerance if tolerance is not None and tolerance > 0 else default_tolerance(mesh)
     radius = WIDE_START_RADIUS_MM if kind in ("cone", "torus") else START_RADIUS_MM
     patch = start_patch(analysis, seed_face, radius)

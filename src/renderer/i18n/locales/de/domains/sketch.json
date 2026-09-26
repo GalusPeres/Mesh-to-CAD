@@ -4,6 +4,7 @@
   },
   "issues": {
     "profileOpen_one": "Profil offen: 1 Lücke.",
-    "profileOpen_other": "Profil offen: {{count}} Lücken."
+    "profileOpen_other": "Profil offen: {{count}} Lücken.",
+    "profileOpen": "Die Kontur ist nicht geschlossen."
   }
 }

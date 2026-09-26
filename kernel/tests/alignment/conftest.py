@@ -47,14 +47,19 @@ def pose_scan(part: SyntheticPart, seed: int, blobs: BlobStore, sigma: float = S
     return PosedScan(document, blobs, rotation, offset, part)
 
 
-def brep_face(part: SyntheticPart, kind: str, normal: tuple[float, float, float], offset: float) -> int:
+def brep_face(
+    part: SyntheticPart, kind: str, normal: tuple[float, float, float], offset: float
+) -> int:
     """Index of the analytic B-Rep face of `kind` with the given design normal and offset."""
     for index, surface in enumerate(part.surfaces):
         if surface is None or surface.type != kind:
             continue
         if kind == "plane":
             n = np.asarray(surface.normal)  # type: ignore[union-attr]
-            if abs(abs(n @ normal) - 1) < 1e-6 and abs(np.asarray(surface.origin) @ normal - offset) < 1e-6:  # type: ignore[union-attr]
+            if (
+                abs(abs(n @ normal) - 1) < 1e-6
+                and abs(np.asarray(surface.origin) @ normal - offset) < 1e-6
+            ):  # type: ignore[union-attr]
                 return index
     raise LookupError((kind, normal, offset))
 

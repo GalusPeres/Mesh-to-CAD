@@ -20,7 +20,8 @@ export function cubeZone(point: Vec3, band = ZONE_BAND): Vec3 {
 export function zoneView(zone: Vec3): ViewDirection {
   const length = Math.hypot(zone[0], zone[1], zone[2]) || 1;
   const direction: Vec3 = [-zone[0] / length, -zone[1] / length, -zone[2] / length];
-  if (zone[0] === 0 && zone[1] === 0) return zone[2] > 0 ? STANDARD_VIEWS.top : STANDARD_VIEWS.bottom;
+  if (zone[0] === 0 && zone[1] === 0)
+    return zone[2] > 0 ? STANDARD_VIEWS.top : STANDARD_VIEWS.bottom;
   return { direction, up: [0, 0, 1] };
 }
 

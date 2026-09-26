@@ -4,6 +4,7 @@
   },
   "issues": {
     "profileOpen_one": "Profile open: 1 gap.",
-    "profileOpen_other": "Profile open: {{count}} gaps."
+    "profileOpen_other": "Profile open: {{count}} gaps.",
+    "profileOpen": "The profile is not closed."
   }
 }

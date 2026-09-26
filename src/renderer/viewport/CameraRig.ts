@@ -43,7 +43,12 @@ export interface CameraRigOptions {
  * Rotate a camera pose around a pivot: yaw around world Z, then pitch around the
  * camera's right axis. The pivot keeps its place on the screen.
  */
-export function orbitPose(pose: CameraPose, pivot: THREE.Vector3, yaw: number, pitch: number): void {
+export function orbitPose(
+  pose: CameraPose,
+  pivot: THREE.Vector3,
+  yaw: number,
+  pitch: number,
+): void {
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(pose.quaternion);
   const rotation = new THREE.Quaternion()
     .setFromAxisAngle(Z_UP, yaw)
@@ -198,7 +203,9 @@ export class CameraRig {
     const center = new THREE.Vector3(...target);
     this.goTo(
       {
-        position: center.clone().addScaledVector(new THREE.Vector3(...direction).normalize(), -distance),
+        position: center
+          .clone()
+          .addScaledVector(new THREE.Vector3(...direction).normalize(), -distance),
         quaternion: viewQuaternion(direction, up),
         target: center,
         halfHeight: this.halfHeight,
@@ -209,7 +216,10 @@ export class CameraRig {
 
   lookAlong(origin: Vec3, normal: Vec3, xDirection: Vec3): void {
     const n = new THREE.Vector3(...normal).normalize();
-    const up = n.clone().cross(new THREE.Vector3(...xDirection)).normalize();
+    const up = n
+      .clone()
+      .cross(new THREE.Vector3(...xDirection))
+      .normalize();
     this.setView([-n.x, -n.y, -n.z], [up.x, up.y, up.z], origin);
   }
 
@@ -310,8 +320,7 @@ export class CameraRig {
     if (!mode) return;
     this.cancelAnimation();
     const at = this.screenPoint(event);
-    const pivot =
-      mode === 'orbit' ? this.options.pickPivot(at) : null;
+    const pivot = mode === 'orbit' ? this.options.pickPivot(at) : null;
     this.drag = {
       mode,
       pointerId: event.pointerId,
