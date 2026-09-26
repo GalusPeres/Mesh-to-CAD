@@ -39,6 +39,17 @@ export function canEditDocument(): boolean {
   return !toolStore.getState().activeToolId && !exclusiveJobRunning();
 }
 
+/**
+ * Like `canEditDocument`, but says why an edit from the tree (delete, suppress,
+ * rename) cannot run instead of ignoring the key press silently.
+ */
+export function editableOrExplain(): boolean {
+  if (canEditDocument()) return true;
+  const key = toolStore.getState().activeToolId ? 'panels:blocked.toolOpen' : 'panels:blocked.busy';
+  showMessage('info', i18n.t(key));
+  return false;
+}
+
 function reportFailure(error: unknown): void {
   if (!(error instanceof KernelFailure)) throw error;
   showMessage('error', describeError(error, i18n.t), error.details);
@@ -61,7 +72,7 @@ function findFeature(featureId: string) {
 }
 
 export function startRename(featureId: string, displayName: string): void {
-  if (!canEditDocument() || !findFeature(featureId)) return;
+  if (!findFeature(featureId) || !editableOrExplain()) return;
   treeDialogStore.setState({ rename: { featureId, name: displayName } });
 }
 
@@ -78,7 +89,7 @@ export async function renameFeature(featureId: string, name: string): Promise<bo
 
 export async function toggleSuppressed(featureId: string): Promise<boolean> {
   const current = findFeature(featureId);
-  if (!current || !canEditDocument()) return false;
+  if (!current || !editableOrExplain()) return false;
   const suppressed = !current.suppressed;
   return apply(
     [{ type: 'setSuppressed', id: featureId, suppressed }],
@@ -88,7 +99,7 @@ export async function toggleSuppressed(featureId: string): Promise<boolean> {
 
 /** Delete at once when nothing uses the feature, otherwise ask first. */
 export async function requestDelete(featureId: string): Promise<void> {
-  if (!findFeature(featureId) || !canEditDocument()) return;
+  if (!findFeature(featureId) || !editableOrExplain()) return;
   let dependents: string[];
   try {
     const { featureIds } = await kernel().call('doc.dependents', { featureId }).result;

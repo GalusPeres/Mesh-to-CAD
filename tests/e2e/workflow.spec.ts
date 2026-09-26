@@ -181,30 +181,46 @@ async function commitRename(page: Page): Promise<void> {
   await expect.poll(() => revision(page)).toBeGreaterThan(before);
 }
 
-test.fixme('sketches the side profile', async () => {
+test('sketches the outline in a section through the middle of the box', async () => {
   await page.getByTestId('tool-section-sketch').click();
+  await expect(page.getByTestId('panel-section-sketch')).toBeVisible();
+  const cut = page.locator('#sketch-cut');
+  await cut.fill(String(BOX.z / 2));
+  await cut.press('Enter');
+  await idle(page);
+  // Step 1 (plane) -> step 2 (fitted sketch), then commit the sketch.
+  await page.getByTestId('panel-ok').click();
+  await expect(page.getByTestId('sketch-profile')).toBeVisible({ timeout: 30_000 });
+  await idle(page);
   await commitPanel(page);
 });
 
-test.fixme('extrudes the sketch into a body', async () => {
+test('extrudes the sketch into a body', async () => {
   await page.getByTestId('tool-extrude').click();
   await commitPanel(page);
   await expect(page.getByTestId('tree-group-bodies')).toBeVisible();
 });
 
+// Edge picking needs viewport coordinates of a body edge; the fillet itself is covered by
+// kernel/tests/cad. Enable once a test hook can project a model point to the screen.
 test.fixme('rounds an edge of the body', async () => {
   await page.getByTestId('tool-fillet').click();
   await page.evaluate(() => window.__m2cTest?.waitForIdle());
   await commitPanel(page);
 });
 
-test.fixme('shows the deviation of the scan from the body', async () => {
+test('shows the deviation of the scan from the body', async () => {
   await page.getByTestId('stage-inspect').click();
   await page.getByTestId('tool-deviation').click();
-  await commitPanel(page);
+  await expect(page.getByTestId('deviation-result')).toBeVisible({ timeout: 60_000 });
+  await idle(page);
+  // Showing the colour map changes no document data, so OK creates no revision.
+  await page.getByTestId('panel-ok').click();
+  await expect(page.getByTestId('panel-deviation')).toBeHidden();
+  await expect(page.getByTestId('status-deviation')).toBeVisible();
 });
 
-test.fixme('exports the body as STEP', async () => {
+test('exports the body as STEP', async () => {
   const file = path.join(work, 'box.step');
   await stubSaveDialog(app, file);
   await page.getByTestId('tool-export-step').click();
@@ -217,8 +233,17 @@ test('deletes the fit and undoes the deletion', async () => {
   const fit = firstFeatureRow(page);
   const fitTestId = (await fit.getAttribute('data-testid'))!;
   await fit.click();
+  // The export panel is still open: Delete explains why it does nothing.
+  await page.keyboard.press('Delete');
+  await expect(page.getByTestId('status-message')).toContainText('Werkzeug');
+  await page.getByTestId('panel-cancel').click();
+
+  await fit.click();
   const before = await revision(page);
   await page.keyboard.press('Delete');
+  // The sketch and the extrusion use the fitted plane, so the dialog asks first.
+  const confirm = page.getByTestId('delete-confirm');
+  if (await confirm.isVisible({ timeout: 2_000 }).catch(() => false)) await confirm.click();
   await expect.poll(() => revision(page)).toBeGreaterThan(before);
   await expect(page.getByTestId(fitTestId)).toHaveCount(0);
   await page.keyboard.press('Control+z');

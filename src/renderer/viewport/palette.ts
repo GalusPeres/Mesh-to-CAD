@@ -30,7 +30,7 @@ export const SCENE_MIX = {
   selection: 0.55,
   hover: 0.25,
   passFail: 0.7,
-  constructionFill: 0.2,
+  constructionFill: 0.45,
   patchFill: 0.35,
   xrayOpacity: 0.3,
   sketchGhostOpacity: 0.15,

@@ -91,7 +91,7 @@ const LINE_STYLES: Partial<Record<SceneItem['style'], LineStyle>> = {
     bias: 1.5,
     color: (theme) => (theme.dark ? SCENE_COLORS.bodyEdgesDark : SCENE_COLORS.bodyEdgesLight),
   },
-  constructionEdges: { width: 1, bias: 1.5, color: () => SCENE_COLORS.construction },
+  constructionEdges: { width: 2, bias: 1.5, color: () => SCENE_COLORS.construction },
   patch: { width: 1, bias: 1.5, color: () => SCENE_COLORS.construction },
   sketch: { width: 2, bias: 2, color: (theme) => theme.text },
   section: { width: 1.5, bias: 2, color: () => SCENE_COLORS.section },

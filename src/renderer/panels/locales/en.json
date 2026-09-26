@@ -115,5 +115,9 @@
     "rms": "RMS",
     "usedBy": "Used by",
     "unused": "Not used"
+  },
+  "blocked": {
+    "toolOpen": "Close the open tool with OK or Cancel first.",
+    "busy": "Please wait until the calculation has finished."
   }
 }

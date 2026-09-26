@@ -9,7 +9,13 @@ import { formatShortcut } from '../app/commands/keymap';
 import { openTool } from '../tools/framework/toolActions';
 import menuStyles from '../ui/Menu/Menu.module.css';
 import { isolate, showAll, toggleHidden } from './objectVisibility';
-import { canEditDocument, requestDelete, startRename, toggleSuppressed } from './treeActions';
+import {
+  canEditDocument,
+  editableOrExplain,
+  requestDelete,
+  startRename,
+  toggleSuppressed,
+} from './treeActions';
 import { TREE_KEYS, type TreeMenuAction } from './treeMenu';
 import type { ProjectNode } from './treeModel';
 
@@ -39,7 +45,7 @@ export function runTreeAction(
 ): void {
   const ref = node.ref;
   const featureId = ref?.kind === 'feature' ? ref.id : null;
-  if (DOCUMENT_EDITS.has(action) && !canEditDocument()) return;
+  if (DOCUMENT_EDITS.has(action) && !editableOrExplain()) return;
   switch (action) {
     case 'edit':
       if (node.edit) void openTool(node.edit.toolId, null, node.edit.target);
