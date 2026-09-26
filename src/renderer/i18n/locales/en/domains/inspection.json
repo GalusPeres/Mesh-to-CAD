@@ -1,5 +1,13 @@
 {
   "errors": {
-    "noBody": "No body to compare."
+    "noBody": "There is no body to compare.",
+    "unknownBody": "Body {{body}} no longer exists.",
+    "unknownReference": "Cannot measure: {{reference}} no longer exists.",
+    "notMeasurable": "Cannot measure: {{reference}} has no measurable geometry.",
+    "noPreview": "The preview is no longer available."
+  },
+  "progress": {
+    "preparing": "Building the reference surface",
+    "comparing": "Computing the deviation"
   }
 }

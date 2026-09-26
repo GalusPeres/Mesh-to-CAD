@@ -1,7 +1,8 @@
 // The scan as a non-indexed mesh: face i owns vertices 3i..3i+2. WebGL 2 has no
 // gl_PrimitiveID, so per-face state (selection, hover, hidden, pass/fail) is a
 // per-vertex attribute; de-indexing makes it exact and keeps the face index of a
-// ray hit identical to the kernel's face index.
+// ray hit identical to the kernel's face index. The heavy preparation (de-index,
+// centroids, adjacency, BVH) happens in workers/meshPrep.worker.ts.
 
 import * as THREE from 'three';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
@@ -9,26 +10,20 @@ import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
 import type { ScanPayload } from '@shared/protocol/generated/document-display';
 
 import { type DeviationBand, bandIndex, deviationBands } from '../lib/deviationBands';
+import type { DisplayMode } from '../state/viewStore';
 import type { DeviationDisplay, ScanView } from './api';
 import { DEVIATION_COLORS, REGION_PALETTE, SCENE_COLORS, SCENE_MIX } from './palette';
+import type { MeshPrepMessage } from './workers/meshPrep.worker';
 
-const FLAG_SELECTED = 1;
-const FLAG_HOVER = 2;
-const FLAG_HIDDEN = 4;
+export const FLAG_SELECTED = 1;
+export const FLAG_HOVER = 2;
+export const FLAG_HIDDEN = 4;
 const STATE_SHIFT = 3;
 const STATE_MASK = 3 << STATE_SHIFT;
 
-/** Expand indexed arrays to one vertex per face corner. */
-export function deIndex(source: Float32Array, indices: Uint32Array): Float32Array {
-  const result = new Float32Array(indices.length * 3);
-  for (let corner = 0; corner < indices.length; corner += 1) {
-    const vertex = (indices[corner] ?? 0) * 3;
-    result[corner * 3] = source[vertex] ?? 0;
-    result[corner * 3 + 1] = source[vertex + 1] ?? 0;
-    result[corner * 3 + 2] = source[vertex + 2] ?? 0;
-  }
-  return result;
-}
+/** Triangle edges are drawn only below this face count (docs/DESIGN.md 6.2). */
+export const EDGE_DISPLAY_LIMIT = 500_000;
+const EDGE_ALPHA = 0.12;
 
 function patchMaterial(material: THREE.MeshStandardMaterial): void {
   const color = (hex: string) => new THREE.Color(hex);
@@ -77,6 +72,8 @@ function patchMaterial(material: THREE.MeshStandardMaterial): void {
   };
 }
 
+type ColorSource = 'regions' | 'deviation';
+
 /** The displayed scan and its per-face state. */
 export class ScanMesh implements ScanView {
   readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
@@ -85,34 +82,50 @@ export class ScanMesh implements ScanView {
   /** Face centroids in scan-local coordinates (relative to the scan origin). */
   readonly centroids: Float32Array;
   readonly faceNormals: Float32Array;
+  /** (F, 3) neighbour face per edge, -1 at open or non-manifold edges. */
+  readonly neighbours: Int32Array;
+  private readonly positions: Float32Array;
   private readonly flags: Uint8Array;
   private readonly flagAttribute: THREE.BufferAttribute;
   private readonly indices: Uint32Array;
   private hovered: Uint32Array | null = null;
   private stateFaces: Uint32Array | null = null;
+  private edges: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> | null = null;
+  private displayMode: DisplayMode = 'shaded';
+  private opacity = 1;
+  private readonly colors: Record<ColorSource, Float32Array | null> = {
+    regions: null,
+    deviation: null,
+  };
+  private lastColorSource: ColorSource | null = null;
+  private deviationVisible = false;
+  private edgeColor = '#000000';
+  private fullUploadPending = true;
 
   constructor(
     payload: ScanPayload,
+    prepared: MeshPrepMessage,
     scanKey: string,
     private readonly invalidate: () => void,
   ) {
     this.scanKey = scanKey;
     this.indices = payload.indices;
     this.faceCount = payload.indices.length / 3;
+    this.positions = prepared.positions;
+    this.centroids = prepared.centroids;
+    this.faceNormals = prepared.faceNormals;
+    this.neighbours = prepared.neighbours;
+
     const geometry = new THREE.BufferGeometry();
-    const positions = deIndex(payload.positions, payload.indices);
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geometry.setAttribute(
-      'normal',
-      new THREE.BufferAttribute(deIndex(payload.normals, payload.indices), 3),
-    );
+    geometry.setAttribute('position', new THREE.BufferAttribute(prepared.positions, 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(prepared.normals, 3));
     this.flags = new Uint8Array(this.faceCount * 3);
     this.flagAttribute = new THREE.BufferAttribute(this.flags, 1);
     this.flagAttribute.setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('aFlags', this.flagAttribute);
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
-    geometry.boundsTree = new MeshBVH(geometry, { indirect: true });
+    geometry.boundsTree = MeshBVH.deserialize(prepared.bvh, geometry, { setIndex: false });
 
     const material = new THREE.MeshStandardMaterial({
       color: SCENE_COLORS.scan,
@@ -124,32 +137,56 @@ export class ScanMesh implements ScanView {
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.raycast = acceleratedRaycast;
     this.mesh.matrixAutoUpdate = false;
-
-    this.centroids = new Float32Array(this.faceCount * 3);
-    this.faceNormals = new Float32Array(this.faceCount * 3);
-    const a = new THREE.Vector3();
-    const b = new THREE.Vector3();
-    const c = new THREE.Vector3();
-    for (let face = 0; face < this.faceCount; face += 1) {
-      a.fromArray(positions, face * 9);
-      b.fromArray(positions, face * 9 + 3);
-      c.fromArray(positions, face * 9 + 6);
-      this.centroids[face * 3] = (a.x + b.x + c.x) / 3;
-      this.centroids[face * 3 + 1] = (a.y + b.y + c.y) / 3;
-      this.centroids[face * 3 + 2] = (a.z + b.z + c.z) / 3;
-      const normal = b.sub(a).cross(c.sub(a)).normalize();
-      this.faceNormals.set([normal.x, normal.y, normal.z], face * 3);
-    }
   }
 
   dispose(): void {
     this.mesh.geometry.boundsTree = undefined;
     this.mesh.geometry.dispose();
     this.mesh.material.dispose();
+    this.edges?.material.dispose();
+  }
+
+  /** De-indexed corner positions in scan-local coordinates (9 floats per face). */
+  get cornerPositions(): Float32Array {
+    return this.positions;
   }
 
   isHidden(face: number): boolean {
     return ((this.flags[face * 3] ?? 0) & FLAG_HIDDEN) !== 0;
+  }
+
+  /** Bounds of the selected faces in scan-local coordinates, or null without selection. */
+  selectionBounds(): THREE.Box3 | null {
+    const box = new THREE.Box3();
+    const point = new THREE.Vector3();
+    for (let face = 0; face < this.faceCount; face += 1) {
+      if (((this.flags[face * 3] ?? 0) & (FLAG_SELECTED | FLAG_HIDDEN)) !== FLAG_SELECTED)
+        continue;
+      for (let corner = 0; corner < 3; corner += 1)
+        box.expandByPoint(point.fromArray(this.positions, face * 9 + corner * 3));
+    }
+    return box.isEmpty() ? null : box;
+  }
+
+  setDisplayMode(mode: DisplayMode, deviationVisible: boolean, edgeColor: string): void {
+    this.displayMode = mode;
+    this.deviationVisible = deviationVisible;
+    this.edgeColor = edgeColor;
+    const material = this.mesh.material;
+    const flat = mode === 'flat';
+    if (material.flatShading !== flat) {
+      material.flatShading = flat;
+      material.needsUpdate = true;
+    }
+    this.updateEdges();
+    this.updateOpacity();
+    this.updateColors();
+  }
+
+  setClipping(planes: THREE.Plane[]): void {
+    this.mesh.material.clippingPlanes = planes;
+    if (this.edges) this.edges.material.clippingPlanes = planes;
+    this.invalidate();
   }
 
   setSelection(mask: Uint8Array): void {
@@ -159,8 +196,15 @@ export class ScanMesh implements ScanView {
   }
 
   updateSelection(faces: Uint32Array, selected: boolean): void {
-    for (const face of faces) this.setFlag(face, FLAG_SELECTED, selected);
-    this.commitFlags();
+    let first = Number.POSITIVE_INFINITY;
+    let last = -1;
+    for (const face of faces) {
+      this.setFlag(face, FLAG_SELECTED, selected);
+      if (face < first) first = face;
+      if (face > last) last = face;
+    }
+    // Only the touched range goes to the GPU (brush strokes on large scans).
+    this.commitFlags(last >= 0 ? [first, last] : null);
   }
 
   setHover(faces: Uint32Array | null): void {
@@ -185,64 +229,106 @@ export class ScanMesh implements ScanView {
 
   setRegions(labels: Uint16Array | null, colorIndex: Uint8Array | null): void {
     if (!labels || !colorIndex) {
-      this.setOverlayColors(null);
+      this.setColorSource('regions', null);
       return;
     }
     const colors = REGION_PALETTE.map((hex) => new THREE.Color(hex));
     const base = new THREE.Color(SCENE_COLORS.scan);
-    this.setOverlayColors((face) => {
+    const buffer = new Float32Array(this.faceCount * 9);
+    for (let face = 0; face < this.faceCount; face += 1) {
       const label = labels[face] ?? 0;
-      return label === 0 ? base : (colors[(colorIndex[label] ?? 0) % colors.length] ?? base);
-    });
+      const color =
+        label === 0 ? base : (colors[(colorIndex[label] ?? 0) % colors.length] ?? base);
+      for (let corner = 0; corner < 3; corner += 1) color.toArray(buffer, face * 9 + corner * 3);
+    }
+    this.setColorSource('regions', buffer);
   }
 
   setDeviation(values: Float32Array | null, display?: DeviationDisplay): void {
     if (!values || !display) {
-      this.setOverlayColors(null);
+      this.setColorSource('deviation', null);
       return;
     }
     const bands: DeviationBand[] = deviationBands(display.tolerance, display.range, display.scheme);
     const palette = DEVIATION_COLORS[display.scheme].map((hex) => new THREE.Color(hex));
-    const colors = new Float32Array(this.faceCount * 9);
+    const buffer = new Float32Array(this.faceCount * 9);
     for (let corner = 0; corner < this.indices.length; corner += 1) {
       const value = values[this.indices[corner] ?? 0] ?? Number.NaN;
       const color = palette[bandIndex(value, bands)] ?? palette[0];
-      color?.toArray(colors, corner * 3);
+      color?.toArray(buffer, corner * 3);
     }
-    this.applyColors(colors);
+    this.setColorSource('deviation', buffer);
   }
 
   setOpacity(opacity: number): void {
-    const material = this.mesh.material;
-    material.transparent = opacity < 1;
-    material.opacity = opacity;
-    material.depthWrite = opacity >= 1;
-    material.needsUpdate = true;
-    this.invalidate();
+    this.opacity = opacity;
+    this.updateOpacity();
   }
 
-  private setOverlayColors(colorOf: ((face: number) => THREE.Color) | null): void {
-    if (!colorOf) {
-      this.applyColors(null);
-      return;
-    }
-    const colors = new Float32Array(this.faceCount * 9);
-    for (let face = 0; face < this.faceCount; face += 1) {
-      const color = colorOf(face);
-      for (let corner = 0; corner < 3; corner += 1) color.toArray(colors, face * 9 + corner * 3);
-    }
-    this.applyColors(colors);
+  private setColorSource(source: ColorSource, colors: Float32Array | null): void {
+    this.colors[source] = colors;
+    if (colors) this.lastColorSource = source;
+    else if (this.lastColorSource === source) this.lastColorSource = null;
+    this.updateColors();
   }
 
-  private applyColors(colors: Float32Array | null): void {
+  /** The display mode picks the colour map; otherwise the one set last is shown. */
+  private activeColors(): Float32Array | null {
+    if (this.displayMode === 'regions') return this.colors.regions;
+    if (this.displayMode === 'deviation' || this.deviationVisible) return this.colors.deviation;
+    return this.lastColorSource ? this.colors[this.lastColorSource] : null;
+  }
+
+  private updateColors(): void {
+    const colors = this.activeColors();
     const geometry = this.mesh.geometry;
     const material = this.mesh.material;
+    const current = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
+    if (current?.array === colors && material.vertexColors === !!colors) return;
     if (colors) geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     else geometry.deleteAttribute('color');
     material.vertexColors = !!colors;
     if (colors) material.color.setRGB(1, 1, 1);
     else material.color.set(SCENE_COLORS.scan);
     material.needsUpdate = true;
+    this.invalidate();
+  }
+
+  private updateOpacity(): void {
+    const xray = this.displayMode === 'xray';
+    const opacity = Math.min(this.opacity, xray ? SCENE_MIX.xrayOpacity : 1);
+    const material = this.mesh.material;
+    const transparent = opacity < 1;
+    if (material.transparent !== transparent) material.needsUpdate = true;
+    material.transparent = transparent;
+    material.opacity = opacity;
+    material.depthWrite = !transparent;
+    this.invalidate();
+  }
+
+  private updateEdges(): void {
+    const wanted = this.displayMode === 'shadedEdges' && this.faceCount < EDGE_DISPLAY_LIMIT;
+    if (wanted && !this.edges) {
+      const material = new THREE.MeshBasicMaterial({
+        wireframe: true,
+        transparent: true,
+        opacity: EDGE_ALPHA,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      });
+      material.clippingPlanes = this.mesh.material.clippingPlanes;
+      this.edges = new THREE.Mesh(this.mesh.geometry, material);
+      this.edges.raycast = () => undefined;
+      this.mesh.add(this.edges);
+    }
+    if (!wanted && this.edges) {
+      this.mesh.remove(this.edges);
+      this.edges.material.dispose();
+      this.edges = null;
+    }
+    this.edges?.material.color.set(this.edgeColor);
     this.invalidate();
   }
 
@@ -263,7 +349,19 @@ export class ScanMesh implements ScanView {
     this.flags[offset + 2] = next;
   }
 
-  private commitFlags(): void {
+  /** Called after each frame: pending flag changes have reached the GPU. */
+  afterRender(): void {
+    this.fullUploadPending = false;
+  }
+
+  private commitFlags(range: [number, number] | null = null): void {
+    // Ranges accumulate until the next frame; a full change since the last frame wins.
+    if (!range || this.fullUploadPending) {
+      this.flagAttribute.clearUpdateRanges();
+      this.fullUploadPending = true;
+    } else {
+      this.flagAttribute.addUpdateRange(range[0] * 3, (range[1] - range[0] + 1) * 3);
+    }
     this.flagAttribute.needsUpdate = true;
     this.invalidate();
   }

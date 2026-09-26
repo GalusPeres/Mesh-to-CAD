@@ -1,5 +1,13 @@
 {
   "errors": {
-    "writeFailed": "Export failed: the file could not be written."
+    "writeFailed": "Export failed: the file could not be written.",
+    "noBody": "Cannot export: there is no body.",
+    "unknownBody": "Cannot export: body {{body}} no longer exists.",
+    "blocked": "Export blocked: {{body}} is not valid (caused by {{feature}}).",
+    "verifyFailed": "Export failed: the written file does not match the model. The target file is unchanged."
+  },
+  "progress": {
+    "writing": "Writing the file",
+    "verifying": "Checking the file"
   }
 }

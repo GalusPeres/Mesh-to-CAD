@@ -1,5 +1,13 @@
 {
   "errors": {
-    "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden."
+    "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden.",
+    "noBody": "Export nicht möglich: Es gibt keinen Körper.",
+    "unknownBody": "Export nicht möglich: Körper {{body}} ist nicht mehr vorhanden.",
+    "blocked": "Export gesperrt: {{body}} ist nicht gültig (Ursache: {{feature}}).",
+    "verifyFailed": "Export fehlgeschlagen: Die geschriebene Datei stimmt nicht mit dem Modell überein. Die Zieldatei ist unverändert."
+  },
+  "progress": {
+    "writing": "Datei wird geschrieben",
+    "verifying": "Datei wird geprüft"
   }
 }

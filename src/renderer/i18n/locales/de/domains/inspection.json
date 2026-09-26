@@ -1,5 +1,13 @@
 {
   "errors": {
-    "noBody": "Kein Körper zum Vergleichen vorhanden."
+    "noBody": "Kein Körper zum Vergleichen vorhanden.",
+    "unknownBody": "Körper {{body}} ist nicht mehr vorhanden.",
+    "unknownReference": "Messen nicht möglich: {{reference}} ist nicht mehr vorhanden.",
+    "notMeasurable": "Messen nicht möglich: {{reference}} hat keine messbare Geometrie.",
+    "noPreview": "Die Vorschau ist nicht mehr verfügbar."
+  },
+  "progress": {
+    "preparing": "Vergleichsfläche wird aufgebaut",
+    "comparing": "Abweichung wird berechnet"
   }
 }

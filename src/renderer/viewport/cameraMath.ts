@@ -56,3 +56,12 @@ export function cameraPosition(target: Vec3, direction: Vec3, distance: number):
     target[2] - direction[2] * distance,
   ];
 }
+
+/** Ease-out used by camera transitions (docs/DESIGN.md 2.5). */
+export function easeOut(t: number): number {
+  const clamped = Math.min(1, Math.max(0, t));
+  return 1 - (1 - clamped) ** 3;
+}
+
+/** Camera transitions take 250 ms, instant with reduced motion. */
+export const TRANSITION_MS = 250;

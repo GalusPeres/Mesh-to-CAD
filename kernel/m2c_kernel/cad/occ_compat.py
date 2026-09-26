@@ -25,16 +25,27 @@ from pathlib import Path
 
 from OCP.Bnd import Bnd_Box
 from OCP.BRep import BRep_Tool
+from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common, BRepAlgoAPI_Cut, BRepAlgoAPI_Fuse
 from OCP.BRepBndLib import BRepBndLib
-from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_Transform
+from OCP.BRepBuilderAPI import (
+    BRepBuilderAPI_MakeEdge,
+    BRepBuilderAPI_MakeFace,
+    BRepBuilderAPI_MakePolygon,
+    BRepBuilderAPI_MakeVertex,
+    BRepBuilderAPI_MakeWire,
+    BRepBuilderAPI_Transform,
+)
 from OCP.BRepCheck import BRepCheck_Analyzer
+from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
 from OCP.BRepMesh import BRepMesh_IncrementalMesh
 from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeBox,
     BRepPrimAPI_MakeCone,
     BRepPrimAPI_MakeCylinder,
+    BRepPrimAPI_MakeHalfSpace,
     BRepPrimAPI_MakePrism,
     BRepPrimAPI_MakeRevol,
     BRepPrimAPI_MakeSphere,
@@ -46,9 +57,12 @@ from OCP.collections import (
 )
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as ShapeMap
 from OCP.collections import List_TopoDS_Shape
+from OCP.GeomAbs import GeomAbs_Plane
 from OCP.gp import gp_Ax1, gp_Ax2, gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf, gp_Vec
 from OCP.GProp import GProp_GProps
 from OCP.Message import Message, Message_Gravity
+from OCP.ShapeFix import ShapeFix_Shape
+from OCP.Standard import Standard_Failure
 from OCP.TopAbs import (
     TopAbs_EDGE,
     TopAbs_FACE,
@@ -59,21 +73,31 @@ from OCP.TopAbs import (
 )
 from OCP.TopExp import TopExp, TopExp_Explorer
 from OCP.TopLoc import TopLoc_Location
-from OCP.TopoDS import TopoDS, TopoDS_Shape
+from OCP.TopoDS import TopoDS, TopoDS_Face, TopoDS_Shape
 
 __all__ = [
+    "BRepAdaptor_Curve",
+    "BRepAdaptor_Surface",
     "BRepAlgoAPI_Common",
     "BRepAlgoAPI_Cut",
     "BRepAlgoAPI_Fuse",
     "BRepBndLib",
+    "BRepBuilderAPI_MakeEdge",
     "BRepBuilderAPI_MakeFace",
+    "BRepBuilderAPI_MakePolygon",
+    "BRepBuilderAPI_MakeVertex",
+    "BRepBuilderAPI_MakeWire",
     "BRepBuilderAPI_Transform",
     "BRepCheck_Analyzer",
+    "BRepExtrema_DistShapeShape",
+    "BRepFilletAPI_MakeChamfer",
+    "BRepFilletAPI_MakeFillet",
     "BRepGProp",
     "BRepMesh_IncrementalMesh",
     "BRepPrimAPI_MakeBox",
     "BRepPrimAPI_MakeCone",
     "BRepPrimAPI_MakeCylinder",
+    "BRepPrimAPI_MakeHalfSpace",
     "BRepPrimAPI_MakePrism",
     "BRepPrimAPI_MakeRevol",
     "BRepPrimAPI_MakeSphere",
@@ -83,8 +107,11 @@ __all__ = [
     "Bnd_Box",
     "EdgeFaceMap",
     "GProp_GProps",
+    "GeomAbs_Plane",
     "List_TopoDS_Shape",
+    "ShapeFix_Shape",
     "ShapeMap",
+    "Standard_Failure",
     "TopAbs_EDGE",
     "TopAbs_FACE",
     "TopAbs_REVERSED",
@@ -95,6 +122,7 @@ __all__ = [
     "TopExp_Explorer",
     "TopLoc_Location",
     "TopoDS",
+    "TopoDS_Face",
     "TopoDS_Shape",
     "gp_Ax1",
     "gp_Ax2",

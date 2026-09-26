@@ -1,0 +1,30 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.filter {
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tree {
+  min-height: 0;
+  overflow: auto;
+}
+
+.warning {
+  flex: none;
+  color: var(--warning);
+}
+
+.error {
+  flex: none;
+  color: var(--error);
+}
+
+.disabled {
+  flex: none;
+  color: var(--text-disabled);
+}

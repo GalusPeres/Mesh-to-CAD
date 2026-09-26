@@ -6,15 +6,96 @@
     "faces_other": "{{formatted}} Dreiecke",
     "regions": "Bereiche ({{count}})",
     "region": "Bereich {{number}}",
+    "regionSummary": "{{kind}}, RMS {{rms}}",
+    "regionKinds": {
+      "plane": "Ebenen ({{count}})",
+      "cylinder": "Zylinder ({{count}})",
+      "cone": "Kegel ({{count}})",
+      "sphere": "Kugeln ({{count}})",
+      "torus": "Tori ({{count}})",
+      "freeform": "Freiform ({{count}})",
+      "unknown": "Unbestimmt ({{count}})"
+    },
+    "onlyUnused": "Nur nicht verwendete",
     "bodies": "Körper ({{count}})",
     "body": "Körper {{number}}",
+    "origin": "Ursprung",
+    "axes": "Achsen",
     "history": "Verlauf",
     "alignment": "Ausrichtung"
+  },
+  "regionKind": {
+    "plane": "Ebene",
+    "cylinder": "Zylinder",
+    "cone": "Kegel",
+    "sphere": "Kugel",
+    "torus": "Torus",
+    "freeform": "Freiform",
+    "unknown": "Unbestimmt"
+  },
+  "alignmentMethod": {
+    "none": "Scan-Koordinaten",
+    "auto": "Automatisch",
+    "faces": "Über Flächen"
+  },
+  "operations": {
+    "repair": "Repariert",
+    "decimate_one": "Reduziert auf {{formatted}} Dreieck",
+    "decimate_other": "Reduziert auf {{formatted}} Dreiecke",
+    "smooth": "Geglättet",
+    "fillHoles": "Löcher gefüllt",
+    "removeSmallParts": "Kleine Teile entfernt",
+    "deleteFaces": "Dreiecke gelöscht"
+  },
+  "state": {
+    "ok": "OK",
+    "warning": "Warnung",
+    "error": "Fehler",
+    "suppressed": "Unterdrückt",
+    "skipped": "Übersprungen: eine Eingabe fehlt"
+  },
+  "menu": {
+    "edit": "Bearbeiten",
+    "rename": "Umbenennen",
+    "suppress": "Unterdrücken",
+    "unsuppress": "Unterdrückung aufheben",
+    "delete": "Löschen",
+    "deleteKey": "Entf"
+  },
+  "rename": {
+    "title": "Umbenennen",
+    "name": "Name",
+    "hint": "Leer lassen für den Standardnamen."
+  },
+  "delete": {
+    "title": "Löschen",
+    "withDependents": "{{name}} wird von {{dependents}} verwendet. Alle löschen?",
+    "confirm": "Löschen"
+  },
+  "undo": {
+    "rename": "Umbenennen",
+    "suppress": "Unterdrücken",
+    "unsuppress": "Unterdrückung aufheben",
+    "delete": "Löschen"
   },
   "properties": {
     "file": "Datei",
     "triangles": "Dreiecke",
     "vertices": "Eckpunkte",
-    "noise": "Scanrauschen"
+    "noise": "Scanrauschen",
+    "type": "Typ",
+    "summary": "Werte",
+    "status": "Status",
+    "issues": "Hinweise",
+    "volume": "Volumen",
+    "area": "Oberfläche",
+    "validity": "Gültigkeit",
+    "valid": "Gültiger Volumenkörper",
+    "invalid": "Ungültig",
+    "solids": "Volumenkörper",
+    "rms": "RMS",
+    "faces": "Dreiecke",
+    "unit": "Importeinheit",
+    "operations": "Vorbereitung"
   }
 }

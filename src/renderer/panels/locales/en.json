@@ -6,15 +6,96 @@
     "faces_other": "{{formatted}} triangles",
     "regions": "Regions ({{count}})",
     "region": "Region {{number}}",
+    "regionSummary": "{{kind}}, RMS {{rms}}",
+    "regionKinds": {
+      "plane": "Planes ({{count}})",
+      "cylinder": "Cylinders ({{count}})",
+      "cone": "Cones ({{count}})",
+      "sphere": "Spheres ({{count}})",
+      "torus": "Tori ({{count}})",
+      "freeform": "Freeform ({{count}})",
+      "unknown": "Undetermined ({{count}})"
+    },
+    "onlyUnused": "Only unused",
     "bodies": "Bodies ({{count}})",
     "body": "Body {{number}}",
+    "origin": "Origin",
+    "axes": "Axes",
     "history": "History",
     "alignment": "Alignment"
+  },
+  "regionKind": {
+    "plane": "Plane",
+    "cylinder": "Cylinder",
+    "cone": "Cone",
+    "sphere": "Sphere",
+    "torus": "Torus",
+    "freeform": "Freeform",
+    "unknown": "Undetermined"
+  },
+  "alignmentMethod": {
+    "none": "Scan coordinates",
+    "auto": "Automatic",
+    "faces": "By faces"
+  },
+  "operations": {
+    "repair": "Repaired",
+    "decimate_one": "Reduced to {{formatted}} triangle",
+    "decimate_other": "Reduced to {{formatted}} triangles",
+    "smooth": "Smoothed",
+    "fillHoles": "Holes filled",
+    "removeSmallParts": "Small parts removed",
+    "deleteFaces": "Triangles deleted"
+  },
+  "state": {
+    "ok": "OK",
+    "warning": "Warning",
+    "error": "Error",
+    "suppressed": "Suppressed",
+    "skipped": "Skipped: an input is missing"
+  },
+  "menu": {
+    "edit": "Edit",
+    "rename": "Rename",
+    "suppress": "Suppress",
+    "unsuppress": "Unsuppress",
+    "delete": "Delete",
+    "deleteKey": "Del"
+  },
+  "rename": {
+    "title": "Rename",
+    "name": "Name",
+    "hint": "Leave empty for the default name."
+  },
+  "delete": {
+    "title": "Delete",
+    "withDependents": "{{name}} is used by {{dependents}}. Delete all of them?",
+    "confirm": "Delete"
+  },
+  "undo": {
+    "rename": "Rename",
+    "suppress": "Suppress",
+    "unsuppress": "Unsuppress",
+    "delete": "Delete"
   },
   "properties": {
     "file": "File",
     "triangles": "Triangles",
     "vertices": "Vertices",
-    "noise": "Scan noise"
+    "noise": "Scan noise",
+    "type": "Type",
+    "summary": "Values",
+    "status": "Status",
+    "issues": "Notes",
+    "volume": "Volume",
+    "area": "Surface area",
+    "validity": "Validity",
+    "valid": "Valid solid",
+    "invalid": "Invalid",
+    "solids": "Solids",
+    "rms": "RMS",
+    "faces": "Triangles",
+    "unit": "Import unit",
+    "operations": "Preparation"
   }
 }
