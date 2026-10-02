@@ -13,7 +13,8 @@ a network of bicubic B-spline patches through the limit surface (`patches.py`,
 - `limit_map`: the sparse map from control points to a dense limit-surface mesh, so
   the renderer can redraw the surface while a point is dragged without asking the
   kernel; plus the lines of the net drawn on the surface.
-- `net_shape`: the B-Rep and the patch network of a net.
+- `net_shape`: the B-Rep of a net: one face per rectangle of the patch layout
+  (`layout.py`, `packed.py`), or one face per quad if the layout cannot be built.
 - `net_deviation`: distances of scan points to the net's surface.
 """
 
@@ -21,16 +22,20 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sp
 from scipy.spatial import cKDTree
 
+from m2c_kernel.cad.occ_compat import BRepCheck_Analyzer, TopoDS_Shape
 from m2c_kernel.geometry import FloatArray
-from m2c_kernel.surfacing.brep import PatchShape, build_shape
+from m2c_kernel.surfacing.brep import build_shape
 from m2c_kernel.surfacing.fitting import fit_cage, scan_samples
-from m2c_kernel.surfacing.patches import PatchNetwork, interpolate_patches
+from m2c_kernel.surfacing.layout import patch_layout
+from m2c_kernel.surfacing.packed import PackingError, face_samples, packed_shape
+from m2c_kernel.surfacing.patches import interpolate_patches
 from m2c_kernel.surfacing.quadmesh import QuadNet, Remesher, quad_net
 from m2c_kernel.surfacing.subdivision import (
     EdgeTopology,
@@ -241,22 +246,79 @@ def limit_map(quads: IntArray, n_vertices: int, level: int | None = None) -> Lim
 
 @dataclass(frozen=True)
 class NetShape:
-    """The B-Rep of a net: a solid when it is closed, an open shell otherwise."""
+    """The B-Rep of a net and dense samples of its faces.
 
-    patches: PatchShape
-    network: PatchNetwork
-    topology: EdgeTopology
+    Attributes:
+        shape: A solid when the net is closed, otherwise an open shell.
+        closed: Whether the net is closed.
+        faces: The B-Rep faces, in layout block order (or quad order when unpacked).
+        samples: (k, 3) points on the faces, for deviation measurements.
+        normals: (k, 3) unit normals at `samples`.
+        on_border: (k,) True for samples on the net's open border.
+        packed: One face per layout rectangle; False when it fell back to one per quad.
+    """
+
+    shape: TopoDS_Shape
+    closed: bool
+    faces: tuple[Any, ...]
+    samples: FloatArray
+    normals: FloatArray
+    on_border: BoolArray
+    packed: bool
 
 
 def net_shape(
-    cage: FloatArray, quads: IntArray, check_cancelled: Callable[[], None] = lambda: None
+    cage: FloatArray,
+    quads: IntArray,
+    check_cancelled: Callable[[], None] = lambda: None,
+    *,
+    packed: bool = True,
 ) -> NetShape:
+    """The CAD shape of a net: few large faces where the layout allows it."""
     topology = checked_topology(quads, len(cage))
     hierarchy = patch_hierarchy(quads, len(cage), PATCH_LEVEL)
-    network = interpolate_patches(hierarchy.limit_points(cage)[hierarchy.grids])
+    limit = hierarchy.limit_points(cage)
+    grids = limit[hierarchy.grids]
     check_cancelled()
+    if packed:
+        layout = patch_layout(quads, topology, check_cancelled)
+        try:
+            result = packed_shape(
+                grids,
+                limit[: len(cage)],
+                quads,
+                topology,
+                layout,
+                tolerance=SHAPE_TOLERANCE,
+                check_cancelled=check_cancelled,
+            )
+        except PackingError:
+            result = None
+        if result is not None and BRepCheck_Analyzer(result.shape).IsValid():
+            samples, normals, on_border = face_samples(
+                result, layout, topology, DEVIATION_SAMPLES - 1
+            )
+            return NetShape(
+                result.shape, result.closed, result.faces, samples, normals, on_border, True
+            )
+    network = interpolate_patches(grids)
     patches = build_shape(network, quads, topology, SHAPE_TOLERANCE, check_cancelled)
-    return NetShape(patches, network, topology)
+    samples, normals = network.evaluate(np.linspace(0.0, 1.0, DEVIATION_SAMPLES))
+    on_border = np.zeros(samples.shape[:3], dtype=bool)
+    open_side = topology.boundary[topology.face_edges]
+    on_border[open_side[:, 0], :, 0] = True
+    on_border[open_side[:, 1], -1, :] = True
+    on_border[open_side[:, 2], :, -1] = True
+    on_border[open_side[:, 3], 0, :] = True
+    return NetShape(
+        patches.shape,
+        patches.closed,
+        patches.faces,
+        samples.reshape(-1, 3),
+        normals.reshape(-1, 3),
+        on_border.ravel(),
+        False,
+    )
 
 
 @dataclass(frozen=True)
@@ -276,22 +338,12 @@ class NetDeviation:
 
 def net_deviation(shape: NetShape, points: FloatArray) -> NetDeviation | None:
     """Point-to-surface distances: nearest dense surface sample, then its tangent plane."""
-    parameters = np.linspace(0.0, 1.0, DEVIATION_SAMPLES)
-    samples, normals = shape.network.evaluate(parameters)
-    on_border = np.zeros(samples.shape[:3], dtype=bool)
-    topology = shape.topology
-    open_side = topology.boundary[topology.face_edges]
-    on_border[open_side[:, 0], :, 0] = True
-    on_border[open_side[:, 1], -1, :] = True
-    on_border[open_side[:, 2], :, -1] = True
-    on_border[open_side[:, 3], 0, :] = True
-    samples, normals = samples.reshape(-1, 3), normals.reshape(-1, 3)
-    _, index = cKDTree(samples).query(points, workers=-1)
-    covered = ~on_border.ravel()[index]
+    _, index = cKDTree(shape.samples).query(points, workers=-1)
+    covered = ~shape.on_border[index]
     if not np.any(covered):
         return None
-    offset = points[covered] - samples[index[covered]]
-    distance = np.abs(np.einsum("ij,ij->i", offset, normals[index[covered]]))
+    offset = points[covered] - shape.samples[index[covered]]
+    distance = np.abs(np.einsum("ij,ij->i", offset, shape.normals[index[covered]]))
     return NetDeviation(
         rms=float(np.sqrt(np.mean(distance**2))),
         mean=float(np.mean(distance)),

@@ -92,12 +92,10 @@ def test_generated_net_gives_a_closed_bspline_solid_close_to_the_scan() -> None:
 
     scan, net = sphere_net()
     shape = net_shape(net.vertices, net.quads)
-    assert shape.patches.closed
-    assert BRepCheck_Analyzer(shape.patches.shape).IsValid()
-    assert len(shape.patches.faces) == len(net.quads)
-    assert {BRepAdaptor_Surface(face).GetType() for face in shape.patches.faces} == {
-        GeomAbs_BSplineSurface
-    }
+    assert shape.closed and shape.packed
+    assert BRepCheck_Analyzer(shape.shape).IsValid()
+    assert len(shape.faces) < len(net.quads) / 3
+    assert {BRepAdaptor_Surface(face).GetType() for face in shape.faces} == {GeomAbs_BSplineSurface}
     deviation = net_deviation(shape, scan.vertices)
     assert deviation is not None and deviation.count == len(scan.vertices)
     assert deviation.rms < 2.0 * scan.sigma
@@ -187,11 +185,13 @@ def test_closed_net_feature_gives_a_body(session: Session, job: JobContext) -> N
     result = rebuild(document, session.environment(), job)
     status = result.statuses["f1"]
     assert status.state == "ok", status.error
-    assert status.stats["patches"] == len(net.quads) and status.stats["closed"] == 1.0
+    assert status.stats["quads"] == len(net.quads) and status.stats["closed"] == 1.0
+    faces = status.stats["patches"]
+    assert faces is not None and faces < len(net.quads) / 3
     rms = status.stats["deviationRms"]
     assert rms is not None and rms < 2.0 * scan.sigma
     body = result.outputs["f1"].bodies.changed["f1"]
-    assert len(body.face_tags) == len(net.quads) and body.face_tags[0].startswith("f1:patch:")
+    assert len(body.face_tags) == faces and body.face_tags[0].startswith("f1:patch:")
     check = check_body(body)
     assert not check.blocking and check.closed and check.solids == 1
 
@@ -289,7 +289,7 @@ def test_generate_limit_map_and_commit_through_the_protocol(
     assert applied.ok, applied.header.get("error")
     after = kernel.call("doc.get").result
     body = after["status"]["bodies"][0]
-    assert body["valid"] and len(body["faceTags"]) == len(quads)
+    assert body["valid"] and 0 < len(body["faceTags"]) < len(quads) / 3
 
     feature_id = after["document"]["features"][0]["id"]
     stored = kernel.call("net.featureNet", {"featureId": feature_id})

@@ -10,11 +10,11 @@ export const featureView: FeatureView<'freeformNet'> = {
   editTool: 'freeform-net',
   summary: (params, format, t) => {
     const status = statusOfParams(params);
-    const patches = statValue(status, 'patches');
-    if (patches === null) return t('features:freeformNet.name');
+    const faces = statValue(status, 'patches');
+    if (faces === null) return t('features:freeformNet.name');
     const shape = statValue(status, 'closed') === 1 ? 'solid' : 'openSurface';
     return t('features:freeformNet.summary', {
-      quads: format.count(patches),
+      faces: format.count(faces),
       shape: t(`features:freeformNet.shapes.${shape}`),
     });
   },

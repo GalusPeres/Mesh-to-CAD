@@ -1,8 +1,9 @@
 """Freeform net: a quad control net whose limit surface becomes B-spline CAD faces.
 
 The net (control points and quads) is the stored, editable source of the feature; the
-B-spline patches are derived from it on every rebuild (`surfacing/net.py`). A closed
-net gives a solid body whose faces are tagged `<id>:patch:<i>` (patch i of quad i).
+B-spline faces are derived from it on every rebuild (`surfacing/net.py`): one face per
+rectangle of the net's patch layout. A closed net gives a solid body whose faces are
+tagged `<id>:patch:<i>` (rectangle i of the layout).
 A net with open borders gives an open shell, kept as construction geometry with the
 issue `surfacing.openNet`, because bodies must be solids.
 
@@ -70,14 +71,17 @@ def net_arrays(blobs: BlobStore, params: FreeformNetParams) -> tuple[np.ndarray,
     return vertices, quads
 
 
-def net_stats(shape: NetShape, deviation_points: np.ndarray | None) -> dict[str, float | None]:
+def net_stats(
+    shape: NetShape, quads: int, deviation_points: np.ndarray | None
+) -> dict[str, float | None]:
     """Feature statistics, read by the renderer's freeform-net view."""
     from m2c_kernel.surfacing.net import net_deviation
 
     deviation = None if deviation_points is None else net_deviation(shape, deviation_points)
     return {
-        "patches": float(len(shape.patches.faces)),
-        "closed": 1.0 if shape.patches.closed else 0.0,
+        "patches": float(len(shape.faces)),
+        "quads": float(quads),
+        "closed": 1.0 if shape.closed else 0.0,
         "deviationRms": None if deviation is None else deviation.rms,
         "deviationMean": None if deviation is None else deviation.mean,
         "deviationP95": None if deviation is None else deviation.p95,
@@ -86,9 +90,9 @@ def net_stats(shape: NetShape, deviation_points: np.ndarray | None) -> dict[str,
 
 
 def _face_tags(feature_id: str, shape: NetShape) -> tuple[str, ...]:
-    faces = indexed_map(shape.patches.shape, TopAbs_FACE)
+    faces = indexed_map(shape.shape, TopAbs_FACE)
     tags = [""] * faces.Extent()
-    for patch, face in enumerate(shape.patches.faces):
+    for patch, face in enumerate(shape.faces):
         tags[faces.FindIndex(face) - 1] = f"{feature_id}:patch:{patch}"
     return tuple(tags)
 
@@ -96,7 +100,7 @@ def _face_tags(feature_id: str, shape: NetShape) -> tuple[str, ...]:
 def _shell_display(shape: NetShape) -> tuple[DisplaySource, ...]:
     from m2c_kernel.cad.tessellate import tessellate
 
-    mesh = tessellate(shape.patches.shape)
+    mesh = tessellate(shape.shape)
     return (
         DisplaySource(kind="mesh", style="patch", positions=mesh.vertices, indices=mesh.triangles),
         DisplaySource(kind="lines", style="constructionEdges", positions=mesh.edge_segments),
@@ -124,7 +128,7 @@ class FreeformNet:
             shape = net_shape(vertices, quads, ctx.job.check_cancelled)
         except NetError as error:
             raise KernelError(ErrorCode.NET_INVALID, details=str(error)) from error
-        if not BRepCheck_Analyzer(shape.patches.shape).IsValid():
+        if not BRepCheck_Analyzer(shape.shape).IsValid():
             raise KernelError(ErrorCode.SHAPE_INVALID)
 
         mesh = ctx.mesh
@@ -134,14 +138,14 @@ class FreeformNet:
             selected[ctx.face_set(params.faces)] = True
             measured &= selected
         points = mesh.vertices[np.unique(mesh.faces[measured])] if np.any(measured) else None
-        stats = net_stats(shape, points)
+        stats = net_stats(shape, len(quads), points)
 
-        if not shape.patches.closed:
+        if not shape.closed:
             return FeatureOutput(
-                construction=Construction(surface=shape.patches.shape),
+                construction=Construction(surface=shape.shape),
                 display=_shell_display(shape),
                 stats=stats,
                 issues=(Issue(IssueCode.OPEN_NET),),
             )
-        body = Body(shape=shape.patches.shape, face_tags=_face_tags(ctx.feature_id, shape))
+        body = Body(shape=shape.shape, face_tags=_face_tags(ctx.feature_id, shape))
         return FeatureOutput(bodies=BodyUpdate(changed={ctx.feature_id: body}), stats=stats)

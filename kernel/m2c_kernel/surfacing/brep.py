@@ -85,7 +85,8 @@ def side_poles(poles: FloatArray, side: int) -> FloatArray:
             return poles[0, ::-1]
 
 
-def _knot_arrays(knots: FloatArray) -> tuple[Any, Any]:
+def knot_arrays(knots: FloatArray) -> tuple[Any, Any]:
+    """OCC knot values and multiplicities of a full knot vector."""
     values, multiplicities = np.unique(knots, return_counts=True)
     knot_array, mult_array = Array1_double(1, len(values)), Array1_int(1, len(values))
     for index, (value, multiplicity) in enumerate(zip(values, multiplicities, strict=True), 1):
@@ -94,16 +95,18 @@ def _knot_arrays(knots: FloatArray) -> tuple[Any, Any]:
     return knot_array, mult_array
 
 
-def bspline_surface(poles: FloatArray, knots: tuple[Any, Any]) -> Any:
+def bspline_surface(
+    poles: FloatArray, knots: tuple[Any, Any], knots_v: tuple[Any, Any] | None = None
+) -> Any:
+    """Bicubic surface; `knots` are the u knots, and the v knots too unless given."""
     count_u, count_v = poles.shape[:2]
     array = Array2_gp_Pnt(1, count_u, 1, count_v)
     for i in range(count_u):
         for j in range(count_v):
             array.SetValue(i + 1, j + 1, gp_Pnt(*poles[i, j]))
-    knot_array, mult_array = knots
-    return Geom_BSplineSurface(
-        array, knot_array, knot_array, mult_array, mult_array, DEGREE, DEGREE
-    )
+    knot_u, mult_u = knots
+    knot_v, mult_v = knots_v if knots_v is not None else knots
+    return Geom_BSplineSurface(array, knot_u, knot_v, mult_u, mult_v, DEGREE, DEGREE)
 
 
 def bspline_curve(poles: FloatArray, knots: tuple[Any, Any]) -> Any:
@@ -139,7 +142,7 @@ def build_shape(
         check_cancelled: Raises when the job is cancelled.
     """
     builder = BRep_Builder()
-    knots = _knot_arrays(network.knots)
+    knots = knot_arrays(network.knots)
     poles = network.poles
 
     corner_points = np.stack(

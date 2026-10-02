@@ -1,12 +1,13 @@
 {
   "name": "Freeform net",
-  "summary": "{{quads}} quads, {{shape}}",
+  "summary": "{{faces}} faces, {{shape}}",
   "shapes": {
     "solid": "body",
     "openSurface": "open surface"
   },
   "stats": {
-    "patches": "Faces",
+    "quads": "Net quads",
+    "patches": "CAD faces",
     "rms": "Deviation RMS",
     "p95": "Deviation 95 %",
     "max": "Deviation max.",
