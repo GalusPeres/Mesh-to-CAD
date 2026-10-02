@@ -20,6 +20,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 const PRODUCT = 'Mesh-to-CAD';
+/** Profiles the app may run with: the user's, and the off-screen automation profile. */
+const PROFILES = [PRODUCT, `${PRODUCT}-automation`];
 
 /**
  * Where the app may have published automation.json. Besides %APPDATA%, apps that
@@ -31,13 +33,15 @@ function infoCandidates() {
   const home = os.homedir();
   const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
   const localAppData = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local');
-  const candidates = [path.join(appData, PRODUCT, 'automation.json')];
+  const candidates = PROFILES.map((profile) => path.join(appData, profile, 'automation.json'));
   const packages = path.join(localAppData, 'Packages');
   if (existsSync(packages)) {
     for (const name of readdirSync(packages)) {
-      candidates.push(
-        path.join(packages, name, 'LocalCache', 'Roaming', PRODUCT, 'automation.json'),
-      );
+      for (const profile of PROFILES) {
+        candidates.push(
+          path.join(packages, name, 'LocalCache', 'Roaming', profile, 'automation.json'),
+        );
+      }
     }
   }
   return candidates;
@@ -271,6 +275,17 @@ tool(
     await ui({ type: 'selectFaces', faces });
     return text({ selectedTriangles: faces.length });
   },
+);
+
+tool(
+  'click',
+  {
+    description:
+      'Click a button or control in the app like the user would: by its data-testid (e.g. ' +
+      '"freeform-net-generate") or by its visible label (e.g. "Netz erzeugen").',
+    inputSchema: { target: z.string().describe('data-testid or visible button label') },
+  },
+  async ({ target }) => text(await ui({ type: 'click', target })),
 );
 
 tool(

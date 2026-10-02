@@ -41,7 +41,25 @@ async function handle(action: AutomationAction): Promise<unknown> {
       replaceSelection(scan.key, scan.faceCount, Uint32Array.from(action.faces));
       return { selectedFaces: action.faces.length };
     }
+    case 'click':
+      return click(action.target);
   }
+}
+
+/** Click like the user: by test id first, else the enabled button with that label. */
+function click(target: string): { clicked: string } {
+  const byId = document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(target)}"]`);
+  const element =
+    byId ??
+    [...document.querySelectorAll<HTMLElement>('button, [role="button"], [role="radio"]')].find(
+      (candidate) => candidate.textContent?.trim() === target,
+    );
+  if (!element) throw new Error(`nothing to click: ${target}`);
+  if (element instanceof HTMLButtonElement && element.disabled) {
+    throw new Error(`disabled: ${target}`);
+  }
+  element.click();
+  return { clicked: element.textContent?.trim() || target };
 }
 
 export function installAutomationBridge(): void {

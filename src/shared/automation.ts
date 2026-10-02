@@ -5,7 +5,9 @@ export type AutomationAction =
   | { type: 'state' }
   | { type: 'listCommands' }
   | { type: 'runCommand'; id: string }
-  | { type: 'selectFaces'; faces: readonly number[] };
+  | { type: 'selectFaces'; faces: readonly number[] }
+  /** Click a control by its `data-testid`, or else a button by its visible label. */
+  | { type: 'click'; target: string };
 
 export interface AutomationRequest {
   requestId: number;

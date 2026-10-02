@@ -11,6 +11,12 @@ The interface is off by default. Enable it in **Datei → Einstellungen → Auto
 Steuerung durch KI-Assistenten erlauben (MCP)**, or start the app with the environment
 variable `M2C_AUTOMATION=1`.
 
+For automated checks while someone keeps using the PC, a development build can run off
+screen: `M2C_AUTOMATION=1 M2C_WINDOW=offscreen npm run dev` opens the window outside the
+visible screen, without focus or taskbar button, and with a profile of its own
+(`%APPDATA%\Mesh-to-CAD-automation`), so it never touches the user's settings, recent files
+or unsaved work. Screenshots still show the window as usual.
+
 The app then listens on `127.0.0.1` with a random port and a random token and writes both
 to `%APPDATA%\Mesh-to-CAD\automation.json`. The file is removed when the app closes or the
 setting is turned off. Requests without the token, and requests from web pages (with an
@@ -56,6 +62,7 @@ test uses this).
 | `apply_ops`                    | Apply document operations as one undoable step                                                   |
 | `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                        |
 | `list_commands`, `run_command` | Run app commands: views, undo, tools                                                             |
+| `click`                        | Click a control by its `data-testid` or a button by its visible label                            |
 | `screenshot`                   | Screenshot of the window                                                                         |
 
 Coordinates are part coordinates in millimetres, after the alignment.
@@ -64,6 +71,6 @@ Coordinates are part coordinates in millimetres, after the alignment.
 
 `POST http://127.0.0.1:<port>/rpc` with `Authorization: Bearer <token>` and a JSON body
 `{"method": ..., "params": ...}`. Methods: `ping`, `kernel.call` (`method`, `params`,
-optional `lane`), `ui` (`action`: `state`, `listCommands`, `runCommand`, `selectFaces`) and
+optional `lane`), `ui` (`action`: `state`, `listCommands`, `runCommand`, `selectFaces`, `click`) and
 `screenshot`. Typed arrays in kernel parameters are written as
 `{"$typed": "uint32", "values": [...]}`; long typed arrays in results are summarised.

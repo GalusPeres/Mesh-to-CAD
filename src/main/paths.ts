@@ -6,6 +6,18 @@ import { app } from 'electron';
 /** True when started by the end-to-end tests (`M2C_E2E=1`). */
 export const testMode = process.env.M2C_E2E === '1';
 
+/**
+ * `M2C_WINDOW=offscreen` (development only): the window opens far outside the
+ * screen, without focus or taskbar button, and keeps rendering, so automation and
+ * screenshots (`M2C_AUTOMATION=1`) can drive the app while someone uses the PC. It
+ * keeps its settings, sessions and logs in a profile of its own, so automated runs
+ * never touch the user's recent files or the unsaved work offered for recovery.
+ */
+export const offscreenMode = process.env.M2C_WINDOW === 'offscreen' && !app.isPackaged;
+
+/** Folder name of the profile in %APPDATA% and %LOCALAPPDATA%. */
+export const PROFILE = offscreenMode ? 'Mesh-to-CAD-automation' : 'Mesh-to-CAD';
+
 /** Repository root in development; unused when packaged. */
 export function repositoryRoot(): string {
   return path.resolve(__dirname, '..', '..');
@@ -29,7 +41,7 @@ export function resourcesDirectory(): string {
 export function localDataDirectory(): string {
   if (testMode) return path.join(tmpdir(), 'mesh-to-cad-e2e', String(process.pid));
   const base = process.env.LOCALAPPDATA ?? app.getPath('userData');
-  return path.join(base, 'Mesh-to-CAD');
+  return path.join(base, PROFILE);
 }
 
 export function sessionsDirectory(): string {

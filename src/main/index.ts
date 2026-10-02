@@ -13,7 +13,9 @@ import { KernelHost } from './kernel/KernelHost';
 import { locateKernel } from './kernel/locate';
 import { FileLogger } from './logging';
 import {
+  PROFILE,
   logDirectory,
+  offscreenMode,
   rendererDirectory,
   repositoryRoot,
   resourcesDirectory,
@@ -38,6 +40,12 @@ if (testMode) {
     'userData',
     path.join(app.getPath('temp'), 'mesh-to-cad-e2e-profile', String(process.pid)),
   );
+}
+
+if (offscreenMode) {
+  // Windows stops painting windows it considers covered; an off-screen one would be.
+  app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+  app.setPath('userData', path.join(app.getPath('appData'), PROFILE));
 }
 
 registerAppScheme();
