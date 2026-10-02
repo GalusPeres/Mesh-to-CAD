@@ -1,0 +1,64 @@
+{
+  "label": "Freeform net",
+  "tooltip": "Lay a clean quad net over the scan, snap it to the scan and drag points; the deviation shows live as a heatmap on the surface.",
+  "help": "For organic shapes. Create net lays an even quad net over the whole scan or the selected triangles and snaps it to them. The surface is a smooth B-spline surface; its colour shows the distance to the scan: green within the tolerance, yellow to red outside the material, blue inside. Click and drag points; with snapping they slide over the scan. Snap to scan fits the surface again, Smooth calms it. OK creates the CAD faces: a body when the net is closed.",
+  "sections": {
+    "net": "Net",
+    "edit": "Edit",
+    "deviation": "Deviation"
+  },
+  "source": "Input",
+  "sources": {
+    "scan": "Whole scan",
+    "selection": "Selection"
+  },
+  "triangles": "Triangles",
+  "selectionMissing": "Select triangles with the brush or smart select (at least {{min}}).",
+  "density": "Density",
+  "densities": {
+    "coarse": "Coarse",
+    "medium": "Medium",
+    "fine": "Fine"
+  },
+  "generate": "Create net",
+  "regenerate": "Create net again",
+  "stop": "Stop",
+  "jobs": {
+    "generate": "Creating net",
+    "fit": "Snapping to the scan",
+    "smooth": "Smoothing",
+    "map": "Preparing the surface",
+    "load": "Loading the net"
+  },
+  "editHint": "Click a point and drag it. Shift chooses more points, Ctrl removes, a rectangle chooses several. With Alt the point moves along the surface normal.",
+  "snap": "Snap to the scan while dragging",
+  "chosen": "Chosen points",
+  "none": "none",
+  "fit": {
+    "all": "Snap to scan",
+    "chosen": "Snap chosen"
+  },
+  "smooth": {
+    "all": "Smooth",
+    "chosen": "Smooth chosen"
+  },
+  "chooseAll": "Choose all",
+  "chooseNone": "Choose none",
+  "heatmap": "Show the deviation as colour",
+  "legend": "Green: within ±{{tolerance}}. Yellow to red: the surface lies outside the scan, blue: inside, grey: far away.",
+  "measuring": "Measuring the deviation …",
+  "result": {
+    "withinTolerance": "Within tolerance",
+    "rms": "Deviation RMS",
+    "p95": "Deviation 95 %",
+    "max": "Deviation max.",
+    "unmeasured": "{{share}} of the surface lies far from the scan and is not counted.",
+    "quads": "Quads",
+    "points": "Control points",
+    "irregular": "Irregular points",
+    "shape": "Result",
+    "closedBody": "Closed body",
+    "openSurface": "Open surface",
+    "openHint": "The net has open borders. It becomes a surface, not a body."
+  }
+}

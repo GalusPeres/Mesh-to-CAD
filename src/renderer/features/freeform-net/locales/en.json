@@ -1,0 +1,17 @@
+{
+  "name": "Freeform net",
+  "summary": "{{quads}} quads, {{shape}}",
+  "shapes": {
+    "solid": "body",
+    "openSurface": "open surface"
+  },
+  "stats": {
+    "patches": "Faces",
+    "rms": "Deviation RMS",
+    "p95": "Deviation 95 %",
+    "max": "Deviation max.",
+    "shape": "Result",
+    "solid": "Body",
+    "openSurface": "Open surface"
+  }
+}

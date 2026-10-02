@@ -1,0 +1,64 @@
+{
+  "label": "Freiform-Netz",
+  "tooltip": "Sauberes Vierecksnetz über den Scan legen, an den Scan anschmiegen und Punkte ziehen; die Abweichung erscheint live als Heatmap auf der Fläche.",
+  "help": "Für organische Formen. Netz erzeugen legt ein gleichmäßiges Vierecksnetz über den ganzen Scan oder die ausgewählten Dreiecke und schmiegt es an. Die Fläche ist eine glatte B-Spline-Fläche; ihre Farbe zeigt den Abstand zum Scan: grün innerhalb der Toleranz, gelb bis rot außerhalb des Materials, blau innerhalb. Punkte anklicken und ziehen, mit Einrasten gleiten sie über den Scan. Anschmiegen passt die Fläche wieder an, Glätten beruhigt sie. OK erzeugt die CAD-Flächen: bei einem geschlossenen Netz einen Körper.",
+  "sections": {
+    "net": "Netz",
+    "edit": "Bearbeiten",
+    "deviation": "Abweichung"
+  },
+  "source": "Eingabe",
+  "sources": {
+    "scan": "Ganzer Scan",
+    "selection": "Auswahl"
+  },
+  "triangles": "Dreiecke",
+  "selectionMissing": "Dreiecke mit Pinsel oder Flächenauswahl markieren (mindestens {{min}}).",
+  "density": "Dichte",
+  "densities": {
+    "coarse": "Grob",
+    "medium": "Mittel",
+    "fine": "Fein"
+  },
+  "generate": "Netz erzeugen",
+  "regenerate": "Netz neu erzeugen",
+  "stop": "Abbrechen",
+  "jobs": {
+    "generate": "Netz erzeugen",
+    "fit": "An den Scan anschmiegen",
+    "smooth": "Glätten",
+    "map": "Fläche vorbereiten",
+    "load": "Netz laden"
+  },
+  "editHint": "Punkt anklicken und ziehen. Umschalt wählt weitere Punkte, Strg wählt ab, ein Rahmen wählt mehrere. Mit Alt bewegt sich der Punkt entlang der Fläche nach außen oder innen.",
+  "snap": "Beim Ziehen auf den Scan einrasten",
+  "chosen": "Gewählte Punkte",
+  "none": "keine",
+  "fit": {
+    "all": "Anschmiegen",
+    "chosen": "Gewählte anschmiegen"
+  },
+  "smooth": {
+    "all": "Glätten",
+    "chosen": "Gewählte glätten"
+  },
+  "chooseAll": "Alle wählen",
+  "chooseNone": "Keine wählen",
+  "heatmap": "Abweichung als Farbe zeigen",
+  "legend": "Grün: innerhalb ±{{tolerance}}. Gelb bis rot: Fläche liegt außerhalb des Scans, blau: innerhalb, grau: weit entfernt.",
+  "measuring": "Abweichung wird gemessen …",
+  "result": {
+    "withinTolerance": "Innerhalb der Toleranz",
+    "rms": "Abweichung RMS",
+    "p95": "Abweichung 95 %",
+    "max": "Abweichung max.",
+    "unmeasured": "{{share}} der Fläche liegen weit vom Scan entfernt und sind nicht eingerechnet.",
+    "quads": "Vierecke",
+    "points": "Kontrollpunkte",
+    "irregular": "Unregelmäßige Punkte",
+    "shape": "Ergebnis",
+    "closedBody": "Geschlossener Körper",
+    "openSurface": "Offene Fläche",
+    "openHint": "Das Netz hat offene Ränder. Es wird eine Fläche, kein Körper."
+  }
+}

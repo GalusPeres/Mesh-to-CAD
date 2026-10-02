@@ -1,0 +1,17 @@
+{
+  "name": "Freiform-Netz",
+  "summary": "{{quads}} Vierecke, {{shape}}",
+  "shapes": {
+    "solid": "Körper",
+    "openSurface": "offene Fläche"
+  },
+  "stats": {
+    "patches": "Flächen",
+    "rms": "Abweichung RMS",
+    "p95": "Abweichung 95 %",
+    "max": "Abweichung max.",
+    "shape": "Ergebnis",
+    "solid": "Körper",
+    "openSurface": "Offene Fläche"
+  }
+}
