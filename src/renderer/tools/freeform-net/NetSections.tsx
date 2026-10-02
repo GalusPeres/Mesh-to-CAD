@@ -12,6 +12,7 @@ import { ProgressBar } from '../../ui/ProgressBar/ProgressBar';
 import { PropertyRow, PropertyValue } from '../../ui/PropertyRow/PropertyRow';
 import { SegmentedControl } from '../../ui/SegmentedControl/SegmentedControl';
 import styles from './FreeformNetPanel.module.css';
+import { HEATMAP_TOLERANCES } from './heatmap';
 import type { NetEditor, NetEditorState } from './netEditor';
 
 const KEY = 'tools:freeformNet';
@@ -139,6 +140,14 @@ export function EditSection({ editor, state }: { editor: NetEditor; state: NetEd
           {t(`${KEY}.smooth.${scope}`)}
         </Button>
       </div>
+      <Button
+        className={styles.wide}
+        disabled={busy || state.selected < 3}
+        data-testid="freeform-net-flatten"
+        onClick={() => void editor.flatten()}
+      >
+        {t(`${KEY}.flatten`)}
+      </Button>
       <div className={styles.buttons}>
         <Button variant="ghost" disabled={busy} onClick={() => editor.chooseAll()}>
           {t(`${KEY}.chooseAll`)}
@@ -168,8 +177,19 @@ export function DeviationSection({ editor, state }: { editor: NetEditor; state: 
         testId="freeform-net-heatmap"
         onChange={(heatmap) => editor.setHeatmap(heatmap)}
       />
+      <PropertyRow label={t(`${KEY}.scale`)}>
+        <SegmentedControl<string>
+          value={String(state.tolerance)}
+          ariaLabel={t(`${KEY}.scale`)}
+          segments={HEATMAP_TOLERANCES.map((value) => ({
+            value: String(value),
+            label: `±${format.number(value, value < 0.1 ? 2 : 1)}`,
+          }))}
+          onChange={(value) => editor.setTolerance(Number(value))}
+        />
+      </PropertyRow>
       <p className={styles.hint}>
-        {t(`${KEY}.legend`, { tolerance: format.length(editor.tolerance) })}
+        {t(`${KEY}.legend`, { tolerance: format.length(state.tolerance) })}
       </p>
       {summary && summary.rms !== null ? (
         <>

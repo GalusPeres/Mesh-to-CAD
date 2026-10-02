@@ -7,6 +7,8 @@ import type { ScreenPoint, Vec3, Viewport, ViewportInteraction } from '../../vie
 import type { NetEditor } from './netEditor';
 
 const PICK_RADIUS_PX = 10;
+/** Control points within this distance of the pointer are drawn. */
+const NEARBY_RADIUS_PX = 150;
 const DRAG_THRESHOLD_PX = 3;
 /** Points whose surface faces away from the viewer more than this are not pickable. */
 const FACING_LIMIT = 0.15;
@@ -66,18 +68,22 @@ export function createNetInteraction(
     }
   };
 
-  const pickControl = (at: ScreenPoint): number | null => {
-    let best: number | null = null;
+  /** The pickable control point under the pointer, and the visible ones around it. */
+  const pointsAt = (at: ScreenPoint): { picked: number | null; nearby: number[] } => {
+    let picked: number | null = null;
     let bestDistance = PICK_RADIUS_PX;
+    const nearby: number[] = [];
     for (const { control, screen } of visiblePoints()) {
       const distance = Math.hypot(screen.x - at.x, screen.y - at.y);
+      if (distance <= NEARBY_RADIUS_PX) nearby.push(control);
       if (distance <= bestDistance) {
-        best = control;
+        picked = control;
         bestDistance = distance;
       }
     }
-    return best;
+    return { picked, nearby };
   };
+  const pickControl = (at: ScreenPoint): number | null => pointsAt(at).picked;
 
   /** Offset of the grabbed surface point for the pointer at `screen`. */
   const dragOffset = (
@@ -121,7 +127,8 @@ export function createNetInteraction(
     onPointerMove: (event) => {
       if (!gesture) {
         if (editor.controlCount === 0) return false;
-        editor.setHover(pickControl(event.screen));
+        const { picked, nearby } = pointsAt(event.screen);
+        editor.setHover(picked, nearby);
         return false;
       }
       if (gesture.kind === 'box') {

@@ -9,7 +9,9 @@ import type { Overlay, Vec3 } from '../../viewport/api';
 import { NET_COLORS, SCENE_COLORS } from '../../viewport/palette';
 import type { LimitSurface } from './limitSurface';
 
-const POINT_SIZE_PX = 9;
+const POINT_SIZE_PX = 7;
+/** Depth bias of the surface in units of the scene bias (bodies use 1). */
+const SURFACE_BIAS = 4;
 
 function circleTexture(): THREE.Texture {
   const size = 64;
@@ -66,7 +68,9 @@ export class NetOverlay {
       roughness: 0.55,
       metalness: 0,
     });
-    overlay.applyDepthBias(surfaceMaterial, 1);
+    // Drawn in front of the scan wherever it lies within a few tolerances of it, also
+    // where it runs slightly inside the scan's ridges (else the scan shows through).
+    overlay.applyDepthBias(surfaceMaterial, SURFACE_BIAS);
     this.add(new THREE.Mesh(this.surfaceGeometry, surfaceMaterial), surfaceMaterial);
 
     const inner: number[] = [];
@@ -80,21 +84,22 @@ export class NetOverlay {
     const lineMaterial = new THREE.LineBasicMaterial({
       color: NET_COLORS.lines,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.45,
     });
-    overlay.applyDepthBias(lineMaterial, 1.5);
+    overlay.applyDepthBias(lineMaterial, SURFACE_BIAS + 0.5);
     this.lines = new THREE.LineSegments(this.lineGeometry, lineMaterial);
     this.add(this.lines, lineMaterial);
 
     this.borderGeometry.setAttribute('position', this.position);
     this.borderGeometry.setIndex(border);
     const borderMaterial = new THREE.LineBasicMaterial({ color: NET_COLORS.border });
-    overlay.applyDepthBias(borderMaterial, 1.5);
+    overlay.applyDepthBias(borderMaterial, SURFACE_BIAS + 0.5);
     this.add(new THREE.LineSegments(this.borderGeometry, borderMaterial), borderMaterial);
 
-    this.pointColors = new Float32Array(surface.controlCount * 3);
+    // RGBA: points away from the pointer get alpha 0 and are discarded by the alpha test.
+    this.pointColors = new Float32Array(surface.controlCount * 4);
     this.pointGeometry.setAttribute('position', this.position);
-    this.pointGeometry.setAttribute('color', new THREE.BufferAttribute(this.pointColors, 3));
+    this.pointGeometry.setAttribute('color', new THREE.BufferAttribute(this.pointColors, 4));
     this.pointGeometry.setDrawRange(0, surface.controlCount);
     const pointMaterial = new THREE.PointsMaterial({
       size: POINT_SIZE_PX,
@@ -103,12 +108,12 @@ export class NetOverlay {
       map: this.texture,
       alphaTest: 0.5,
     });
-    overlay.applyDepthBias(pointMaterial, 2);
+    overlay.applyDepthBias(pointMaterial, SURFACE_BIAS + 1);
     this.points = new THREE.Points(this.pointGeometry, pointMaterial);
     this.add(this.points, pointMaterial);
 
     this.setSurfaceColors(null);
-    this.paintPoints(new Set(), null);
+    this.paintPoints(new Set(), null, () => false);
   }
 
   /** The dense positions changed (all of them, or the given rows). */
@@ -131,13 +136,24 @@ export class NetOverlay {
     (this.surfaceGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
   }
 
-  paintPoints(selected: ReadonlySet<number>, hover: number | null): void {
+  /**
+   * Colour the control points: hovered, chosen or plain. Only chosen points, the
+   * hovered one and those `shown` (near the pointer) are drawn, so a dense net does
+   * not cover the surface and its heatmap with dots.
+   */
+  paintPoints(
+    selected: ReadonlySet<number>,
+    hover: number | null,
+    shown: (control: number) => boolean,
+  ): void {
     const plain = rgb(NET_COLORS.point);
     const chosen = rgb(SCENE_COLORS.selection);
     const hovered = rgb(NET_COLORS.hover);
     for (let i = 0; i < this.surface.controlCount; i += 1) {
-      const color = i === hover ? hovered : selected.has(i) ? chosen : plain;
-      this.pointColors.set(color, i * 3);
+      const isChosen = selected.has(i);
+      const color = i === hover ? hovered : isChosen ? chosen : plain;
+      this.pointColors.set(color, i * 4);
+      this.pointColors[i * 4 + 3] = i === hover || isChosen || shown(i) ? 1 : 0;
     }
     (this.pointGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
   }

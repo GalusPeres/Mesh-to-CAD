@@ -6,7 +6,7 @@
 
 import type { MethodName } from '@shared/protocol/generated/index';
 
-import { type KernelFailure, isSilentFailure } from '../../kernel/KernelFailure';
+import { isSilentFailure } from '../../kernel/KernelFailure';
 import type { KernelJob, ParamsOf, ResultOf } from '../../kernel/KernelClient';
 import { kernel } from '../../kernel/kernel';
 import type { Vec3, Viewport } from '../../viewport/api';
@@ -20,15 +20,20 @@ import {
   heatmapScale,
 } from './heatmap';
 import { LimitSurface } from './limitSurface';
+import { type NetEditorState, type NetJobKind, initialNetState } from './netState';
 import { NetOverlay } from './NetOverlay';
 import {
   type Net,
   NetHistory,
   cloneNet,
   controlOffsets,
+  fitPlane,
   irregularCount,
+  projectOntoPlane,
   sameTopology,
 } from './netModel';
+
+export type { NetEditorState, NetJobKind } from './netState';
 
 export const FREEFORM_NET_TOOL_ID = 'freeform-net';
 /** Fairness of "Anschmiegen" and the stronger one of "Glätten" (kernel `net.fit`). */
@@ -37,24 +42,6 @@ export const SMOOTH_SMOOTHING = 0.05;
 const FIT_ITERATIONS = 4;
 /** Dense vertices measured per animation frame after a change of the whole net. */
 const MEASURE_CHUNK = 6000;
-
-export type NetJobKind = 'generate' | 'fit' | 'smooth' | 'map' | 'load';
-
-export interface NetEditorState {
-  hasNet: boolean;
-  quads: number;
-  controlPoints: number;
-  irregular: number;
-  closed: boolean;
-  selected: number;
-  summary: DeviationSummary | null;
-  job: { kind: NetJobKind; fraction: number | null; stage: string | null } | null;
-  error: KernelFailure | null;
-  snap: boolean;
-  heatmap: boolean;
-  canUndo: boolean;
-  canRedo: boolean;
-}
 
 interface Drag {
   controls: Uint32Array;
@@ -75,6 +62,8 @@ export class NetEditor {
   private colors = new Float32Array(0);
   private readonly selection = new Set<number>();
   private hover: number | null = null;
+  /** Control points near the pointer; only these (and chosen ones) are drawn. */
+  private nearby = new Set<number>();
   private readonly history = new NetHistory();
   private running: KernelJob<unknown> | null = null;
   private measureToken = 0;
@@ -89,21 +78,7 @@ export class NetEditor {
     tolerance: number,
   ) {
     this.scale = heatmapScale(tolerance);
-    this.state = {
-      hasNet: false,
-      quads: 0,
-      controlPoints: 0,
-      irregular: 0,
-      closed: false,
-      selected: 0,
-      summary: null,
-      job: null,
-      error: null,
-      snap: true,
-      heatmap: true,
-      canUndo: false,
-      canRedo: false,
-    };
+    this.state = initialNetState(this.scale.tolerance);
   }
 
   // React access ------------------------------------------------------------------------
@@ -164,6 +139,25 @@ export class NetEditor {
     await this.setNet({ vertices: result.vertices, quads: net.quads }, true);
   }
 
+  /**
+   * Lay the chosen control points on their best-fitting plane. Where a region of the
+   * net and the ring of points around it are coplanar, its limit surface is exactly
+   * that plane (affine invariance of subdivision), so flat faces become truly flat.
+   */
+  async flatten(): Promise<void> {
+    const net = this.net;
+    const surface = this.surface;
+    if (!net || !surface || this.selection.size < 3 || this.state.job) return;
+    const chosen = [...this.selection];
+    const limits = new Float64Array(chosen.length * 3);
+    chosen.forEach((control, index) => limits.set(surface.limitPoint(control), index * 3));
+    const plane = fitPlane(limits);
+    if (!plane) return;
+    const next = cloneNet(net);
+    projectOntoPlane(next.vertices, chosen, plane);
+    await this.setNet(next, true);
+  }
+
   cancelJob(): void {
     this.running?.cancel();
   }
@@ -197,6 +191,7 @@ export class NetEditor {
   setTolerance(tolerance: number): void {
     if (tolerance === this.scale.tolerance) return;
     this.scale = heatmapScale(tolerance);
+    this.update({ tolerance });
     void this.measureAll();
   }
 
@@ -241,9 +236,10 @@ export class NetEditor {
     );
   }
 
-  setHover(control: number | null): void {
-    if (control === this.hover) return;
+  setHover(control: number | null, nearby?: Iterable<number>): void {
+    if (control === this.hover && !nearby) return;
     this.hover = control;
+    if (nearby) this.nearby = new Set(nearby);
     this.repaintPoints();
   }
 
@@ -462,7 +458,7 @@ export class NetEditor {
   }
 
   private repaintPoints(): void {
-    this.overlay?.paintPoints(this.selection, this.hover);
+    this.overlay?.paintPoints(this.selection, this.hover, (control) => this.nearby.has(control));
     this.viewport.invalidate();
   }
 

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { isSelectionModeId } from '../../selection/selectionRuntime';
-import { useDocument } from '../../state/documentStore';
+import { documentStore } from '../../state/documentStore';
 import { setDraftHistoryHandler } from '../../state/historyStore';
 import { toolStore } from '../../state/toolStore';
 import { useViewport } from '../../viewport/api';
+import { defaultHeatmapTolerance } from './heatmap';
 import { NetEditor, type NetEditorState } from './netEditor';
 import { type BoxRectangle, createNetInteraction } from './netInteraction';
 
@@ -18,11 +19,14 @@ export function useNetEditor(editTarget: string | null): {
   box: BoxRectangle | null;
 } {
   const viewport = useViewport();
-  const tolerance = useDocument((state) => state.snapshot?.document.settings.tolerance ?? 0.1);
   const [box, setBox] = useState<BoxRectangle | null>(null);
-  // One editor per viewport; its tolerance at creation, later changes are passed on below.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const editor = useMemo(() => (viewport ? new NetEditor(viewport, tolerance) : null), [viewport]);
+  // One editor per viewport; its colour scale starts at the project tolerance (at least
+  // 0.1 mm) and is then chosen in the panel.
+  const editor = useMemo(() => {
+    if (!viewport) return null;
+    const tolerance = documentStore.getState().snapshot?.document.settings.tolerance ?? 0.1;
+    return new NetEditor(viewport, defaultHeatmapTolerance(tolerance));
+  }, [viewport]);
 
   useEffect(() => {
     if (!viewport || !editor) return;
@@ -46,7 +50,6 @@ export function useNetEditor(editTarget: string | null): {
     };
   }, [viewport, editor, editTarget]);
 
-  useEffect(() => editor?.setTolerance(tolerance), [editor, tolerance]);
   return { editor, box };
 }
 

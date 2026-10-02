@@ -30,7 +30,7 @@
     "map": "Fläche vorbereiten",
     "load": "Netz laden"
   },
-  "editHint": "Punkt anklicken und ziehen. Umschalt wählt weitere Punkte, Strg wählt ab, ein Rahmen wählt mehrere. Mit Alt bewegt sich der Punkt entlang der Fläche nach außen oder innen.",
+  "editHint": "Die Punkte erscheinen in der Nähe des Mauszeigers. Punkt anklicken und ziehen. Umschalt wählt weitere Punkte, Strg wählt ab, ein Rahmen wählt mehrere. Mit Alt bewegt sich der Punkt entlang der Fläche nach außen oder innen.",
   "snap": "Beim Ziehen auf den Scan einrasten",
   "chosen": "Gewählte Punkte",
   "none": "keine",
@@ -42,9 +42,11 @@
     "all": "Glätten",
     "chosen": "Gewählte glätten"
   },
+  "flatten": "Gewählte auf Ebene legen",
   "chooseAll": "Alle wählen",
   "chooseNone": "Keine wählen",
   "heatmap": "Abweichung als Farbe zeigen",
+  "scale": "Farbskala (mm)",
   "legend": "Grün: innerhalb ±{{tolerance}}. Gelb bis rot: Fläche liegt außerhalb des Scans, blau: innerhalb, grau: weit entfernt.",
   "measuring": "Abweichung wird gemessen …",
   "result": {

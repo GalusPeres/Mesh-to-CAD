@@ -126,3 +126,98 @@ export function irregularCount(
   for (let i = 0; i < controlCount; i += 1) if (!onBorder[i] && valence[i] !== 4) count += 1;
   return count;
 }
+
+export interface Plane {
+  origin: [number, number, number];
+  normal: [number, number, number];
+}
+
+/** Eigenvalues and eigenvectors (columns) of a symmetric 3 x 3 matrix, by Jacobi rotations. */
+function symmetricEigen(m: number[][]): { values: number[]; vectors: number[][] } {
+  const a = m.map((row) => row.slice());
+  const v = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  for (let sweep = 0; sweep < 50; sweep += 1) {
+    let off = 0;
+    for (let p = 0; p < 3; p += 1) for (let q = p + 1; q < 3; q += 1) off += a[p]![q]! ** 2;
+    if (off < 1e-30) break;
+    for (let p = 0; p < 3; p += 1) {
+      for (let q = p + 1; q < 3; q += 1) {
+        const apq = a[p]![q]!;
+        if (Math.abs(apq) < 1e-300) continue;
+        const theta = (a[q]![q]! - a[p]![p]!) / (2 * apq);
+        const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+        const c = 1 / Math.sqrt(t * t + 1);
+        const s = t * c;
+        for (let k = 0; k < 3; k += 1) {
+          const akp = a[k]![p]!;
+          const akq = a[k]![q]!;
+          a[k]![p] = c * akp - s * akq;
+          a[k]![q] = s * akp + c * akq;
+        }
+        for (let k = 0; k < 3; k += 1) {
+          const apk = a[p]![k]!;
+          const aqk = a[q]![k]!;
+          a[p]![k] = c * apk - s * aqk;
+          a[q]![k] = s * apk + c * aqk;
+        }
+        for (let k = 0; k < 3; k += 1) {
+          const vkp = v[k]![p]!;
+          const vkq = v[k]![q]!;
+          v[k]![p] = c * vkp - s * vkq;
+          v[k]![q] = s * vkp + c * vkq;
+        }
+      }
+    }
+  }
+  return { values: [a[0]![0]!, a[1]![1]!, a[2]![2]!], vectors: v };
+}
+
+/** Least-squares plane through points (x, y, z triples); null for fewer than three. */
+export function fitPlane(points: Float64Array): Plane | null {
+  const count = points.length / 3;
+  if (count < 3) return null;
+  const centre: [number, number, number] = [0, 0, 0];
+  for (let i = 0; i < count; i += 1)
+    for (let axis = 0; axis < 3; axis += 1) centre[axis]! += points[i * 3 + axis]! / count;
+  const covariance = [
+    [0, 0, 0],
+    [0, 0, 0],
+    [0, 0, 0],
+  ];
+  for (let i = 0; i < count; i += 1) {
+    const d = [0, 1, 2].map((axis) => points[i * 3 + axis]! - centre[axis]!);
+    for (let r = 0; r < 3; r += 1)
+      for (let c = 0; c < 3; c += 1) covariance[r]![c]! += d[r]! * d[c]!;
+  }
+  const { values, vectors } = symmetricEigen(covariance);
+  const smallest = values.indexOf(Math.min(...values));
+  const normal: [number, number, number] = [
+    vectors[0]![smallest]!,
+    vectors[1]![smallest]!,
+    vectors[2]![smallest]!,
+  ];
+  const length = Math.hypot(...normal) || 1;
+  return { origin: centre, normal: [normal[0] / length, normal[1] / length, normal[2] / length] };
+}
+
+/** Move the given control points onto the plane (perpendicular projection), in place. */
+export function projectOntoPlane(
+  vertices: Float64Array,
+  controls: Iterable<number>,
+  plane: Plane,
+): void {
+  const [ox, oy, oz] = plane.origin;
+  const [nx, ny, nz] = plane.normal;
+  for (const control of controls) {
+    const o = control * 3;
+    const distance =
+      (vertices[o]! - ox) * nx + (vertices[o + 1]! - oy) * ny + (vertices[o + 2]! - oz) * nz;
+    vertices[o] = vertices[o]! - distance * nx;
+    vertices[o + 1] = vertices[o + 1]! - distance * ny;
+    vertices[o + 2] = vertices[o + 2]! - distance * nz;
+  }
+}

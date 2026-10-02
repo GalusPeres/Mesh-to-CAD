@@ -30,7 +30,7 @@
     "map": "Preparing the surface",
     "load": "Loading the net"
   },
-  "editHint": "Click a point and drag it. Shift chooses more points, Ctrl removes, a rectangle chooses several. With Alt the point moves along the surface normal.",
+  "editHint": "Points appear near the pointer. Click a point and drag it. Shift chooses more points, Ctrl removes, a rectangle chooses several. With Alt the point moves along the surface normal.",
   "snap": "Snap to the scan while dragging",
   "chosen": "Chosen points",
   "none": "none",
@@ -42,9 +42,11 @@
     "all": "Smooth",
     "chosen": "Smooth chosen"
   },
+  "flatten": "Lay chosen on a plane",
   "chooseAll": "Choose all",
   "chooseNone": "Choose none",
   "heatmap": "Show the deviation as colour",
+  "scale": "Colour scale (mm)",
   "legend": "Green: within ±{{tolerance}}. Yellow to red: the surface lies outside the scan, blue: inside, grey: far away.",
   "measuring": "Measuring the deviation …",
   "result": {
