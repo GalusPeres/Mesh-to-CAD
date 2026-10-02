@@ -41,6 +41,7 @@ export class ItemLayer {
   private highlighted: HighlightTarget = null;
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
   private bodyEdgesVisible = true;
+  private hiddenOwner: string | null = null;
 
   constructor(
     private readonly context: () => DisplayContext,
@@ -85,8 +86,19 @@ export class ItemLayer {
     this.invalidate();
   }
 
+  /** Hide the document items of one owner while a tool edits it in place. */
+  setHiddenOwner(owner: string | null): void {
+    this.hiddenOwner = owner;
+    this.applyEdgeVisibility();
+    this.invalidate();
+  }
+
   private applyEdgeVisibility(): void {
-    for (const object of this.all()) {
+    for (const object of this.items.values()) {
+      const edges = object.item.style !== 'bodyEdges' || this.bodyEdgesVisible;
+      object.object.visible = edges && object.item.owner !== this.hiddenOwner;
+    }
+    for (const object of [...this.previews.values()].flatMap((preview) => preview.objects)) {
       if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;
     }
   }
@@ -147,7 +159,7 @@ export class ItemLayer {
   /** Mesh objects for raycasting (visible groups only). */
   surfaces(): THREE.Object3D[] {
     return this.visible()
-      .filter((object) => object.object instanceof THREE.Mesh)
+      .filter((object) => object.object instanceof THREE.Mesh && object.object.visible)
       .map((o) => o.object);
   }
 
@@ -229,7 +241,8 @@ export class ItemLayer {
 
   private visible(): DisplayObject[] {
     const shown: DisplayObject[] = [];
-    if (this.group.visible) shown.push(...this.items.values());
+    if (this.group.visible)
+      shown.push(...[...this.items.values()].filter((object) => object.object.visible));
     if (this.previewGroup.visible)
       shown.push(...[...this.previews.values()].flatMap((p) => p.objects));
     return shown;

@@ -10,6 +10,7 @@ import type {
   PickHit,
   PickOptions,
   Ray,
+  ScanSurfaceQueries,
   ScanTopology,
   ScreenPoint,
   Vec3,
@@ -22,8 +23,10 @@ import { CornerWidgets } from './cornerWidgets';
 import type { ThemeColors } from './displayItems';
 import { type InternalHandleFactory, createHandleFactory } from './handles';
 import { type HighlightTarget, ItemLayer, type PayloadFetcher } from './itemLayer';
+import { createOverlayGroup } from './overlays';
 import { SCENE_COLORS } from './palette';
 import { PointerRouter } from './PointerRouter';
+import { createScanSurfaceQueries } from './scanDistance';
 import { ScanLayer } from './scanLayer';
 import { ScanQueries } from './scanQueries';
 import { type PickScene, pickScene } from './scenePicking';
@@ -47,6 +50,7 @@ export class SceneController implements Viewport {
   readonly scan: ScanLayer;
   readonly camera: CameraView;
   readonly handles: InternalHandleFactory;
+  readonly scanSurface: ScanSurfaceQueries;
   readonly rig: CameraRig;
 
   private readonly renderer: THREE.WebGLRenderer;
@@ -116,6 +120,7 @@ export class SceneController implements Viewport {
       size: () => this.size(),
       pickScene: () => this.pickScene(),
     });
+    this.scanSurface = createScanSurfaceQueries(() => this.scan.current, this.scanGroup.matrix);
     this.scan = new ScanLayer(clipping, (change) => {
       if (change === 'visibility') this.visibleFacesChanged();
       this.invalidate();
@@ -274,6 +279,10 @@ export class SceneController implements Viewport {
     return { scanFaces: this.scan.current?.shownFaces ?? 0, items: this.items.count };
   }
 
+  setOwnerHidden(owner: string | null): void {
+    this.items.setHiddenOwner(owner);
+  }
+
   setPreviewItems(owner: string, items: readonly SceneItem[]): void {
     this.items.setPreview(owner, items).catch((error: unknown) => {
       window.m2c.app.log({ level: 'error', message: `preview items failed: ${String(error)}` });
@@ -322,22 +331,7 @@ export class SceneController implements Viewport {
   }
 
   createOverlay(): Overlay {
-    const group = new THREE.Group();
-    this.overlayGroup.add(group);
-    return {
-      add: (object) => {
-        group.add(object as THREE.Object3D);
-        this.invalidate();
-      },
-      clear: () => {
-        group.clear();
-        this.invalidate();
-      },
-      dispose: () => {
-        this.overlayGroup.remove(group);
-        this.invalidate();
-      },
-    };
+    return createOverlayGroup(this.overlayGroup, this.bias, () => this.invalidate());
   }
 
   invalidate(): void {
