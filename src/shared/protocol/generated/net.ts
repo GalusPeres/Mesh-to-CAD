@@ -58,6 +58,8 @@ export interface LimitMapResult {
   edges: Uint32Array;
   boundaryEdges: Uint8Array;
   border: Uint8Array;
+  faceEdges: Uint8Array;
+  faceCount: number;
   level: number;
   fineCount: number;
 }

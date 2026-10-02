@@ -56,6 +56,8 @@
     "max": "Deviation max.",
     "unmeasured": "{{share}} of the surface lies far from the scan and is not counted.",
     "quads": "Quads",
+    "faces": "CAD faces",
+    "facesHint": "The white lines show where one CAD face meets the next. Every irregular point draws lines across the net; fewer such points give larger faces.",
     "points": "Control points",
     "irregular": "Irregular points",
     "shape": "Result",

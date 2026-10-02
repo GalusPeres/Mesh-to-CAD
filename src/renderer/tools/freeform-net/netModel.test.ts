@@ -37,6 +37,8 @@ function smallMap(): LimitMapResult {
     edges: Uint32Array.from([0, 1, 1, 2, 2, 0]),
     boundaryEdges: Uint8Array.from([1, 1, 1]),
     border: Uint8Array.from([1, 1, 1, 0]),
+    faceEdges: Uint8Array.from([1, 1, 1]),
+    faceCount: 1,
     level: 1,
     fineCount: 4,
   };

@@ -56,6 +56,8 @@
     "max": "Abweichung max.",
     "unmeasured": "{{share}} der Fläche liegen weit vom Scan entfernt und sind nicht eingerechnet.",
     "quads": "Vierecke",
+    "faces": "CAD-Flächen",
+    "facesHint": "Die weißen Linien zeigen, wo eine CAD-Fläche an die nächste grenzt. Jeder unregelmäßige Punkt zieht Linien nach sich; weniger solche Punkte geben größere Flächen.",
     "points": "Kontrollpunkte",
     "irregular": "Unregelmäßige Punkte",
     "shape": "Ergebnis",

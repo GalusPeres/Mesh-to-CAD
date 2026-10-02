@@ -399,6 +399,7 @@ export class NetEditor {
     this.update({
       hasNet: true,
       quads: this.net.quads.length / 4,
+      faces: map.faceCount,
       controlPoints: surface.controlCount,
       irregular: irregularCount(map.edges, map.boundaryEdges, surface.controlCount),
       closed: !map.boundaryEdges.some((flag) => flag !== 0),

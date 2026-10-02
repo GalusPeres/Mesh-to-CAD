@@ -8,6 +8,8 @@ export type NetJobKind = 'generate' | 'fit' | 'smooth' | 'map' | 'load';
 export interface NetEditorState {
   hasNet: boolean;
   quads: number;
+  /** CAD faces the net becomes (rectangles of its patch layout). */
+  faces: number;
   controlPoints: number;
   irregular: number;
   closed: boolean;
@@ -27,6 +29,7 @@ export function initialNetState(tolerance: number): NetEditorState {
   return {
     hasNet: false,
     quads: 0,
+    faces: 0,
     controlPoints: 0,
     irregular: 0,
     closed: false,

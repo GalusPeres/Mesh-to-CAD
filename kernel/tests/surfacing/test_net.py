@@ -152,6 +152,9 @@ def test_limit_map_starts_with_the_limit_points_of_the_control_points() -> None:
     assert len(result.segments) == len(result.edges) * 4
     assert np.array_equal(np.bincount(result.segment_edges), np.full(len(result.edges), 4))
     assert not np.any(result.border)
+    # The outlines of the CAD faces: a closed sphere net packs into few faces.
+    assert result.face_edges.shape == (len(result.edges),)
+    assert 1 < result.face_count < len(net.quads) / 3
 
 
 def test_limit_map_rejects_broken_nets() -> None:

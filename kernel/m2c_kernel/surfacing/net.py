@@ -196,6 +196,9 @@ class LimitMap:
         edges: (e, 2) control-point pairs of the net's edges.
         boundary_edges: (e,) True for edges with only one quad.
         border: (fine vertices,) True on the net's open border.
+        face_edges: (e,) True for net edges on a border between CAD faces (the patch
+            layout), drawn as the faces' outlines while the net is edited.
+        face_count: Number of CAD faces the net becomes.
         level: Subdivision level of the dense mesh.
     """
 
@@ -206,6 +209,8 @@ class LimitMap:
     edges: IntArray
     boundary_edges: BoolArray
     border: BoolArray
+    face_edges: BoolArray
+    face_count: int
     level: int
 
 
@@ -229,6 +234,7 @@ def limit_map(quads: IntArray, n_vertices: int, level: int | None = None) -> Lim
     keys = np.sort(segments, axis=1)
     _, first = np.unique(keys[:, 0] * hierarchy.n_vertices + keys[:, 1], return_index=True)
     first.sort()
+    layout = patch_layout(quads, topology)
     return LimitMap(
         matrix=hierarchy.sample_matrix(),
         triangles=triangles.astype(np.int64),
@@ -237,6 +243,8 @@ def limit_map(quads: IntArray, n_vertices: int, level: int | None = None) -> Lim
         edges=topology.edges,
         boundary_edges=topology.boundary,
         border=_border_vertices(hierarchy, topology),
+        face_edges=layout.edge_line >= 0,
+        face_count=len(layout.blocks),
         level=level,
     )
 

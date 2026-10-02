@@ -227,6 +227,8 @@ export function ResultSection({ state }: { state: NetEditorState }) {
   return (
     <PanelSection title={t('common:sections.result')}>
       <PropertyValue label={t(`${KEY}.result.quads`)} value={format.count(state.quads)} />
+      <PropertyValue label={t(`${KEY}.result.faces`)} value={format.count(state.faces)} />
+      <p className={styles.hint}>{t(`${KEY}.result.facesHint`)}</p>
       <PropertyValue label={t(`${KEY}.result.points`)} value={format.count(state.controlPoints)} />
       <PropertyValue label={t(`${KEY}.result.irregular`)} value={format.count(state.irregular)} />
       <PropertyValue

@@ -1,6 +1,6 @@
 // The net in the viewport: its limit surface (heatmap or plain colour), the net lines
-// drawn on the surface, the open border, and the control points at their limit
-// positions. All four share the dense position buffer of the LimitSurface, so a
+// drawn on the surface, the outlines of the CAD faces it becomes (patch layout and
+// open border, in white), and the control points at their limit positions. All four share the dense position buffer of the LimitSurface, so a
 // drag updates one array.
 
 import * as THREE from 'three';
@@ -76,7 +76,8 @@ export class NetOverlay {
     const inner: number[] = [];
     const border: number[] = [];
     for (let s = 0; s < map.segments.length / 2; s += 1) {
-      const target = map.boundaryEdges[map.segmentEdges[s] ?? 0] ? border : inner;
+      const edge = map.segmentEdges[s] ?? 0;
+      const target = map.boundaryEdges[edge] || map.faceEdges[edge] ? border : inner;
       target.push(map.segments[s * 2] ?? 0, map.segments[s * 2 + 1] ?? 0);
     }
     this.lineGeometry.setAttribute('position', this.position);

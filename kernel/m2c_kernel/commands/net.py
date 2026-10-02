@@ -166,6 +166,10 @@ class LimitMapResult:
     """(e,) 1 for edges on the net's open border."""
     border: U8Array
     """(fine vertices,) 1 on the net's open border."""
+    face_edges: U8Array
+    """(e,) 1 for edges between two CAD faces of the exported shape (patch layout)."""
+    face_count: int
+    """Number of CAD faces the net becomes."""
     level: int
     fine_count: int
 
@@ -190,6 +194,8 @@ def net_limit_map(ctx: JobContext, params: LimitMapParams) -> LimitMapResult:
         edges=result.edges.astype(np.uint32),
         boundary_edges=result.boundary_edges.astype(np.uint8),
         border=result.border.astype(np.uint8),
+        face_edges=result.face_edges.astype(np.uint8),
+        face_count=result.face_count,
         level=result.level,
         fine_count=int(matrix.shape[0]),
     )
