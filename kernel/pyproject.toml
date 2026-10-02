@@ -51,7 +51,7 @@ strict_equality = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["OCP.*", "trimesh.*", "fast_simplification.*", "rtree.*", "networkx.*", "scipy.*"]
+module = ["OCP.*", "trimesh.*", "fast_simplification.*", "pynanoinstantmeshes.*", "rtree.*", "networkx.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

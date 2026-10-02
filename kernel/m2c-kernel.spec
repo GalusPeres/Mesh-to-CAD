@@ -19,9 +19,9 @@ datas = []
 binaries = []
 hiddenimports = []
 
-# OCP is one monolithic extension plus stub packages; fast_simplification ships a
-# compiled extension that the import analysis does not find.
-for package in ("OCP", "fast_simplification"):
+# OCP is one monolithic extension plus stub packages; fast_simplification and
+# pynanoinstantmeshes ship compiled extensions that the import analysis does not find.
+for package in ("OCP", "fast_simplification", "pynanoinstantmeshes"):
     package_datas, package_binaries, package_hidden = collect_all(package)
     datas += package_datas
     binaries += package_binaries

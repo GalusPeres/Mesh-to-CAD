@@ -5,16 +5,21 @@ export const SURFACING_ERROR_CODES = [
   'surfacing.cageFailed',
   'surfacing.shapeInvalid',
   'surfacing.notAutoSurface',
+  'surfacing.netFailed',
+  'surfacing.netInvalid',
+  'surfacing.notFreeformNet',
 ] as const;
 export type SurfacingErrorCode = (typeof SURFACING_ERROR_CODES)[number];
 
 export const SURFACING_ISSUE_CODES = [
   'surfacing.openSurface',
+  'surfacing.openNet',
   'surfacing.partsIgnored',
 ] as const;
 export type SurfacingIssueCode = (typeof SURFACING_ISSUE_CODES)[number];
 
 export const SURFACING_PROGRESS_STAGES = [
+  'surfacing.net',
   'surfacing.cage',
   'surfacing.fitting',
   'surfacing.patches',

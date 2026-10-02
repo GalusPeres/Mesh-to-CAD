@@ -5,5 +5,6 @@ scipy==1.18.1
 trimesh==5.1.0
 networkx==3.7
 fast-simplification==0.2.0
+pynanoinstantmeshes==0.0.3
 cadquery-ocp==8.0.1.0.0
 rtree==1.4.1

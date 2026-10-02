@@ -1,15 +1,20 @@
 {
   "errors": {
-    "tooFewFaces": "Auto-Flächen nicht möglich: zu wenige Dreiecke ({{count, count}}, mindestens {{min, count}}).",
+    "tooFewFaces": "Flächen nicht möglich: zu wenige Dreiecke ({{count, count}}, mindestens {{min, count}}).",
     "cageFailed": "Auto-Flächen nicht möglich: Aus dem Scan entsteht kein geschlossenes Kontrollnetz. Scan reparieren (Löcher füllen, kleine Teile entfernen) und erneut versuchen.",
     "shapeInvalid": "Auto-Flächen nicht möglich: Die Flächen ergeben keinen gültigen Körper. Mehr Glättung oder eine andere Detailstufe wählen.",
-    "notAutoSurface": "Das Element ist keine Auto-Fläche."
+    "notAutoSurface": "Das Element ist keine Auto-Fläche.",
+    "netFailed": "Aus dem Scan entsteht kein sauberes Vierecksnetz. Scan reparieren (Löcher füllen, kleine Teile entfernen) oder eine andere Netzdichte wählen.",
+    "netInvalid": "Das Freiform-Netz ist beschädigt: Seine Vierecke bilden keine zusammenhängende, einheitlich ausgerichtete Fläche. Letzte Änderung rückgängig machen.",
+    "notFreeformNet": "Das Element ist kein Freiform-Netz."
   },
   "issues": {
     "openSurface": "Der Scan ist offen. Das Ergebnis ist eine Fläche, kein Körper. Für einen Körper vorher Löcher füllen.",
-    "partsIgnored": "Nur das größte Teil wurde verarbeitet; {{count, count}} weitere Teile wurden ausgelassen."
+    "partsIgnored": "Nur das größte Teil wurde verarbeitet; {{count, count}} weitere Teile wurden ausgelassen.",
+    "openNet": "Das Netz hat offene Ränder. Das Ergebnis ist eine Fläche, kein Körper; es zählt nicht als Körper für Export und Boolesche Operationen."
   },
   "progress": {
+    "net": "Vierecksnetz erzeugen",
     "cage": "Kontrollnetz erzeugen",
     "fitting": "Kontrollnetz an den Scan anpassen",
     "patches": "B-Spline-Flächen erzeugen",

@@ -11,6 +11,11 @@ iteration is a sparse linear least-squares problem:
 - damping: `|L (X - X_prev)|^2` keeps each update smooth without biasing the result
   (it vanishes at convergence).
 
+Fixed cage vertices (a hand-edited net that should keep some points) get a stiff
+term that holds them in place. On an open net, scan points whose nearest limit
+sample lies on the net's border do not pull: they belong to scan regions beyond
+the border, and would otherwise drag the border outwards.
+
 Pairs whose normals disagree by more than about 70 degrees, or whose distance is far
 above the typical one, are ignored: they are correspondences with the wrong side of
 a thin part.
@@ -35,6 +40,7 @@ from m2c_kernel.surfacing.subdivision import (
 )
 
 type IntArray = npt.NDArray[np.int64]
+type BoolArray = npt.NDArray[np.bool_]
 
 NORMAL_AGREEMENT = 0.3
 """Minimum cosine between a sample normal and a scan normal for a valid pair."""
@@ -42,6 +48,8 @@ OUTLIER_FACTOR = 5.0
 """Pairs farther than this multiple of the median pair distance are ignored."""
 DAMPING = 0.05
 STAY = 1e-6
+FIXED_STAY = 1e6
+"""Weight that holds fixed cage vertices in place (relative to one sample's weight)."""
 
 
 @dataclass(frozen=True)
@@ -89,7 +97,10 @@ def _surface_targets(
 
 
 def _scan_targets(
-    samples: FloatArray, normals: FloatArray, scan: ScanSamples
+    samples: FloatArray,
+    normals: FloatArray,
+    scan: ScanSamples,
+    border: BoolArray | None = None,
 ) -> tuple[FloatArray, FloatArray, FloatArray]:
     """Per sample: the mean level of the scan points that chose it, their count and distances."""
     tree = cKDTree(samples)
@@ -97,6 +108,8 @@ def _scan_targets(
     sample_normal = normals[index]
     offset = np.einsum("ij,ij->i", scan.points - samples[index], sample_normal)
     agree = np.einsum("ij,ij->i", sample_normal, scan.normals) > NORMAL_AGREEMENT
+    if border is not None:
+        agree &= ~border[index]
     count = np.bincount(index[agree], minlength=len(samples)).astype(np.float64)
     offset_sum = np.bincount(index[agree], weights=offset[agree], minlength=len(samples))
     mean_offset = offset_sum / np.maximum(count, 1.0)
@@ -112,6 +125,8 @@ def fit_cage(
     *,
     smoothing: float,
     iterations: int,
+    fixed: BoolArray | None = None,
+    border: BoolArray | None = None,
     check_cancelled: Callable[[], None] = lambda: None,
     progress: Callable[[FitProgress], None] = lambda _: None,
 ) -> FloatArray:
@@ -124,6 +139,8 @@ def fit_cage(
         scan: Target points with normals.
         smoothing: Weight of the fairness term per cage vertex (0 disables it).
         iterations: Number of correspondence updates.
+        fixed: Per cage vertex, True to keep it where it is.
+        border: Per limit sample, True on the border of an open net (see module).
         check_cancelled: Raises when the job is cancelled.
         progress: Called after every iteration with the RMS of the pair distances.
     """
@@ -134,18 +151,25 @@ def fit_cage(
     smoothness = (laplacian.T @ laplacian).tocsr()
     samples_per_vertex = sample_matrix.shape[0] / len(cage)
     positions = np.array(cage, dtype=np.float64)
+    stay_weight = np.full(len(positions), STAY)
+    if fixed is not None:
+        stay_weight[fixed] = FIXED_STAY
+    # The tiny identity term keeps vertices without any valid pair in place.
+    stay = sp.diags(stay_weight)
     for iteration in range(iterations):
         check_cancelled()
         samples = sample_matrix @ positions
         normals = quad_vertex_normals(samples, cells)
         surface_targets, surface_weight, surface_distance = _surface_targets(samples, normals, scan)
         check_cancelled()
-        scan_targets, scan_count, scan_distance = _scan_targets(samples, normals, scan)
+        scan_targets, scan_count, scan_distance = _scan_targets(samples, normals, scan, border)
 
-        reference = float(np.median(np.concatenate([surface_distance, scan_distance])))
+        distances = np.concatenate([surface_distance, scan_distance])
+        reference = float(np.median(distances)) if len(distances) else 0.0
         limit = OUTLIER_FACTOR * max(reference, 1e-9)
         surface_weight[surface_distance > limit] = 0.0
-        scan_weight = scan_count / max(float(scan_count[scan_count > 0].mean()), 1.0)
+        chosen = scan_count[scan_count > 0]
+        scan_weight = scan_count / max(float(chosen.mean()) if len(chosen) else 1.0, 1.0)
         scan_weight[np.linalg.norm(scan_targets - samples, axis=1) > limit] = 0.0
 
         weight = surface_weight + scan_weight
@@ -153,13 +177,13 @@ def fit_cage(
             surface_weight[:, None] * surface_targets + scan_weight[:, None] * scan_targets
         ) / np.maximum(weight, 1e-12)[:, None]
 
-        # The tiny identity term keeps vertices without any valid pair in place.
-        stay = STAY * sp.identity(len(positions))
         regular = samples_per_vertex * ((smoothing + DAMPING) * smoothness + stay)
         system = (sample_matrix_t @ sp.diags(weight) @ sample_matrix + regular).tocsc()
         rhs = sample_matrix_t @ (weight[:, None] * targets)
-        rhs += samples_per_vertex * (DAMPING * (smoothness @ positions) + STAY * positions)
+        rhs += samples_per_vertex * (
+            DAMPING * (smoothness @ positions) + stay_weight[:, None] * positions
+        )
         positions = splu(system).solve(rhs)
-        rms = float(np.sqrt(np.mean(np.concatenate([surface_distance, scan_distance]) ** 2)))
+        rms = float(np.sqrt(np.mean(distances**2))) if len(distances) else 0.0
         progress(FitProgress(iteration + 1, iterations, rms))
     return positions

@@ -36,6 +36,10 @@ LICENSE_FALLBACK = {
     "cadquery-ocp": "cadquery_ocp/LICENSE",
     "cadquery-ocp-proxy": "cadquery_ocp/LICENSE",
 }
+# Packages whose wheel carries no licence text at all; the text is kept in the repository.
+LICENSE_IN_REPOSITORY = {
+    "pynanoinstantmeshes": ROOT / "kernel" / "third_party" / "pynanoinstantmeshes" / "LICENSE.txt",
+}
 # npm packages that declare their licence only in package.json and ship no text;
 # the index records the declaration and the source repository instead.
 DECLARED_ONLY = {"react-remove-scroll-bar"}
@@ -44,6 +48,7 @@ NOTICE_NAMES = {
     "cadquery-ocp": "OCP (cadquery-ocp)",
     "cadquery-ocp-proxy": "OCP (cadquery-ocp)",
     "fast-simplification": "fast-simplification",
+    "pynanoinstantmeshes": "PyNanoInstantMeshes (Instant Meshes)",
     "pyinstaller": "PyInstaller bootloader",
     "rtree": "Rtree",
     "scipy": "SciPy",
@@ -126,6 +131,8 @@ def python_license_files(distribution: metadata.Distribution, key: str) -> list[
     ]
     if not files and key in LICENSE_FALLBACK:
         files = [Path(str(distribution.locate_file(LICENSE_FALLBACK[key])))]
+    if not files and key in LICENSE_IN_REPOSITORY:
+        files = [LICENSE_IN_REPOSITORY[key]]
     return [file for file in files if file.is_file()]
 
 

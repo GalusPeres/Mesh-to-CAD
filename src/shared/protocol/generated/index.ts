@@ -9,6 +9,7 @@ import { type FitMethods, FIT_METHODS } from './fit';
 import { type FreeformMethods, FREEFORM_METHODS } from './freeform';
 import { type InspectionMethods, INSPECTION_METHODS } from './inspection';
 import { type MeshMethods, MESH_METHODS } from './mesh';
+import { type NetMethods, NET_METHODS } from './net';
 import { type ProjectMethods, PROJECT_METHODS } from './project';
 import { type RegionsMethods, REGIONS_METHODS } from './regions';
 import { type SceneMethods, SCENE_METHODS } from './scene';
@@ -34,6 +35,7 @@ import type { CombineFeatureType } from './feature-combine';
 import type { ExtrudeFeatureType } from './feature-extrude';
 import type { FilletFeatureType } from './feature-fillet';
 import type { FitFeatureType } from './feature-fit';
+import type { FreeformNetFeatureType } from './feature-freeform-net';
 import type { FreeformPatchFeatureType } from './feature-freeform-patch';
 import type { LoftFeatureType } from './feature-loft';
 import type { PrimitiveBodyFeatureType } from './feature-primitive-body';
@@ -42,7 +44,7 @@ import type { RevolveFeatureType } from './feature-revolve';
 import type { SketchFeatureType } from './feature-sketch';
 import type { TrimFeatureType } from './feature-trim';
 
-export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & ProjectMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
+export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
 
 export const METHOD_TABLE = {
   ...ALIGNMENT_METHODS,
@@ -54,6 +56,7 @@ export const METHOD_TABLE = {
   ...FREEFORM_METHODS,
   ...INSPECTION_METHODS,
   ...MESH_METHODS,
+  ...NET_METHODS,
   ...PROJECT_METHODS,
   ...REGIONS_METHODS,
   ...SCENE_METHODS,
@@ -121,6 +124,7 @@ export interface FeatureTypes {
   extrude: ExtrudeFeatureType;
   fillet: FilletFeatureType;
   fit: FitFeatureType;
+  freeformNet: FreeformNetFeatureType;
   freeformPatch: FreeformPatchFeatureType;
   loft: LoftFeatureType;
   primitiveBody: PrimitiveBodyFeatureType;
@@ -138,6 +142,7 @@ export const FEATURE_TYPE_IDS = [
   'extrude',
   'fillet',
   'fit',
+  'freeformNet',
   'freeformPatch',
   'loft',
   'primitiveBody',
