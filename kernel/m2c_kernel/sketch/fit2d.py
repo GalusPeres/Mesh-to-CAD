@@ -405,16 +405,32 @@ def split_polyline(
     return pts, segments
 
 
+def _inner_error(points: FloatArray, fit: Fit, opts: SegmentOptions) -> float:
+    """Largest distance from the fit, leaving out the corner rounding at both ends.
+
+    The samples within `min_entity_length` of either end round off the scan's corners
+    into the neighbours; they must not keep two pieces of one straight side apart.
+    """
+    if isinstance(fit, LineFit):
+        normal = np.array([math.cos(fit.angle), math.sin(fit.angle)])
+        residual = np.abs(points @ normal - fit.offset)
+    else:
+        residual = np.abs(np.linalg.norm(points - fit.center, axis=1) - fit.radius)
+    along = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1))])
+    inner = (along > opts.min_entity_length) & (along < along[-1] - opts.min_entity_length)
+    return float(residual[inner].max() if inner.any() else residual.max())
+
+
 def _union_fit(
     points: FloatArray, a: Segment, b: Segment, opts: SegmentOptions
 ) -> tuple[Kind, Fit] | None:
     """One entity through the points of two neighbours, if it stays within tolerance."""
     line = fit_line(points)
-    if line.max_error <= opts.tolerance:
+    if _inner_error(points, line, opts) <= opts.tolerance:
         return "line", line
     if a.kind == b.kind == "arc":
         arc = fit_kind(points, "arc", opts)
-        if arc is not None and arc.max_error <= opts.tolerance:
+        if arc is not None and _inner_error(points, arc, opts) <= opts.tolerance:
             return "arc", arc
     return None
 

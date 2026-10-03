@@ -1,10 +1,11 @@
 """Automatic sketch fit and constrained refit of an edited sketch.
 
 A fresh fit splits every section polyline into lines and arcs (or one circle),
-infers constraints, refits everything jointly, snaps values and refits again
-with the snaps fixed. A refit keeps the entities, constraints, snaps and typed
-dimensions of an edited sketch and only moves the fitted carriers to the current
-section; the shared points follow.
+infers constraints, refits everything jointly, keeps only the constraints the scan
+supports, snaps values and refits again with the snaps fixed. A refit keeps the
+entities, constraints, snaps and typed dimensions of an edited sketch and only moves
+the fitted carriers to the current section; the shared points follow. The tolerance
+follows the section's noise (`noise.py`).
 """
 
 from __future__ import annotations
@@ -35,16 +36,18 @@ from m2c_kernel.sketch.model import (
     entity_distances,
     line_through,
 )
+from m2c_kernel.sketch.noise import sample_spacing, section_noise, suggested_tolerance
 from m2c_kernel.sketch.params import SketchDimension, SketchSnap
 from m2c_kernel.sketch.section import Section
 from m2c_kernel.sketch.snaps import find_snaps, fixed_values
 from m2c_kernel.snapping import SnapUnits
 
-MIN_TOLERANCE = 0.05
-NOISE_FACTOR = 6.0
-"""Tolerance = 6 sigma: the largest of ~2000 Gaussian residuals stays inside (research 1.3)."""
 AXIS_TOUCH = 0.5
 """A rotational half-profile ends on the axis if its end lies this close to it (mm)."""
+PASS_SHARE = 0.95
+"""An entity fits when this share of its section points lies within the tolerance."""
+SUPPORT_ROUNDS = 4
+TANGENCY: tuple[str, ...] = ("tangent",)
 
 
 @dataclass(frozen=True)
@@ -54,31 +57,6 @@ class FitOutcome:
     snaps: list[SketchSnap]
     tolerance: float
     noise: float
-
-
-def suggested_tolerance(noise: float) -> float:
-    return max(NOISE_FACTOR * noise, MIN_TOLERANCE)
-
-
-def section_noise(section: Section) -> float:
-    """Robust noise sigma pooled over the raw section polylines (not resampled ones)."""
-    estimates = [
-        (fit2d.estimate_noise(p, closed=True), len(p)) for p in section.loops if len(p) >= 9
-    ] + [(fit2d.estimate_noise(p, closed=False), len(p)) for p in section.chains if len(p) >= 9]
-    if not estimates:
-        return 0.0
-    values = np.array([e for e, _ in estimates])
-    weights = np.array([n for _, n in estimates], dtype=np.float64)
-    order = np.argsort(values)
-    cumulative = np.cumsum(weights[order])
-    return float(values[order][np.searchsorted(cumulative, cumulative[-1] / 2)])
-
-
-def sample_spacing(raw: FloatArray, closed: bool) -> float:
-    """Median raw edge length, clipped to 0.05-1 mm (resampling finer adds no information)."""
-    path = np.vstack([raw, raw[:1]]) if closed else raw
-    edges = np.linalg.norm(np.diff(path, axis=0), axis=1)
-    return float(np.clip(np.median(edges), 0.05, 1.0))
 
 
 class IdSource:
@@ -205,8 +183,7 @@ def fit_section(
     # every point to its nearest fitted entity and solving again removes the bias.
     reassigned = assign_points(sketch, fit_points(section), max(3.0 * tol, 0.3))
     sketch.samples.update({eid: pts for eid, pts in reassigned.items() if len(pts) >= 5})
-    solve(sketch, constraints)
-    update_points(sketch, constraints)
+    constraints = supported(sketch, constraints, tol)
     if not snap:
         return FitOutcome(sketch, constraints, [], tol, noise)
     snaps = find_snaps(sketch, constraints, max(noise, 1e-4), units, rejected_snaps)
@@ -214,6 +191,45 @@ def fit_section(
         solve(sketch, constraints, [f for s in snaps for f in fixed_values(sketch, s)])
         update_points(sketch, constraints)
     return FitOutcome(sketch, constraints, snaps, tol, noise)
+
+
+def _fits(sketch: WorkSketch, entity_id: str, tolerance: float) -> bool:
+    entity = sketch.entities[entity_id]
+    samples = sketch.samples_of(entity_id)
+    if len(samples) == 0:
+        return True
+    return bool(np.mean(entity_distances(sketch, entity, samples) <= tolerance) >= PASS_SHARE)
+
+
+def supported(
+    sketch: WorkSketch, constraints: list[Constraint], tolerance: float
+) -> list[Constraint]:
+    """Solve with the inferred constraints, leaving out those the scan does not support.
+
+    An inferred direction, equality or tangency is design intent only while every
+    entity it moves still fits its section points: a long side measured 0.4 degrees
+    off vertical ends 0.35 mm away when forced vertical. Constraints on entities
+    pulled out of the tolerance are dropped, directions and equalities first, then
+    tangencies, and the rest is solved again.
+    """
+    for _ in range(SUPPORT_ROUNDS):
+        solve(sketch, constraints)
+        update_points(sketch, constraints)
+        failing = {
+            e.id
+            for e in sketch.entities.values()
+            if e.origin == "fit" and not _fits(sketch, e.id, tolerance)
+        }
+        involved = [c for c in constraints if failing.intersection(c.refs)]
+        intent = [c for c in involved if c.kind not in TANGENCY]
+        dropped = intent or involved
+        if not dropped:
+            break
+        constraints = [c for c in constraints if c not in dropped]
+    else:
+        solve(sketch, constraints)
+        update_points(sketch, constraints)
+    return constraints
 
 
 def dimension_values(sketch: WorkSketch, dimensions: Sequence[SketchDimension]) -> list[FixedValue]:

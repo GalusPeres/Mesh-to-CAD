@@ -24,6 +24,8 @@ from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.sketch import autofit, deviation
 from m2c_kernel.sketch.convert import InvalidSketchError, to_params, to_work
 from m2c_kernel.sketch.model import FloatArray, Point, WorkSketch, entity_polyline
+from m2c_kernel.sketch.noise import section_noise as noise_of
+from m2c_kernel.sketch.noise import suggested_tolerance
 from m2c_kernel.sketch.params import (
     AxisNormalSource,
     FeaturePlaneSource,
@@ -188,10 +190,8 @@ def _working(params: SketchParams) -> tuple[WorkSketch, list[Any]]:
 
 def fit_tolerance(params: SketchParams, section: Section) -> tuple[float, float]:
     """(noise, tolerance) of a sketch: the stored noise, or measured on the section."""
-    noise = params.noise if params.noise is not None else autofit.section_noise(section)
-    tolerance = (
-        params.tolerance if params.tolerance is not None else autofit.suggested_tolerance(noise)
-    )
+    noise = params.noise if params.noise is not None else noise_of(section)
+    tolerance = params.tolerance if params.tolerance is not None else suggested_tolerance(noise)
     return noise, tolerance
 
 
