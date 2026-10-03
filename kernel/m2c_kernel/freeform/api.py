@@ -25,7 +25,7 @@ from m2c_kernel.freeform.heightfield import (
     fit_patch,
     patch_grid,
 )
-from m2c_kernel.freeform.loft import LoftAxis, ScanLoft, loft_scan, scan_extent
+from m2c_kernel.freeform.loft import LoftAxis, ScanLoft, body_range, loft_scan, scan_extent
 from m2c_kernel.freeform.occ import patch_face
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.limits import MIN_FIT_FACES
@@ -40,6 +40,7 @@ __all__ = [
     "PatchResult",
     "ScanLoft",
     "ScanMesh",
+    "body_range",
     "fit_scan_patch",
     "loft_scan",
     "scan_extent",
