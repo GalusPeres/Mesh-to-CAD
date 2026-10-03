@@ -215,8 +215,11 @@ def _best_radius(
 
 
 def _face_offsets(corner: Corner, points: FloatArray, window: float) -> FloatArray:
-    """Where the scan's faces lie across the modelled ones, from the points beyond the
-    rounding (the outer half of the window along each face); 0 without such points."""
+    """Where the scan's faces lie across the modelled ones.
+
+    Measured on the points beyond the rounding (the outer half of the window along each
+    face); 0 without such points.
+    """
     offsets = np.zeros(2)
     for face, direction in enumerate((corner.d1, corner.d2)):
         normal = np.array([-direction[1], direction[0]])
