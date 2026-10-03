@@ -1,33 +1,36 @@
-"""Outlines of recognised features: which simple 2D shape a closed contour is.
+"""Outlines of recognised features: a chain of lines and arcs, named by a template.
 
 A feature's contour (points along its wall, in the plane frame) is fitted with every
-candidate shape by robust least squares on the distance to the shape's boundary:
+template shape (`shapes.py`) by robust least squares on the distance to the shape's
+boundary. The simplest template whose boundary distance stays near the scan noise
+names the outline; a richer one must explain the contour clearly better to be
+chosen. The template carries the design intent (equal sizes, shared centres, round
+values; `intent.py`) and gives the chain the sketch is built from (`templates.py`).
 
-- circle: centre, radius;
-- slot (obround): centre, direction, overall length, width;
-- rounded rectangle: centre, direction, width, height, corner radius;
-- ring segment (an arm of a ring split by straight gaps, e.g. a direction pad):
-  centre, inner and outer radius, the angles of the two gap centre lines, the gap
-  width (0 gives radial ends) and the corner radius.
-
-The simplest shape whose boundary distance stays near the scan noise wins; a richer
-shape must explain the contour clearly better to be chosen. A contour no shape
-explains is kept as a free profile (the sketch fitter turns it into lines and arcs).
+A contour no template explains is a free profile: the section sketch's fitter splits
+it into lines and arcs (`chain.py`), which is built just the same.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
 
 import numpy as np
-import numpy.typing as npt
 from scipy.optimize import least_squares
 
 from m2c_kernel.geometry import FloatArray
-
-type ShapeKind = Literal["circle", "slot", "roundedRect", "ringSegment", "profile"]
+from m2c_kernel.recognition.chain import Chain, chain_distances, chain_size, free_chain
+from m2c_kernel.recognition.shapes import (
+    DISTANCES,
+    PARAMETERS,
+    TAU,
+    ShapeKind,
+    Template,
+    rotate,
+)
+from m2c_kernel.recognition.templates import template_chain
+from m2c_kernel.sketch import fit2d, split2d
+from m2c_kernel.sketch.noise import sample_spacing, suggested_tolerance
 
 RING_REACH = 3.0
 """A ring arm's outer radius is at most this x the size of its contour."""
@@ -36,7 +39,8 @@ ACCEPT_FACTOR = 4.0
 ACCEPT_FLOOR_MM = 0.05
 BETTER_FACTOR = 0.6
 """A richer shape is chosen over a simpler one only below this x its RMS."""
-TAU = 2.0 * np.pi
+CUT_REACH = 0.95
+"""A cut closer to the circle's edge than this x the radius leaves a full circle."""
 
 
 @dataclass(frozen=True)
@@ -44,14 +48,16 @@ class Outline:
     """A fitted 2D outline in the plane frame (mm, angles in radians).
 
     Attributes:
-        kind: The shape.
+        kind: The template, or "profile" for a free chain of lines and arcs.
         params: Shape parameters (see `PARAMETERS`).
-        rms: RMS distance of the contour points to the shape's boundary.
+        rms: RMS distance of the contour points to the outline.
+        free: The lines and arcs of a free profile.
     """
 
     kind: ShapeKind
     params: tuple[float, ...]
     rms: float
+    free: Chain | None = None
 
     def named(self) -> dict[str, float]:
         return dict(zip(PARAMETERS[self.kind], self.params, strict=True))
@@ -60,91 +66,14 @@ class Outline:
     def center(self) -> tuple[float, float]:
         return self.params[0], self.params[1]
 
-
-PARAMETERS: dict[ShapeKind, tuple[str, ...]] = {
-    "circle": ("cx", "cy", "radius"),
-    "slot": ("cx", "cy", "angle", "length", "width"),
-    "roundedRect": ("cx", "cy", "angle", "width", "height", "corner"),
-    "ringSegment": ("cx", "cy", "inner", "outer", "start", "sweep", "gap", "corner"),
-    "profile": ("cx", "cy"),
-}
-
-
-# Distances ---------------------------------------------------------------------------------
-
-
-def _rotate(
-    points: FloatArray, cx: float, cy: float, angle: float
-) -> tuple[FloatArray, FloatArray]:
-    """Coordinates of the points in a frame at (cx, cy) turned by `angle`."""
-    ca, sa = np.cos(angle), np.sin(angle)
-    rx, ry = points[:, 0] - cx, points[:, 1] - cy
-    return rx * ca + ry * sa, -rx * sa + ry * ca
-
-
-def circle_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArray:
-    cx, cy, radius = np.asarray(params, dtype=np.float64)
-    result: FloatArray = np.hypot(points[:, 0] - cx, points[:, 1] - cy) - abs(radius)
-    return result
-
-
-def slot_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArray:
-    """Signed distance to an obround: a segment of length `length - width`, thickened."""
-    cx, cy, angle, length, width = np.asarray(params, dtype=np.float64)
-    u, v = _rotate(points, cx, cy, angle)
-    radius = abs(width) / 2.0
-    half = max(abs(length) / 2.0 - radius, 0.0)
-    result: FloatArray = np.hypot(u - np.clip(u, -half, half), v) - radius
-    return result
-
-
-def rounded_rect_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArray:
-    cx, cy, angle, width, height, corner = np.asarray(params, dtype=np.float64)
-    u, v = _rotate(points, cx, cy, angle)
-    hw, hh = abs(width) / 2.0, abs(height) / 2.0
-    r = min(abs(corner), hw, hh)
-    qx, qy = np.abs(u) - (hw - r), np.abs(v) - (hh - r)
-    outside = np.hypot(np.maximum(qx, 0.0), np.maximum(qy, 0.0))
-    inside = np.minimum(np.maximum(qx, qy), 0.0)
-    result: FloatArray = outside + inside - r
-    return result
-
-
-def ring_segment_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArray:
-    """Signed distance to a ring arm with rounded corners.
-
-    The arm lies between the radii `inner` and `outer` and between two straight gaps
-    of width `gap` centred on the lines through the centre at `start` and
-    `start + sweep` (sweep below a half turn). The sharp arm is eroded by the corner
-    radius and grown back by it.
-    """
-    cx, cy, inner, outer, start, sweep, gap, corner = np.asarray(params, dtype=np.float64)
-    inner, outer = sorted((abs(inner), abs(outer)))
-    sweep = float(np.clip(abs(sweep), 1e-3, np.pi - 1e-3))
-    r = min(abs(corner), (outer - inner) / 2.0)
-    half_gap = abs(gap) / 2.0
-    dx, dy = points[:, 0] - cx, points[:, 1] - cy
-    radius = np.hypot(dx, dy)
-    band = np.maximum(inner + r - radius, radius - (outer - r))
-    end = start + sweep
-    # Distances into the arm from both gap centre lines (inward normals).
-    from_start = -dx * np.sin(start) + dy * np.cos(start)
-    from_end = dx * np.sin(end) - dy * np.cos(end)
-    sides = np.maximum(half_gap + r - from_start, half_gap + r - from_end)
-    # Distance to the eroded arm: exact beyond a corner (sides and arcs meet at nearly
-    # right angles), then grown back by the corner radius.
-    outside = np.hypot(np.maximum(band, 0.0), np.maximum(sides, 0.0))
-    inside = np.minimum(np.maximum(band, sides), 0.0)
-    result: FloatArray = outside + inside - r
-    return result
-
-
-DISTANCES: dict[ShapeKind, Callable[[npt.ArrayLike, FloatArray], FloatArray]] = {
-    "circle": circle_distance,
-    "slot": slot_distance,
-    "roundedRect": rounded_rect_distance,
-    "ringSegment": ring_segment_distance,
-}
+    @property
+    def chain(self) -> Chain:
+        """The lines and arcs of the outline (a template's follow from its parameters)."""
+        kind = self.kind
+        if kind == "profile":
+            assert self.free is not None
+            return self.free
+        return template_chain(kind, self.named())
 
 
 # Fits --------------------------------------------------------------------------------------
@@ -156,14 +85,14 @@ def _principal(points: FloatArray) -> tuple[FloatArray, float, float, float]:
     _, vectors = np.linalg.eigh(np.cov((points - centre).T))
     long_axis = vectors[:, 1]
     angle = float(np.arctan2(long_axis[1], long_axis[0]))
-    u, v = _rotate(points, centre[0], centre[1], angle)
+    u, v = rotate(points, centre[0], centre[1], angle)
     mid = np.array([(u.max() + u.min()) / 2.0, (v.max() + v.min()) / 2.0])
     ca, sa = np.cos(angle), np.sin(angle)
     centre = centre + mid[0] * np.array([ca, sa]) + mid[1] * np.array([-sa, ca])
     return centre, angle, float(np.ptp(u)), float(np.ptp(v))
 
 
-def _solve(kind: ShapeKind, start: list[float], points: FloatArray, scale: float) -> Outline:
+def _solve(kind: Template, start: list[float], points: FloatArray, scale: float) -> Outline:
     distance = DISTANCES[kind]
     solution = least_squares(
         lambda p: distance(p, points), start, loss="soft_l1", f_scale=scale, max_nfev=400
@@ -172,11 +101,14 @@ def _solve(kind: ShapeKind, start: list[float], points: FloatArray, scale: float
     return Outline(kind, _normalised(kind, solution.x), rms)
 
 
-def _normalised(kind: ShapeKind, params: FloatArray) -> tuple[float, ...]:
+def _normalised(kind: Template, params: FloatArray) -> tuple[float, ...]:
     p = [float(value) for value in params]
     match kind:
         case "circle":
             p[2] = abs(p[2])
+        case "cutCircle":
+            p[2] = abs(p[2])
+            p[3] = float(np.mod(p[3], TAU))
         case "slot":
             p[3], p[4] = abs(p[3]), abs(p[4])
             p[3] = max(p[3], p[4])
@@ -201,6 +133,38 @@ def fit_circle(points: FloatArray, scale: float) -> Outline:
     centre = points.mean(axis=0)
     radius = float(np.hypot(*(points - centre).T).mean())
     return _solve("circle", [centre[0], centre[1], radius], points, scale)
+
+
+def fit_cut_circle(points: FloatArray, scale: float, tolerance: float) -> Outline | None:
+    """A circle trimmed by a line; None when the contour has no long arc and straight run.
+
+    A circle fit pulls towards the cut, so the fit starts from the contour's split into
+    lines and arcs: its widest arc gives the circle, its longest line the cut.
+    """
+    spacing = sample_spacing(points, closed=True)
+    samples = fit2d.resample(points, spacing, closed=True)
+    options = fit2d.SegmentOptions(tolerance=tolerance)
+    split, segments = split2d.split_polyline(samples, True, tolerance / 3.0, spacing, options)
+    arcs = [s for s in segments if isinstance(s.fit, fit2d.CircleFit)]
+    lines = [s for s in segments if isinstance(s.fit, fit2d.LineFit)]
+    if not arcs or not lines:
+        return None
+    arc = max(arcs, key=lambda s: s.end - s.start)
+    line = max(lines, key=lambda s: s.end - s.start)
+    assert isinstance(arc.fit, fit2d.CircleFit) and isinstance(line.fit, fit2d.LineFit)
+    centre, radius = arc.fit.center, arc.fit.radius
+    normal = np.array([np.cos(line.fit.angle), np.sin(line.fit.angle)])
+    offset = line.fit.offset
+    # The cut's normal points away from the arc.
+    if normal @ split[(arc.start + arc.end) // 2] > offset:
+        normal, offset = -normal, -offset
+    angle = float(np.arctan2(normal[1], normal[0]))
+    start = [centre[0], centre[1], radius, angle, offset - float(normal @ centre)]
+    fitted = _solve("cutCircle", start, points, scale)
+    p = fitted.named()
+    if not abs(p["cut"]) < CUT_REACH * p["radius"]:
+        return None
+    return fitted
 
 
 def fit_slot(points: FloatArray, scale: float) -> Outline:
@@ -270,7 +234,7 @@ def _plausible_ring(ring: Outline, points: FloatArray) -> bool:
 def _ring_centre(points: FloatArray) -> tuple[float, float] | None:
     """Centre of the circle through the contour's most curved side (algebraic fit)."""
     centre, angle, length, _ = _principal(points)
-    _, v = _rotate(points, centre[0], centre[1], angle)
+    _, v = rotate(points, centre[0], centre[1], angle)
     best: tuple[float, float] | None = None
     best_rms = np.inf
     # Candidate arcs: the points on either side of the long axis.
@@ -297,58 +261,34 @@ def _ring_centre(points: FloatArray) -> tuple[float, float] | None:
 def fit_outline(
     points: FloatArray, noise: float, centre: tuple[float, float] | None = None
 ) -> Outline:
-    """The simplest shape that explains the contour, else a free profile.
+    """The simplest template that explains the contour, else a free chain of lines and arcs.
 
     Args:
         points: (n, 2) contour points in the plane frame.
-        noise: Scan noise (mm), scales the acceptance threshold.
+        noise: Scan noise (mm), scales the acceptance threshold and the chain's tolerance.
         centre: A known centre for ring segments (a concentric feature), if any.
     """
     accept = max(ACCEPT_FACTOR * noise, ACCEPT_FLOOR_MM)
     scale = max(noise, 0.01)
+    circle = fit_circle(points, scale)
     candidates = [
-        fit_circle(points, scale),
+        circle,
+        fit_cut_circle(points, scale, suggested_tolerance(noise)),
         fit_slot(points, scale),
         fit_rounded_rect(points, scale),
+        fit_ring_segment(points, scale, centre),
     ]
-    ring = fit_ring_segment(points, scale, centre)
-    if ring is not None:
-        candidates.append(ring)
-    chosen = candidates[0]
+    chosen = circle
     for candidate in candidates[1:]:
-        if candidate.rms < BETTER_FACTOR * chosen.rms:
+        if candidate is not None and candidate.rms < BETTER_FACTOR * chosen.rms:
             chosen = candidate
-    if chosen.rms > accept:
-        centre_xy = points.mean(axis=0)
-        return Outline("profile", (float(centre_xy[0]), float(centre_xy[1])), chosen.rms)
-    return chosen
+    if chosen.rms <= accept:
+        return chosen
+    return free_outline(points, noise)
 
 
-def outline_points(outline: Outline, count: int = 256) -> FloatArray:
-    """Points on the outline's boundary (for display), found by marching the distance."""
-    if outline.kind == "profile":
-        return np.zeros((0, 2))
-    distance = DISTANCES[outline.kind]
-    cx, cy = outline.center
-    reach = 4.0 * max(abs(value) for value in outline.params[2:]) + 1.0
-    angles = np.linspace(0.0, TAU, count, endpoint=False)
-    rays = np.column_stack([np.cos(angles), np.sin(angles)])
-    if outline.kind == "ringSegment":
-        p = outline.named()
-        cx += (p["inner"] + p["outer"]) / 2.0 * np.cos(p["start"] + p["sweep"] / 2.0)
-        cy += (p["inner"] + p["outer"]) / 2.0 * np.sin(p["start"] + p["sweep"] / 2.0)
-    # Bisection along each ray from the inside point to the boundary.
-    low = np.zeros(count)
-    high = np.full(count, reach)
-    for _ in range(40):
-        mid = (low + high) / 2.0
-        inside = (
-            distance(
-                outline.params, np.column_stack([cx + rays[:, 0] * mid, cy + rays[:, 1] * mid])
-            )
-            < 0
-        )
-        low = np.where(inside, mid, low)
-        high = np.where(inside, high, mid)
-    result: FloatArray = np.column_stack([cx + rays[:, 0] * low, cy + rays[:, 1] * low])
-    return result
+def free_outline(points: FloatArray, noise: float) -> Outline:
+    """A free profile: the contour as lines and arcs within the fit tolerance of the noise."""
+    chain = free_chain(points, suggested_tolerance(noise))
+    rms = float(np.sqrt(np.mean(chain_distances(chain, points) ** 2)))
+    return Outline("profile", chain_size(chain), rms, chain)

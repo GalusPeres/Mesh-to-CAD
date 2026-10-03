@@ -16,6 +16,8 @@ export interface SketchSessionState {
   /** Caption for the viewport, already translated ("Skizze 1 · Ebene XY + 5,000 mm"). */
   caption: string | null;
   profile: ProfileState | null;
+  /** What the pointer does right now: a key of `tools:sectionSketch.hint`. */
+  hint: string;
 }
 
 export interface SketchActions {
@@ -24,7 +26,13 @@ export interface SketchActions {
   deleteSelected: () => void;
 }
 
-const idle: SketchSessionState = { active: false, mode: 'select', caption: null, profile: null };
+const idle: SketchSessionState = {
+  active: false,
+  mode: 'select',
+  caption: null,
+  profile: null,
+  hint: 'idle',
+};
 
 export const sketchSession = createStore<SketchSessionState>(() => idle);
 
@@ -35,7 +43,7 @@ export function useSketchSession<T>(selector: (state: SketchSessionState) => T):
 }
 
 export function enterSketchMode(): void {
-  sketchSession.setState({ active: true, mode: 'select' });
+  sketchSession.setState({ active: true, mode: 'select', hint: 'idle' });
 }
 
 export function leaveSketchMode(): void {

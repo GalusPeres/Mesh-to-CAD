@@ -15,6 +15,13 @@ export const PLANE_KINDS: readonly PlaneKind[] = [
 ];
 export const GLOBAL_AXES = ['X', 'Y', 'Z'] as const;
 
+/**
+ * Default cut above a plane fitted to a scan face (mm along its normal): a cut right
+ * at the face meets only the face's noise; just above it cuts raised shapes such as
+ * buttons cleanly.
+ */
+export const FACE_CUT_MM = 0.5;
+
 const STANDARD_NORMALS: Record<'XY' | 'YZ' | 'XZ', readonly [number, number, number]> = {
   XY: [0, 0, 1],
   YZ: [1, 0, 0],
@@ -58,17 +65,38 @@ export function planeKindOf(section: SketchSection): PlaneKind {
   return section.plane.type;
 }
 
+/** Where the cut starts on a feature plane: above a fitted scan face, else on the plane. */
+export function featureCut(feature: Feature | undefined): number {
+  return feature?.type === 'fit' ? FACE_CUT_MM : 0;
+}
+
+/** The section on a feature plane, cut at its default position. */
+export function featureSection(feature: Feature): SketchSection {
+  return {
+    type: 'planar',
+    plane: { type: 'feature', feature: feature.id },
+    offset: 0,
+    sectionOffset: featureCut(feature),
+    xDirection: null,
+    flip: false,
+  };
+}
+
 /** The section for a newly chosen plane kind; offsets reset, the cut goes through `center`. */
 export function sectionFor(
   kind: PlaneKind,
   previous: SketchSection,
-  choices: { plane: string | null; axis: string },
+  choices: { plane: string | null; axis: string; planeCut?: number },
   center: readonly [number, number, number] | null,
 ): SketchSection {
   if (kind === 'rotational') return { type: 'rotational', axis: choices.axis, angleDeg: 0 };
   const base = { type: 'planar' as const, offset: 0, xDirection: null, flip: false };
   if (kind === 'feature') {
-    return { ...base, plane: { type: 'feature', feature: choices.plane ?? '' }, sectionOffset: 0 };
+    return {
+      ...base,
+      plane: { type: 'feature', feature: choices.plane ?? '' },
+      sectionOffset: choices.planeCut ?? 0,
+    };
   }
   if (kind === 'axisNormal') {
     return { ...base, plane: { type: 'axisNormal', axis: choices.axis }, sectionOffset: 0 };
@@ -98,6 +126,7 @@ export function emptySketch(section: SketchSection): SketchParams {
     snaps: [],
     dimensions: [],
     rejectedSnaps: [],
+    shapes: [],
   };
 }
 

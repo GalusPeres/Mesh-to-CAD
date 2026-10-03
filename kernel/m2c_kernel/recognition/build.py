@@ -4,22 +4,22 @@ For every base plane with chosen features the document gets
 
 - a `fit` plane through the plane's triangles with its normal and a point fixed, so
   its orientation is known here and the sketches face out of the material;
-- one `sketch` per level on that plane (the base plane, or a pocket floor) holding
-  the outlines as lines, arcs and circles with tangency and equality constraints;
+- one `sketch` per level (the base plane, or a pocket floor) and height on that
+  plane, holding the outlines' chains as lines, arcs and circles with their tangency,
+  parallel and equality constraints, free profiles included;
 - one `extrude` per family (equal shape, size and height), named like the family
   when the client gives names: bosses are added, pockets cut (through holes a
   little beyond the part), so the user edits one value per family; without a body
   every boss becomes a body of its own (a body is one solid).
 
 The sketches compare themselves with the scan where the outlines were measured, at
-half the height (depth) of their features, not at the foot, which fillets widen. Added and
-  cut extrusions also reach `OVERLAP_MM` back across their sketch plane: the fitted
-  plane lies within the scan noise of the body's face, and a boss that only touches
-  the body (or a pocket that leaves a skin) would not combine.
+half the height (depth) of their features, not at the foot, which fillets widen.
+Added and cut extrusions also reach `OVERLAP_MM` back across their sketch plane: the
+fitted plane lies within the scan noise of the body's face, and a boss that only
+touches the body (or a pocket that leaves a skin) would not combine.
 
 Order: bosses on the plane, then pockets, then the bosses standing in pockets (a
-pocket would otherwise cut them away). Free profiles are left out: their outline is
-better redrawn with the sketch tool.
+pocket would otherwise cut them away).
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ import numpy as np
 
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.api import Feature, Recognition
-from m2c_kernel.recognition.outline import Outline
+from m2c_kernel.recognition.chain import Chain
 from m2c_kernel.recognition.planes import BasePlane
 
 THROUGH_MARGIN_MM = 1.0
@@ -40,7 +40,6 @@ THROUGH_MARGIN_MM = 1.0
 OVERLAP_MM = 0.5
 """Added and cut extrusions start this far behind their sketch plane."""
 PLANE_TOLERANCE_FACTOR = 4.0
-MIN_CORNER_MM = 0.01
 
 
 @dataclass
@@ -81,162 +80,28 @@ class _Sketch:
         self.constraints.append({"kind": kind, "refs": list(refs)})
 
 
-def _unit(angle: float) -> FloatArray:
-    return np.array([np.cos(angle), np.sin(angle)])
+def chain_loop(sketch: _Sketch, chain: Chain, shift: FloatArray) -> str:
+    """Add an outline's lines and arcs to the sketch (moved by `shift`); returns its loop id.
 
-
-def _ccw(centre: FloatArray, start: FloatArray, end: FloatArray) -> bool:
-    """Direction of the shorter arc from start to end around the centre."""
-    a, b = start - centre, end - centre
-    return bool(a[0] * b[1] - a[1] * b[0] > 0.0)
-
-
-def _closed_chain(sketch: _Sketch, corners: Sequence[FloatArray], arcs: Sequence[Any]) -> str:
-    """A closed loop: corner i to corner i + 1, straight or along arc i (centre, radius, ccw).
-
-    Returns the loop id (its first entity); neighbouring entities are tangent.
+    Neighbouring edges share their point; the chain's relations become constraints.
     """
-    ids = [sketch.point(corner) for corner in corners]
+    if chain.is_circle:
+        edge = chain.edges[0]
+        assert edge.centre is not None
+        centre = np.array(edge.centre) + shift
+        return sketch.entity("circle", center=_list(centre), radius=edge.radius)
+    ids = [sketch.point(np.array(edge.start) + shift) for edge in chain.edges]
     entities: list[str] = []
-    for i, arc in enumerate(arcs):
+    for i, edge in enumerate(chain.edges):
         start, end = ids[i], ids[(i + 1) % len(ids)]
-        if arc is None:
+        if edge.centre is None:
             entities.append(sketch.line(start, end))
         else:
-            centre, radius, ccw = arc
-            entities.append(sketch.arc(start, end, centre, radius, ccw))
-    for i, current in enumerate(entities):
-        following = entities[(i + 1) % len(entities)]
-        if (arcs[i] is None) != (arcs[(i + 1) % len(arcs)] is None):
-            sketch.constrain("tangent", current, following)
+            centre = np.array(edge.centre) + shift
+            entities.append(sketch.arc(start, end, centre, edge.radius, edge.ccw))
+    for kind, refs in chain.relations:
+        sketch.constrain(kind, *(entities[ref] for ref in refs))
     return entities[0]
-
-
-def outline_loop(sketch: _Sketch, outline: Outline, shift: FloatArray) -> str | None:
-    """Add a fitted outline to the sketch (moved by `shift`); returns its loop id."""
-    p = outline.named()
-    if outline.kind == "circle":
-        centre = np.array([p["cx"], p["cy"]]) + shift
-        return sketch.entity(
-            "circle", center=[float(centre[0]), float(centre[1])], radius=p["radius"]
-        )
-    if outline.kind == "slot":
-        return _slot(sketch, p, shift)
-    if outline.kind == "roundedRect":
-        return _rounded_rect(sketch, p, shift)
-    if outline.kind == "ringSegment":
-        return _ring_segment(sketch, p, shift)
-    return None
-
-
-def _slot(sketch: _Sketch, p: dict[str, float], shift: FloatArray) -> str:
-    centre = np.array([p["cx"], p["cy"]]) + shift
-    along, across = _unit(p["angle"]), _unit(p["angle"] + np.pi / 2.0)
-    radius = p["width"] / 2.0
-    half = max(p["length"] / 2.0 - radius, 1e-3)
-    right, left = centre + half * along, centre - half * along
-    corners = [
-        right + radius * across,
-        left + radius * across,
-        left - radius * across,
-        right - radius * across,
-    ]
-    arcs = [None, (left, radius, True), None, (right, radius, True)]
-    loop = _closed_chain(sketch, corners, arcs)
-    lines = [e["id"] for e in sketch.entities[-4:] if e["type"] == "line"]
-    round_ends = [e["id"] for e in sketch.entities[-4:] if e["type"] == "arc"]
-    sketch.constrain("parallel", *lines)
-    sketch.constrain("equalRadius", *round_ends)
-    return loop
-
-
-def _rounded_rect(sketch: _Sketch, p: dict[str, float], shift: FloatArray) -> str:
-    """Counter-clockwise from the end of the bottom side: corner arcs and sides."""
-    centre = np.array([p["cx"], p["cy"]]) + shift
-    x, y = _unit(p["angle"]), _unit(p["angle"] + np.pi / 2.0)
-    hw, hh = p["width"] / 2.0, p["height"] / 2.0
-    r = min(p["corner"], hw, hh)
-    if r < MIN_CORNER_MM:
-        sharp = [
-            centre + sx * hw * x + sy * hh * y for sx, sy in ((1, -1), (1, 1), (-1, 1), (-1, -1))
-        ]
-        return _closed_chain(sketch, sharp, [None] * 4)
-    corners: list[FloatArray] = []
-    arcs: list[Any] = []
-    # Corner centres bottom right, top right, top left, bottom left; each arc runs from
-    # the side before the corner to the side after it.
-    for sx, sy, before, after in (
-        (1, -1, -y, x),
-        (1, 1, x, y),
-        (-1, 1, y, -x),
-        (-1, -1, -x, -y),
-    ):
-        corner = centre + sx * (hw - r) * x + sy * (hh - r) * y
-        corners += [corner + r * before, corner + r * after]
-        arcs += [(corner, r, True), None]
-    return _closed_chain(sketch, corners, arcs)
-
-
-def _ring_segment(sketch: _Sketch, p: dict[str, float], shift: FloatArray) -> str:
-    """A ring arm: outer and inner arc, two straight gap sides, rounded corners.
-
-    Counter-clockwise: out along the start side, the outer arc to the end side, in
-    along the end side, the inner arc back. A corner fillet of radius r is tangent to
-    the gap side (its centre r from the side) and to the circle (its centre r inside
-    the outer circle, r outside the inner one).
-    """
-    centre = np.array([p["cx"], p["cy"]]) + shift
-    inner, outer = p["inner"], p["outer"]
-    start, end = p["start"], p["start"] + p["sweep"]
-    half_gap = p["gap"] / 2.0
-    r = min(p["corner"], (outer - inner) / 2.0 - 1e-3)
-    # Gap centre lines and their normals pointing into the arm.
-    sides = ((_unit(start), _unit(start + np.pi / 2.0)), (_unit(end), _unit(end - np.pi / 2.0)))
-
-    def at(side: int, radius: float, inset: float) -> FloatArray:
-        """Point `inset` from the gap centre line and `radius` from the ring centre."""
-        d, n = sides[side]
-        t = np.sqrt(max(radius**2 - inset**2, 0.0))
-        result: FloatArray = centre + t * d + inset * n
-        return result
-
-    if r < MIN_CORNER_MM:
-        corners = [
-            at(0, outer, half_gap),
-            at(1, outer, half_gap),
-            at(1, inner, half_gap),
-            at(0, inner, half_gap),
-        ]
-        arcs = [(centre, outer, True), None, (centre, inner, False), None]
-        return _closed_chain(sketch, corners, arcs)
-
-    def fillet(
-        side: int, radius: float, outside: bool
-    ) -> tuple[FloatArray, FloatArray, FloatArray]:
-        """Centre, tangent point on the gap side, tangent point on the circle."""
-        _, n = sides[side]
-        middle = at(side, radius - r if outside else radius + r, half_gap + r)
-        on_side = middle - r * n
-        towards = (middle - centre) / np.linalg.norm(middle - centre)
-        on_circle = centre + radius * towards
-        return middle, on_side, on_circle
-
-    c1, s1, o1 = fillet(0, outer, True)
-    c2, s2, o2 = fillet(1, outer, True)
-    c3, s3, i3 = fillet(1, inner, False)
-    c4, s4, i4 = fillet(0, inner, False)
-    corners = [s1, o1, o2, s2, s3, i3, i4, s4]
-    arcs = [
-        (c1, r, _ccw(c1, s1, o1)),
-        (centre, outer, True),
-        (c2, r, _ccw(c2, o2, s2)),
-        None,
-        (c3, r, _ccw(c3, s3, i3)),
-        (centre, inner, False),
-        (c4, r, _ccw(c4, i4, s4)),
-        None,
-    ]
-    return _closed_chain(sketch, corners, arcs)
 
 
 # Operations ------------------------------------------------------------------------------
@@ -303,9 +168,7 @@ def plan_features(
     by_plane: dict[int, list[int]] = {}
     for index in chosen:
         feature = features[index]
-        if feature.outline.kind == "profile" or (
-            feature.relief.kind == "pocket" and target_body is None
-        ):
+        if feature.relief.kind == "pocket" and target_body is None:
             skipped.append(index)
             continue
         by_plane.setdefault(feature.plane, []).append(index)
@@ -359,22 +222,18 @@ def _extrusions(
     target_body: str | None,
     names: Mapping[int, str],
 ) -> None:
-    by_level: dict[float, list[int]] = {}
+    by_height: dict[tuple[float, float], list[int]] = {}
     for index in stage:
-        by_level.setdefault(round(features[index].relief.level, 4), []).append(index)
-    for level, indices in by_level.items():
+        relief = features[index].relief
+        by_height.setdefault((round(relief.level, 4), round(relief.height, 4)), []).append(index)
+    for (level, height), indices in by_height.items():
         sketch = _Sketch()
-        loops: dict[int, str] = {}
-        for index in indices:
-            loop = outline_loop(sketch, features[index].outline, shift)
-            if loop is not None:
-                loops[index] = loop
-        if not loops:
-            continue
+        loops = {
+            index: chain_loop(sketch, features[index].outline.chain, shift) for index in indices
+        }
         # Bosses rise along the normal, pockets sink against it: compare with the
-        # scan halfway up the lowest of them, where every one has its wall.
+        # scan halfway up, where the outlines were measured.
         sign = 1.0 if features[indices[0]].relief.kind == "boss" else -1.0
-        lowest = min(features[index].relief.height for index in loops)
         sketch_id = add(
             "sketch",
             {
@@ -382,7 +241,7 @@ def _extrusions(
                     "type": "planar",
                     "plane": {"type": "feature", "feature": plane_id},
                     "offset": level,
-                    "sectionOffset": sign * lowest / 2.0,
+                    "sectionOffset": sign * height / 2.0,
                     "xDirection": _list(plane.x_axis),
                 },
                 "points": sketch.points,
@@ -392,7 +251,7 @@ def _extrusions(
         )
         families: dict[tuple[object, ...], list[int]] = {}
         for index in loops:
-            families.setdefault(_family(features[index]), []).append(index)
+            families.setdefault(_family(index, features[index]), []).append(index)
         for members in families.values():
             relief = features[members[0]].relief
             depth = relief.height + THROUGH_MARGIN_MM if relief.top == "through" else relief.height
@@ -427,9 +286,11 @@ def _extrusions(
             )
 
 
-def _family(feature: Feature) -> tuple[object, ...]:
-    """Features made alike: same kind, top, height, shape and size."""
+def _family(index: int, feature: Feature) -> tuple[object, ...]:
+    """Features made alike: same kind, top, height, shape and size (free profiles differ)."""
     relief, outline = feature.relief, feature.outline
+    if outline.kind == "profile":
+        return ("profile", index)
     size = tuple(
         round(value, 3)
         for name, value in outline.named().items()

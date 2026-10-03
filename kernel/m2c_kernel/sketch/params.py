@@ -141,7 +141,9 @@ class SketchConstraint:
     refs: list[str]
 
 
-type SnapKind = Literal["radius", "x", "y", "angle", "centerX", "centerY", "junction", "boltCircle"]
+type SnapKind = Literal[
+    "radius", "x", "y", "angle", "centerX", "centerY", "junction", "boltCircle", "length"
+]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -150,8 +152,10 @@ class SketchSnap:
 
     `x` and `y` place an axis-parallel line, `angle` is the direction of an oblique
     line in degrees, `junction` places the corner of an oblique line on its snapped
-    neighbour (`point`). `boltCircle` places the circles `members` on a circle of
-    diameter `value` around `point`, starting at `start_deg` with `pitch_deg`.
+    neighbour (`point`). `length` is the distance between the ends of a line (the
+    straight part of a slot or rectangle side). `boltCircle` places the circles
+    `members` on a circle of diameter `value` around `point`, starting at `start_deg`
+    with `pitch_deg`.
     The id `<entity>:<kind>` is stable, so a removed snap stays removed
     (`rejected_snaps`).
     """
@@ -166,6 +170,25 @@ class SketchSnap:
     members: list[str] = field(default_factory=list)
     pitch_deg: float | None = None
     start_deg: float | None = None
+
+
+type ShapeKind = Literal["circle", "slot", "roundedRect", "ringArm"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class SketchShape:
+    """Entities that together form one recognised outline shape (a button).
+
+    The entities are listed in a fixed order per kind: a circle; a slot as line,
+    arc, line, arc; a rounded rectangle as its four lines each followed by the
+    corner arc after it (the first line runs along the length); a ring arm as outer
+    arc, corner, end line, corner, inner arc, corner, end line, corner (without the
+    corners when they are sharp). Sizes are read from the entities, never stored.
+    """
+
+    id: str
+    kind: ShapeKind
+    entities: list[str]
 
 
 type DimensionKind = Literal["length", "angle", "radius", "centerX", "centerY"]
@@ -193,3 +216,4 @@ class SketchParams:
     snaps: list[SketchSnap] = field(default_factory=list)
     dimensions: list[SketchDimension] = field(default_factory=list)
     rejected_snaps: list[str] = field(default_factory=list)
+    shapes: list[SketchShape] = field(default_factory=list)

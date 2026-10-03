@@ -2,7 +2,7 @@
 
 import type { MethodInfo } from '../wireTypes';
 import type { Vec3 } from './geometry';
-import type { SketchParams, SketchParamsInput, SketchSectionInput } from './sketch-params';
+import type { ShapeKind, SketchParams, SketchParamsInput, SketchSectionInput } from './sketch-params';
 
 /** The sketch plane in part coordinates; sketch (u, v) maps to origin + u x + v y. */
 export interface SketchFrame {
@@ -72,14 +72,41 @@ export interface FitEntityResult {
   tolerance: number;
 }
 
+export interface FitOutlineParams {
+  sketch: SketchParamsInput;
+  point: [number, number];
+}
+
+export interface FitOutlineResult {
+  fit: AutoFitResult;
+  entities: string[];
+  kind: ShapeKind | null;
+}
+
+export interface FilletParams {
+  sketch: SketchParamsInput;
+  point: string;
+}
+
+export interface SketchFilletResult {
+  fit: AutoFitResult;
+  entity: string;
+  radius: number;
+  measured: number;
+}
+
 export interface SketchMethods {
   'sketch.section': { params: SectionParams; result: SectionResult };
   'sketch.autoFit': { params: AutoFitParams; result: AutoFitResult };
   'sketch.fitEntity': { params: FitEntityParams; result: FitEntityResult };
+  'sketch.fitOutline': { params: FitOutlineParams; result: FitOutlineResult };
+  'sketch.fillet': { params: FilletParams; result: SketchFilletResult };
 }
 
 export const SKETCH_METHODS = {
   'sketch.section': { lane: true, caller: 'renderer', exclusive: false },
   'sketch.autoFit': { lane: true, caller: 'renderer', exclusive: false },
   'sketch.fitEntity': { lane: true, caller: 'renderer', exclusive: false },
+  'sketch.fitOutline': { lane: true, caller: 'renderer', exclusive: false },
+  'sketch.fillet': { lane: true, caller: 'renderer', exclusive: false },
 } as const satisfies Record<keyof SketchMethods, MethodInfo>;

@@ -56,8 +56,11 @@ which are P1; freeform support exists but is secondary.
 6. **Reference geometry**: plane through a fitted axis at an angle, offset plane, mid-plane of two
    planes, axis from two planes. It serves as sketch plane, extrude limit and alignment input.
 7. **Sketch** on a planar or rotational section: lines, arcs and circles are fitted automatically,
-   with inferred constraints and snapped values. Minimal manual drawing covers what the scan
-   lacks: _Ecke bilden_, a line between two points, a circle by centre and radius.
+   with inferred constraints and snapped values, or outline by outline: a click inside an outline
+   fits its shape (circle, slot, rounded rectangle, ring arm) with design values, Shift+drag fits
+   a line or an arc, Ctrl at a corner rounds it with the radius from the scan. Minimal manual
+   drawing covers what the scan lacks: _Ecke bilden_, a line between two points, a circle by
+   centre and radius.
 8. **Build solids**: extrude (distance prefilled from the scan extent) and revolve sketch profiles
    as a new body or combined with an existing one; bodies from fitted cylinders, cones, spheres and
    tori; split bodies with planes; combine bodies; fillets and chamfers, with the radius measurable
@@ -188,6 +191,7 @@ faces unless stated:
 | Smart select click                                       | < 1 s                                          |
 | Fit preview, 100 k selected faces                        | < 300 ms                                       |
 | Section and automatic sketch                             | < 300 ms                                       |
+| Shape fit of one clicked outline                         | < 1.5 s                                        |
 | Solid feature preview (geometry and status)              | < 500 ms                                       |
 | Deviation summary of a solid preview                     | < 1 s after the geometry, in its own lane      |
 | Rebuild of a 20-feature history after a parameter change | < 1 s                                          |
@@ -592,7 +596,7 @@ Lane `yes` means the method accepts `<method>[:<suffix>]`.
 | `fit.preview`                                                                                                      | yes  | –             | no                     | renderer | planned |
 | `alignment.preview`                                                                                                | yes  | –             | no                     | renderer | planned |
 | `freeform.preview`                                                                                                 | yes  | –             | no                     | renderer | planned |
-| `sketch.section`, `sketch.autoFit`, `sketch.fitEntity`                                                             | yes  | –             | no                     | renderer | planned |
+| `sketch.section`, `sketch.autoFit`, `sketch.fitEntity`, `sketch.fitOutline`, `sketch.fillet`                       | yes  | –             | no                     | renderer | planned |
 | `inspection.deviation`                                                                                             | yes  | yes           | no                     | renderer | planned |
 | `inspection.previewDeviation`                                                                                      | yes  | –             | no                     | renderer | planned |
 | `inspection.measure`                                                                                               | yes  | –             | no                     | renderer | planned |

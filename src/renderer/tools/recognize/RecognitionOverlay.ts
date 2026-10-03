@@ -1,5 +1,5 @@
 // The recognised features in the viewport: the outline of every feature at its foot
-// and at its top, coloured by role (raised, pocket, hole, free profile), and one label
+// and at its top, coloured by role (raised, pocket, hole), and one label
 // per group with its size that stays the same size on screen. Unchecked features
 // are drawn grey, the hovered group in the hover colour. Labels on faces turned away
 // from the camera are hidden, as their outlines are.
@@ -13,7 +13,7 @@ import type { RecognizeResult } from '@shared/protocol/generated/recognize';
 
 import type { Overlay, ScreenPoint, Vec3 } from '../../viewport/api';
 import { RECOGNITION_COLORS } from '../../viewport/palette';
-import { type FeatureRole, roleOf } from './model';
+import { roleOf } from './model';
 
 /** Depth bias of the outlines in units of the scene bias (they lie on the scan). */
 const LINE_BIAS = 3;
@@ -43,11 +43,6 @@ interface Label {
 function rgb(hex: string): [number, number, number] {
   const color = new THREE.Color(hex);
   return [color.r, color.g, color.b];
-}
-
-function roleColor(role: FeatureRole, profile: boolean): string {
-  if (profile) return RECOGNITION_COLORS.profile;
-  return RECOGNITION_COLORS[role];
 }
 
 function labelTexture(text: string): { texture: THREE.Texture; widthPx: number } {
@@ -191,7 +186,7 @@ export class RecognitionOverlay {
       const group = groupOf[index] ?? -1;
       if (group === hovered) return rgb(RECOGNITION_COLORS.hover);
       if (!checked.has(group)) return rgb(RECOGNITION_COLORS.unchecked);
-      return rgb(roleColor(roleOf(feature), feature.shape === 'profile'));
+      return rgb(RECOGNITION_COLORS[roleOf(feature)]);
     });
     const colors = new Float32Array(this.segmentFeature.length * 6);
     this.segmentFeature.forEach((feature, segment) => {

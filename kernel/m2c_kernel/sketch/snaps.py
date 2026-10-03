@@ -10,11 +10,11 @@ refit and is stored with the measurement it replaced, so the user can remove it.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 
 import numpy as np
 
-from m2c_kernel.sketch.constraints import direction_angle, intersect
+from m2c_kernel.sketch.carriers import direction_angle, intersect
 from m2c_kernel.sketch.fit2d import fit_circle
 from m2c_kernel.sketch.model import Circle, Constraint, FixedValue, Line, WorkSketch
 from m2c_kernel.sketch.params import SketchSnap, SnapKind
@@ -45,6 +45,8 @@ def fixed_values(sketch: WorkSketch, snap: SketchSnap) -> list[FixedValue]:
     match snap.kind:
         case "radius":
             return [FixedValue(snap.entity, "radius", snap.value)]
+        case "length":
+            return [FixedValue(snap.entity, "length", snap.value)]
         case "centerX":
             return [FixedValue(snap.entity, "x", snap.value)]
         case "centerY":
@@ -123,15 +125,25 @@ def find_snaps(
     noise: float,
     units: SnapUnits,
     rejected: Sequence[str] = (),
+    only: Collection[str] | None = None,
 ) -> list[SketchSnap]:
-    """Snaps of the current (constrained, refitted) entities."""
+    """Snaps of the current (constrained, refitted) entities, or of `only` these.
+
+    Entities of recognised shapes have their sizes from the shape's design values:
+    only the centres of their circles are snapped here.
+    """
     floor = max(0.01, 2.0 * noise)
     tangent = {r for c in constraints if c.kind == "tangent" for r in c.refs}
+    shaped = {e for shape in sketch.shapes for e in shape.entities}
     out = _Collector(rejected)
-    bolted = _bolt_circles(sketch, noise, units, floor, out)
+    bolted = _bolt_circles(sketch, noise, units, floor, out, only)
     radii: list[float] = []
-    fitted = [e for e in sketch.entities.values() if e.origin == "fit"]
+    fitted = [
+        e for e in sketch.entities.values() if e.origin == "fit" and (only is None or e.id in only)
+    ]
     for entity in fitted:
+        if entity.id in shaped and not isinstance(entity, Circle):
+            continue
         count = len(sketch.samples_of(entity.id))
         if count == 0:
             continue
@@ -139,9 +151,10 @@ def find_snaps(
         if isinstance(entity, Line):
             _snap_line(sketch, entity, u, units, floor, out)
             continue
-        snap = snap_length(entity.radius, u, units=units, floor=floor, preferred=radii)
-        if snap is not None and out.add(entity.id, "radius", snap.value, entity.radius, u):
-            radii.append(snap.value)
+        if entity.id not in shaped:
+            snap = snap_length(entity.radius, u, units=units, floor=floor, preferred=radii)
+            if snap is not None and out.add(entity.id, "radius", snap.value, entity.radius, u):
+                radii.append(snap.value)
         if entity.id in tangent or entity.id in bolted:
             continue
         for index, kind in ((0, "centerX"), (1, "centerY")):
@@ -208,11 +221,20 @@ def _snap_junctions(
 
 
 def _bolt_circles(
-    sketch: WorkSketch, noise: float, units: SnapUnits, floor: float, out: _Collector
+    sketch: WorkSketch,
+    noise: float,
+    units: SnapUnits,
+    floor: float,
+    out: _Collector,
+    only: Collection[str] | None,
 ) -> set[str]:
     """Circles of equal radius whose centres lie on one circle with equal angular pitch."""
     circles = sorted(
-        (e for e in sketch.entities.values() if isinstance(e, Circle) and e.origin == "fit"),
+        (
+            e
+            for e in sketch.entities.values()
+            if isinstance(e, Circle) and e.origin == "fit" and (only is None or e.id in only)
+        ),
         key=lambda e: e.radius,
     )
     groups: list[list[Circle]] = []

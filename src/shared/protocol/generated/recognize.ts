@@ -2,7 +2,7 @@
 
 import type { MethodInfo } from '../wireTypes';
 import type { Vec3 } from './geometry';
-import type { ShapeKind } from './recognition-outline';
+import type { ShapeKind } from './recognition-shapes';
 
 export interface RecognizeParams {
   scanKey: string;

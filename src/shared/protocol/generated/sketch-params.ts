@@ -169,15 +169,17 @@ export interface SketchConstraint {
   refs: string[];
 }
 
-export type SnapKind = 'radius' | 'x' | 'y' | 'angle' | 'centerX' | 'centerY' | 'junction' | 'boltCircle';
+export type SnapKind = 'radius' | 'x' | 'y' | 'angle' | 'centerX' | 'centerY' | 'junction' | 'boltCircle' | 'length';
 
 /**
  * A design value applied by snapping, with the measurement it replaced.
  *
  * `x` and `y` place an axis-parallel line, `angle` is the direction of an oblique
  * line in degrees, `junction` places the corner of an oblique line on its snapped
- * neighbour (`point`). `boltCircle` places the circles `members` on a circle of
- * diameter `value` around `point`, starting at `start_deg` with `pitch_deg`.
+ * neighbour (`point`). `length` is the distance between the ends of a line (the
+ * straight part of a slot or rectangle side). `boltCircle` places the circles
+ * `members` on a circle of diameter `value` around `point`, starting at `start_deg`
+ * with `pitch_deg`.
  * The id `<entity>:<kind>` is stable, so a removed snap stays removed
  * (`rejected_snaps`).
  */
@@ -208,6 +210,23 @@ export interface SketchSnapInput {
   startDeg?: number | null;
 }
 
+export type ShapeKind = 'circle' | 'slot' | 'roundedRect' | 'ringArm';
+
+/**
+ * Entities that together form one recognised outline shape (a button).
+ *
+ * The entities are listed in a fixed order per kind: a circle; a slot as line,
+ * arc, line, arc; a rounded rectangle as its four lines each followed by the
+ * corner arc after it (the first line runs along the length); a ring arm as outer
+ * arc, corner, end line, corner, inner arc, corner, end line, corner (without the
+ * corners when they are sharp). Sizes are read from the entities, never stored.
+ */
+export interface SketchShape {
+  id: string;
+  kind: ShapeKind;
+  entities: string[];
+}
+
 export type DimensionKind = 'length' | 'angle' | 'radius' | 'centerX' | 'centerY';
 
 /** A value typed by the user; refits keep it exactly (angle in degrees). */
@@ -227,6 +246,7 @@ export interface SketchParams {
   snaps: SketchSnap[];
   dimensions: SketchDimension[];
   rejectedSnaps: string[];
+  shapes: SketchShape[];
 }
 
 /** Input form of `SketchParams`: fields with defaults may be omitted. */
@@ -240,4 +260,5 @@ export interface SketchParamsInput {
   snaps?: SketchSnapInput[];
   dimensions?: SketchDimension[];
   rejectedSnaps?: string[];
+  shapes?: SketchShape[];
 }

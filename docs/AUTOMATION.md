@@ -74,13 +74,18 @@ test uses this).
 | `apply_ops`                    | Apply document operations as one undoable step                                                   |
 | `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                        |
 | `list_commands`, `run_command` | Run app commands: views, undo, tools                                                             |
-| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, with fitted outlines                |
+| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, outlines of lines and arcs          |
 | `build_shapes`                 | Build recognised shapes as plane, sketches and extrusions, joined to or cut from a body          |
 | `click`                        | Click a control by its `data-testid` or a button by its label or aria-label                      |
 | `press_key`                    | Press a key: Escape, Enter, tool shortcuts                                                       |
 | `screenshot`                   | Screenshot of the window                                                                         |
 
 Coordinates are part coordinates in millimetres, after the alignment.
+
+The `toolInfo` UI action returns what the open tool lets the user grab, with screen positions.
+In sketch mode: `outlines` (a point inside each closed section outline, where a click fits its
+shape), `joints` (points where two entities meet, with those entities; a Ctrl click rounds them),
+`entities`, `shapes` with their sizes, and `state.job` while a gesture is being fitted.
 
 ## Protocol
 
