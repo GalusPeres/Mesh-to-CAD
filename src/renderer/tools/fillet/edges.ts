@@ -115,22 +115,6 @@ export function edgeSegments(payload: EdgePayload, edges: ReadonlySet<number>): 
   return new Float32Array(parts);
 }
 
-/** Up to `count` segment midpoints spread evenly over the given segments. */
-export function samplePoints(segments: Float32Array, count: number): Vec3[] {
-  const total = segments.length / 6;
-  const step = Math.max(1, total / count);
-  const points: Vec3[] = [];
-  for (let position = 0; position < total && points.length < count; position += step) {
-    const base = Math.floor(position) * 6;
-    points.push([
-      (segments[base]! + segments[base + 3]!) / 2,
-      (segments[base + 1]! + segments[base + 4]!) / 2,
-      (segments[base + 2]! + segments[base + 5]!) / 2,
-    ]);
-  }
-  return points;
-}
-
 /** Faces the edited feature created itself cannot be the input of the same feature. */
 export function touchesFeature(ref: EdgeRef, featureId: string | null): boolean {
   return featureId !== null && ref.faces.some((tag) => tag.startsWith(`${featureId}:`));

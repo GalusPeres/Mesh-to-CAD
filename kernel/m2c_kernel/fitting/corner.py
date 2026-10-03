@@ -70,6 +70,8 @@ class SectionFit:
     rms: float
     """RMS distance of the points inside the window to the fitted corner."""
     points: int
+    corner: tuple[float, float] = (0.0, 0.0)
+    """Where the scan's faces meet in the section's (face 1, across) frame (mm)."""
 
 
 @dataclass(frozen=True)
@@ -167,7 +169,7 @@ def section_radius(
         return None
     corner = Corner(wide.d1, wide.d2, window)
     largest = min(largest, 0.9 * window * float(np.tan(corner.half)))
-    offsets = np.zeros(2)
+    offsets = _face_offsets(corner, inner, window)
     for _ in range(OFFSET_ROUNDS):
         radius = _best_radius(corner, inner, corner.shifted(offsets), cap, largest)
         for face in (0, 1):
@@ -186,6 +188,7 @@ def section_radius(
         radius=float(radius),
         rms=float(np.sqrt(np.mean(distance[inliers] ** 2))),
         points=int(inliers.sum()),
+        corner=(float(at[0, 0]), float(at[0, 1])),
     )
 
 
@@ -209,6 +212,19 @@ def _best_radius(
     fine = np.linspace(max(radii[best] - step, 0.0), min(radii[best] + step, largest), 25)
     cost = corner.costs(points, np.repeat(at, len(fine), axis=0), fine, cap)
     return float(fine[int(np.argmin(cost))])
+
+
+def _face_offsets(corner: Corner, points: FloatArray, window: float) -> FloatArray:
+    """Where the scan's faces lie across the modelled ones, from the points beyond the
+    rounding (the outer half of the window along each face); 0 without such points."""
+    offsets = np.zeros(2)
+    for face, direction in enumerate((corner.d1, corner.d2)):
+        normal = np.array([-direction[1], direction[0]])
+        along, across = points @ direction, points @ normal
+        far = (along > window / 2.0) & (np.abs(across) < MAX_OFFSET_MM)
+        if int(far.sum()) >= MIN_SIDE_POINTS:
+            offsets[face] = float(np.median(across[far]))
+    return offsets
 
 
 def _best_offset(

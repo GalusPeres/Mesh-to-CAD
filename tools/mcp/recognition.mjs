@@ -31,6 +31,8 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         levelMm: round(feature.level),
         heightMm: round(feature.height),
         top: feature.top,
+        tiltDeg: round((feature.tilt * 180) / Math.PI),
+        roundingMm: feature.rounding,
         inPocket: feature.parent,
         group: feature.group,
         labelAt: feature.label.map(round),
@@ -47,7 +49,9 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         'cutCircle (a circle trimmed by the part outline: radius, cut normal angle, cut distance ' +
         'from the centre), slot, roundedRect or ringSegment where one fits, else "profile" (a ' +
         'free outline: centre and extent). Design intent applied (equal sizes, shared centres, ' +
-        'rounded values). Outline params are in the plane frame (mm, radians). Follow with ' +
+        'rounded values). Outline params are in the plane frame (mm, radians). top is flat, ' +
+        'inclined (tiltDeg), domed or through; roundingMm is the radius of the top edge ' +
+        'measured on the scan and shared by the group (0 sharp, null not seen). Follow with ' +
         'build_shapes.',
     },
     async () => {
@@ -69,16 +73,21 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         'Build recognised shapes of the last recognize_shapes as editable features: a fitted ' +
         'plane, one sketch per level and one extrusion per group, as one undoable step. Raised ' +
         'shapes join targetBody (or become new bodies without one); pockets and holes are cut ' +
-        'from targetBody and need one.',
+        'from targetBody and need one. Inclined tops are extruded up to a fitted plane; top ' +
+        'edges get one fillet per group with its roundingMm unless roundEdges says otherwise.',
       inputSchema: {
         features: z
           .array(z.number().int().min(0))
           .optional()
           .describe('Feature indices from recognize_shapes; default: all of them'),
         targetBody: z.string().nullable().optional().describe('Body id, e.g. "f2"'),
+        roundEdges: z
+          .array(z.number().int().min(0))
+          .optional()
+          .describe('Features whose top edges are rounded; default: all with a rounding'),
       },
     },
-    async ({ features, targetBody }) => {
+    async ({ features, targetBody, roundEdges }) => {
       const { revision, document } = await kernel('doc.get');
       if (!document.scan) throw new Error('No scan loaded.');
       let chosen = features;
@@ -95,6 +104,7 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         baseRevision: revision,
         features: chosen,
         targetBody: targetBody ?? null,
+        roundEdges: roundEdges ?? null,
       });
       return text({ ...built, document: summarise(await kernel('doc.get')) });
     },

@@ -16,6 +16,9 @@ from m2c_kernel.cad.edge_frames import edge_frames
 from m2c_kernel.cad.edges import resolve_edges
 from m2c_kernel.codes.cad import ErrorCode
 from m2c_kernel.codes.document import ErrorCode as DocumentError
+from m2c_kernel.document.model import Document
+from m2c_kernel.document.rebuild import RebuildResult
+from m2c_kernel.document.results import Body
 from m2c_kernel.features.types.fillet import EdgeRef
 from m2c_kernel.fitting.corner import edge_radius
 from m2c_kernel.protocol.errors import KernelError
@@ -31,6 +34,8 @@ class ScanRadiusParams:
     target_body: str
     edges: list[EdgeRef]
     """The edges to measure, as the fillet feature references them."""
+    before: str | None = None
+    """Measure the body as it is before this feature (the fillet being edited)."""
 
 
 @dataclass(frozen=True)
@@ -55,7 +60,7 @@ def fillet_scan_radius(ctx: JobContext, params: ScanRadiusParams) -> ScanRadiusR
     mesh = built.result.mesh
     if document.scan is None or mesh is None:
         raise KernelError(DocumentError.NO_SCAN)
-    body = built.result.bodies.get(params.target_body)
+    body = _body(built.result, document, params.target_body, params.before)
     if body is None:
         raise KernelError(DocumentError.UNKNOWN_FEATURE, {"feature": params.target_body})
     if not params.edges:
@@ -75,3 +80,19 @@ def fillet_scan_radius(ctx: JobContext, params: ScanRadiusParams) -> ScanRadiusR
         samples=measured.samples,
         spread=measured.spread,
     )
+
+
+def _body(
+    result: RebuildResult, document: Document, body_id: str, before: str | None
+) -> Body | None:
+    """The body at the end of the history, or as the last feature before `before` left it."""
+    if before is None:
+        return result.bodies.get(body_id)
+    found = None
+    for feature in document.features:
+        if feature.id == before:
+            break
+        output = result.outputs.get(feature.id)
+        if output is not None and body_id in output.bodies.changed:
+            found = output.bodies.changed[body_id]
+    return found

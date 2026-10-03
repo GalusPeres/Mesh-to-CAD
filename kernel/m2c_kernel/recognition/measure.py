@@ -26,6 +26,8 @@ INCLINED_SHARE = 0.6
 """The top's triangles rise above this share of the height (an inclined top's low end
 lies well below its high end)."""
 MIN_TILT_DEG = 2.0
+MIN_ON_PLANE = 0.7
+"""A flat or inclined top has at least this share of its area on one plane."""
 TOP_SHARE = 0.1
 """Less upward area near the top than this share of the outline: no top face (a dome,
 or a pocket without a floor: a through hole)."""
@@ -94,18 +96,39 @@ def top_of(
     up = (facing > UP_FACING) & (rise > INCLINED_SHARE * height)
     if 0.5 * float(double_area[up].sum()) < TOP_SHARE * area:
         return Top("through" if sign < 0 else "domed")
-    points = context.uvh[np.unique(faces[up])]
+    # Triangle centres weighted by area: a rounded edge is many thin triangles. A top
+    # lies on a plane when most of its area is within the tolerance of it; the plane is
+    # fitted again without the rest (the rim, where the top rounds off).
+    points = corners[up].mean(axis=1)
+    weights = double_area[up] / double_area[up].sum()
     tolerance = max(FLAT_TOP_FACTOR * context.noise, 0.05)
-    design = np.column_stack([points[:, :2], np.ones(len(points))])
-    (a, b, c), *_ = np.linalg.lstsq(design, points[:, 2], rcond=None)
-    if float(np.std(points[:, 2] - design @ (a, b, c))) >= tolerance:
+    on = np.abs(points[:, 2] - _height(_plane(points, weights), points)) < tolerance
+    if float(weights[on].sum()) < MIN_ON_PLANE:
         return Top("domed")
+    points, weights = points[on], weights[on] / weights[on].sum()
+    plane = _plane(points, weights)
+    a, b, _ = plane
     tilted = np.degrees(np.arctan(np.hypot(a, b))) > MIN_TILT_DEG
-    if tilted and float(np.ptp(design @ (a, b, c))) >= tolerance:
-        return Top("inclined", (float(a), float(b), float(c)))
-    if float(np.std(points[:, 2])) >= tolerance:
+    if tilted and float(np.ptp(_height(plane, points))) >= tolerance:
+        return Top("inclined", plane)
+    mean = float(weights @ points[:, 2])
+    if float(weights[np.abs(points[:, 2] - mean) < tolerance].sum()) < MIN_ON_PLANE:
         return Top("domed")
-    return Top("flat", (0.0, 0.0, float(np.mean(points[:, 2]))))
+    return Top("flat", (0.0, 0.0, mean))
+
+
+def _plane(points: FloatArray, weights: FloatArray) -> tuple[float, float, float]:
+    """(a, b, c) of the plane h = a u + b v + c of least weighted squared distance."""
+    design = np.column_stack([points[:, :2], np.ones(len(points))])
+    root = np.sqrt(weights)
+    (a, b, c), *_ = np.linalg.lstsq(design * root[:, None], points[:, 2] * root, rcond=None)
+    return float(a), float(b), float(c)
+
+
+def _height(plane: tuple[float, float, float], points: FloatArray) -> FloatArray:
+    a, b, c = plane
+    result: FloatArray = a * points[:, 0] + b * points[:, 1] + c
+    return result
 
 
 def section_contour(context: PlaneContext, part: IntArray, at: float) -> FloatArray | None:

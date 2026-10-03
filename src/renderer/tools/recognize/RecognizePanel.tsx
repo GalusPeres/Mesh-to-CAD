@@ -13,20 +13,13 @@ import { PanelSection } from '../../ui/PanelSection/PanelSection';
 import { ProgressBar } from '../../ui/ProgressBar/ProgressBar';
 import { PropertyRow } from '../../ui/PropertyRow/PropertyRow';
 import { Select } from '../../ui/Select/Select';
-import { RECOGNITION_COLORS } from '../../viewport/palette';
 import { availableBodies, defaultTarget } from '../extrude/solid/model';
 import { useBodyLabel } from '../extrude/solid/SolidSections';
 import { useCommit } from '../framework/hooks';
 import { ToolPanel } from '../framework/ToolPanel';
 import type { ToolPanelProps } from '../framework/types';
-import {
-  type FeatureGroup,
-  chosenFeatures,
-  defaultChecked,
-  featureName,
-  groupFeatures,
-  needsBody,
-} from './model';
+import { GroupList } from './GroupList';
+import { chosenFeatures, defaultChecked, featureName, groupFeatures, needsBody } from './model';
 import styles from './RecognizePanel.module.css';
 import { type Recognition, useRecognition } from './useRecognition';
 import { useRecognitionInfo } from './useRecognitionInfo';
@@ -75,9 +68,24 @@ export function RecognizePanel({ close }: ToolPanelProps) {
       }),
     [setChecked],
   );
+  // Groups whose top edges stay sharp: the rounding measured on the scan is switched off.
+  const [sharpChoice, setSharpChoice] = useState<{ result: unknown; groups: Set<number> }>();
+  const sharp = useMemo(
+    () => (sharpChoice?.result === result ? sharpChoice.groups : new Set<number>()),
+    [sharpChoice, result],
+  );
+  const toggleRounding = useCallback(
+    (group: number) => {
+      const next = new Set(sharp);
+      if (next.has(group)) next.delete(group);
+      else next.add(group);
+      setSharpChoice({ result, groups: next });
+    },
+    [sharp, result],
+  );
   const [hovered, setHovered] = useState<number | null>(null);
   useRecognitionOverlay(result, checked, hovered, { onToggle: toggle, onHover: setHovered });
-  useRecognitionInfo(recognition, groups, checked);
+  useRecognitionInfo(recognition, groups, checked, sharp);
 
   const bodies = useMemo(() => (snapshot ? availableBodies(snapshot, null) : []), [snapshot]);
   const bodyLabel = useBodyLabel();
@@ -96,15 +104,20 @@ export function RecognizePanel({ close }: ToolPanelProps) {
       const feature = result.features[index];
       return feature ? featureName(feature, t(`${KEY}.shapeNames.${feature.shape}`), format) : '';
     });
+    const roundEdges = chosen.filter((index) => {
+      const group = result.features[index]?.group;
+      return group !== undefined && !sharp.has(group);
+    });
     await kernel().call('recognize.build', {
       scanKey,
       baseRevision,
       features: chosen,
       targetBody,
       names,
+      roundEdges,
     }).result;
     close();
-  }, [scanKey, result, chosen, targetBody, close, t, format]);
+  }, [scanKey, result, chosen, targetBody, close, t, format, sharp]);
   const commit = useCommit(build);
   const canCommit = result !== null && (targetBody !== null ? chosen.length > 0 : bossesChosen);
 
@@ -122,8 +135,10 @@ export function RecognizePanel({ close }: ToolPanelProps) {
           <GroupList
             groups={groups}
             checked={checked}
+            sharp={sharp}
             hovered={hovered}
             onToggle={toggle}
+            onToggleRounding={toggleRounding}
             onHover={setHovered}
             onAll={(all) => setChecked(() => (all ? defaultChecked(groups) : new Set<number>()))}
           />
@@ -202,97 +217,4 @@ function RecognitionState({ recognition, onCancel, onRestart }: RecognitionState
         <p className={styles.hint}>{t(`${KEY}.nothingFound`)}</p>
       ) : null;
   }
-}
-
-interface GroupListProps {
-  groups: readonly FeatureGroup[];
-  checked: ReadonlySet<number>;
-  hovered: number | null;
-  onToggle: (group: number) => void;
-  onHover: (group: number | null) => void;
-  onAll: (all: boolean) => void;
-}
-
-function GroupList({ groups, checked, hovered, onToggle, onHover, onAll }: GroupListProps) {
-  const { t } = useTranslation();
-  const format = useFormatter();
-  if (groups.length === 0) return null;
-  const count = groups.reduce((sum, group) => sum + group.indices.length, 0);
-  return (
-    <>
-      <div className={styles.listHeader}>
-        <span>{t(`${KEY}.featureCount`, { count, formatted: format.count(count) })}</span>
-        <span className={styles.listActions}>
-          <Button variant="ghost" data-testid="recognize-all" onClick={() => onAll(true)}>
-            {t(`${KEY}.all`)}
-          </Button>
-          <Button variant="ghost" data-testid="recognize-none" onClick={() => onAll(false)}>
-            {t(`${KEY}.none`)}
-          </Button>
-        </span>
-      </div>
-      <ul className={styles.list} data-testid="recognize-groups" onMouseLeave={() => onHover(null)}>
-        {groups.map((group) => (
-          <GroupRow
-            key={group.id}
-            group={group}
-            checked={checked.has(group.id)}
-            hovered={hovered === group.id}
-            onToggle={onToggle}
-            onHover={onHover}
-          />
-        ))}
-      </ul>
-    </>
-  );
-}
-
-interface GroupRowProps {
-  group: FeatureGroup;
-  checked: boolean;
-  hovered: boolean;
-  onToggle: (group: number) => void;
-  onHover: (group: number | null) => void;
-}
-
-function GroupRow({ group, checked, hovered, onToggle, onHover }: GroupRowProps) {
-  const { t } = useTranslation();
-  const format = useFormatter();
-  const { feature } = group;
-  const color = RECOGNITION_COLORS[group.role];
-  const amount = format.length(feature.height, { decimals: 2 });
-  const details = [
-    t(`${KEY}.roles.${group.role}`),
-    group.role === 'hole'
-      ? t(`${KEY}.through`)
-      : t(`${KEY}.${group.role === 'boss' ? 'height' : 'depth'}`, { value: amount }),
-    feature.top === 'domed' ? t(`${KEY}.domed`) : null,
-    group.nested ? t(`${KEY}.nested`) : null,
-  ].filter(Boolean);
-  const name = featureName(feature, t(`${KEY}.shapeNames.${feature.shape}`), format);
-  return (
-    <li
-      className={`${styles.row} ${hovered ? styles.hovered : ''}`}
-      data-testid={`recognize-group-${group.id}`}
-      onMouseEnter={() => onHover(group.id)}
-    >
-      <input
-        type="checkbox"
-        className={styles.box}
-        checked={checked}
-        aria-label={name}
-        onChange={() => onToggle(group.id)}
-      />
-      <span className={styles.swatch} style={{ background: color }} aria-hidden />
-      <span className={styles.text}>
-        <span className={styles.name}>
-          {group.indices.length > 1 && (
-            <span className={styles.count}>{group.indices.length} × </span>
-          )}
-          {name}
-        </span>
-        <span className={styles.details}>{details.join(' · ')}</span>
-      </span>
-    </li>
-  );
 }

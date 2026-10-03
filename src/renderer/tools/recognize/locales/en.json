@@ -28,10 +28,12 @@
   "depth": "depth {{value}}",
   "through": "through",
   "domed": "domed",
+  "inclined": "inclined {{angle}}°",
   "nested": "in pocket",
   "target": "Target",
   "targetBody": "Body",
   "newBodies": "New bodies",
   "needsBody": "Pockets and holes are cut from a body. Create the base body first and choose it here; without a body only the raised shapes are built.",
-  "help": "Recognition reads the aligned scan like a designer: flat faces and, on them, raised shapes, pockets and holes. Every outline is made of lines and arcs; where a basic shape fits (circle, cut circle, slot, rectangle, ring segment) it carries its name, otherwise it is a free outline. Equal shapes are made equal, sizes rounded to 0.05 mm. In the view, outlines show the foot and top of every shape; clicking its label or its check box leaves it out. OK builds a plane per face, a sketch per height and an extrusion per group, all editable in the project tree afterwards."
+  "help": "Recognition reads the aligned scan like a designer: flat faces and, on them, raised shapes, pockets and holes. Every outline is made of lines and arcs; where a basic shape fits (circle, cut circle, slot, rectangle, ring segment) it carries its name, otherwise it is a free outline. Equal shapes are made equal, sizes rounded to 0.05 mm. In the view, outlines show the foot and top of every shape; clicking its label or its check box leaves it out. OK builds a plane per face, a sketch per height and an extrusion per group, all editable in the project tree afterwards. When the scan shows a rounded top edge, its radius follows the shape (R); OK rounds each group with one shared radius, a click on R keeps the edges sharp. Inclined tops are extruded up to a fitted plane.",
+  "roundTooltip": "Round the top edge with the radius from the scan (click: on/off)"
 }

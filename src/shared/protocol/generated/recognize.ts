@@ -24,7 +24,8 @@ export interface RecognizedFeature {
   params: Record<string, number>;
   level: number;
   height: number;
-  top: 'flat' | 'domed' | 'through';
+  tilt: number;
+  top: 'flat' | 'inclined' | 'domed' | 'through';
   rms: number;
   parent: number | null;
   group: number;

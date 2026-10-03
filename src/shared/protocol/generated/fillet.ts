@@ -6,6 +6,7 @@ import type { EdgeRef } from './feature-fillet';
 export interface ScanRadiusParams {
   targetBody: string;
   edges: EdgeRef[];
+  before?: string | null;
 }
 
 export interface ScanRadiusResult {
