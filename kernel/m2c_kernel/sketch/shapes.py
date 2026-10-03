@@ -45,7 +45,14 @@ BETTER_FACTOR = 0.7
 ACCEPT_TOLERANCES = 2.0
 """A shape explains an outline when its RMS is below this many fit tolerances..."""
 ACCEPT_SIZE_SHARE = 0.012
-"""...or below this share of the outline size (wavy scans of small buttons)."""
+"""...or below this share of the outline size (wavy scans of small buttons)..."""
+ACCEPT_SIZE_CAP = 0.15
+"""...which stops growing here (mm): a large outline is no wavy button."""
+PEAK_FACTOR = 3.0
+"""A shape that misses a corner of the outline is off along a stretch of it: its largest
+distance, after a running median over `PEAK_WINDOW` samples (a stray point does not
+count), stays below this x the accept limit."""
+PEAK_WINDOW = 5
 RING_REACH = 4.0
 """A ring arm's outer radius is at most this x the size of its outline."""
 CANDIDATE_POINTS = 256
@@ -329,7 +336,16 @@ def _subsample(points: FloatArray) -> FloatArray:
 
 def accept_limit(points: FloatArray, tolerance: float) -> float:
     size = math.sqrt(abs(signed_area(points)))
-    return max(ACCEPT_TOLERANCES * tolerance, ACCEPT_SIZE_SHARE * size)
+    return max(ACCEPT_TOLERANCES * tolerance, min(ACCEPT_SIZE_SHARE * size, ACCEPT_SIZE_CAP))
+
+
+def peak_distance(shape: ShapeFit, points: FloatArray) -> float:
+    """Largest distance of the closed outline from the shape, stray points left out."""
+    off = np.abs(distances(shape, points))
+    half = PEAK_WINDOW // 2
+    wrapped = np.concatenate([off[-half:], off, off[:half]])
+    windows = np.lib.stride_tricks.sliding_window_view(wrapped, PEAK_WINDOW)
+    return float(np.median(windows, axis=1).max())
 
 
 def choose(
@@ -356,6 +372,7 @@ def choose(
     if chosen is None:
         return None
     chosen = fit_shape(chosen.kind, points, chosen.values, scale)
-    if chosen.rms > leniency * accept_limit(points, tolerance):
+    limit = leniency * accept_limit(points, tolerance)
+    if chosen.rms > limit or peak_distance(chosen, points) > PEAK_FACTOR * limit:
         return None
     return chosen
