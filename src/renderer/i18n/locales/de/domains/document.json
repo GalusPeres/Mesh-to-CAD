@@ -10,7 +10,8 @@
     "hasDependents_other": "Das Element wird von {{count}} weiteren Elementen verwendet.",
     "limitExceeded": "Höchstens {{limit, count}} Elemente je Projekt.",
     "featureNotImplemented": "Dieser Elementtyp ist noch nicht verfügbar.",
-    "inputUnavailable": "Eingabe {{feature}} ist nicht verfügbar."
+    "inputUnavailable": "Eingabe {{feature}} ist nicht verfügbar.",
+    "hasDependents": "Andere Elemente bauen auf diesem Element auf."
   },
   "progress": {
     "rebuilding": "Verlauf wird neu berechnet"

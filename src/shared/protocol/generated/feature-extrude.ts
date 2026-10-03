@@ -2,10 +2,6 @@
 
 import type { BodyOperation } from './features-common';
 
-export type ExtrudeExtent = DistanceExtent | ToPlaneExtent;
-
-export type ExtrudeExtentInput = DistanceExtentInput | ToPlaneExtentInput;
-
 export interface DistanceExtent {
   type: 'distance';
   forward: number;
@@ -18,6 +14,8 @@ export interface DistanceExtentInput {
   forward: number;
   backward?: number;
 }
+
+export const DISTANCE_EXTENT_RANGES = { forward: { min: 0, max: null }, backward: { min: 0, max: null } } as const;
 
 export interface ToPlaneExtent {
   type: 'toPlane';
@@ -32,12 +30,15 @@ export interface ToPlaneExtentInput {
   offset?: number;
 }
 
+export type ExtrudeExtent = DistanceExtent | ToPlaneExtent;
+
+export type ExtrudeExtentInput = DistanceExtentInput | ToPlaneExtentInput;
+
 export interface ExtrudeParams {
   sketch: string;
   loops: string[] | null;
   direction: 'normal' | 'reversed' | 'symmetric';
   extent: ExtrudeExtent;
-  taperDeg: number;
   operation: BodyOperation;
   targetBody: string | null;
 }
@@ -48,7 +49,6 @@ export interface ExtrudeParamsInput {
   loops?: string[] | null;
   direction?: 'normal' | 'reversed' | 'symmetric';
   extent: ExtrudeExtentInput;
-  taperDeg?: number;
   operation?: BodyOperation;
   targetBody?: string | null;
 }

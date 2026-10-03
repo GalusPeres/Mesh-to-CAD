@@ -1,6 +1,14 @@
 {
   "errors": {
     "tooFewFaces": "Cannot fit a shape: selection too small ({{count, count}} triangles, at least {{min, count}}).",
-    "didNotConverge": "Cannot fit a shape: the computation finds no solution. Check the selection or choose another type."
+    "didNotConverge": "Cannot fit a shape: the computation finds no solution. Check the selection or choose another type.",
+    "invalidRelation": "Cannot fit a shape: the direction relation does not suit the type or the reference. Change the relation.",
+    "fixedNotApplicable": "Cannot fit a shape: a fixed value does not suit the type. Release the value or change the type.",
+    "invalidValue": "Cannot fit a shape: a fixed value is invalid. Radii must be greater than 0 and the half angle between 0° and 90°.",
+    "staleSelection": "The selection belongs to an older state of the scan. Select again.",
+    "notAFit": "The item is not a fitted shape."
+  },
+  "issues": {
+    "poorFit": "Only {{share, percent}} of the triangles are within the tolerance of ±{{tolerance, length}}. Check the selection or choose another type."
   }
 }

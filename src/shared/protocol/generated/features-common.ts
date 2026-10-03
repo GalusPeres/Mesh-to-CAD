@@ -2,6 +2,6 @@
 
 export type BodyOperation = 'newBody' | 'add' | 'cut' | 'intersect';
 
-export type StandardAxis = 'X' | 'Y' | 'Z';
-
 export type StandardPlane = 'XY' | 'YZ' | 'XZ';
+
+export type StandardAxis = 'X' | 'Y' | 'Z';

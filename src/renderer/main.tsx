@@ -11,6 +11,7 @@ import { startDocumentSync } from './kernel/documentSync';
 import { loadSettings, settingsStore } from './state/settingsStore';
 import { installTestHooks } from './testing/testHooks';
 import { TooltipProvider } from './ui/Tooltip/Tooltip';
+import { installAutomationBridge } from './automation/automationBridge';
 
 async function start(): Promise<void> {
   const bridge = window.m2c;
@@ -30,9 +31,9 @@ async function start(): Promise<void> {
   window.addEventListener('unhandledrejection', (event) =>
     bridge.app.log({ level: 'error', message: String(event.reason) }),
   );
-  bridge.window.onBeforeClose(() => bridge.window.confirmClose());
 
   startDocumentSync();
+  installAutomationBridge();
   if (bridge.app.testMode) installTestHooks();
 
   const root = document.getElementById('root');

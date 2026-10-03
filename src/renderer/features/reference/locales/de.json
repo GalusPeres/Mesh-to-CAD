@@ -1,9 +1,13 @@
 {
   "name": "Hilfsgeometrie",
   "kinds": {
-    "offsetPlane": "Ebene",
-    "midPlane": "Mittelebene",
-    "planeThroughAxis": "Ebene durch Achse",
-    "axisFromPlanes": "Achse"
+    "plane": "Ebene",
+    "axis": "Achse"
+  },
+  "summary": {
+    "offsetPlane": "{{plane}} {{distance}}",
+    "planeThroughAxis": "Durch {{axis}}, {{angle}}",
+    "midPlane": "Mitte von {{a}} und {{b}}",
+    "axisFromPlanes": "Schnitt von {{a}} und {{b}}"
   }
 }

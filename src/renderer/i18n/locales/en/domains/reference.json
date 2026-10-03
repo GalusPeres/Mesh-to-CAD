@@ -1,5 +1,8 @@
 {
   "errors": {
-    "unsupportedInput": "The chosen item does not provide suitable geometry."
+    "notAPlane": "Cannot create reference geometry: the chosen input is not a plane. Choose a plane.",
+    "notAnAxis": "Cannot create reference geometry: the chosen input has no axis. Choose an axis or a cylinder.",
+    "parallelPlanes": "Cannot create an axis: the planes are parallel ({{angle, angle}}) and do not intersect.",
+    "notParallel": "Cannot create a mid-plane: the planes are not parallel ({{angle, angle}})."
   }
 }

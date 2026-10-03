@@ -25,6 +25,7 @@
     "format": "prettier --write . && node scripts/py.mjs -m ruff format kernel",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
+    "usertest": "node tools/usertest/run.mjs",
     "kernel:test": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel -m \"not slow\"",
     "kernel:test:all": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel",
     "kernel:lint": "node scripts/py.mjs -m ruff check kernel && node scripts/py.mjs -m ruff format --check kernel && node scripts/py.mjs --cwd kernel -m mypy",
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@modelcontextprotocol/sdk": "1.30.1",
     "@playwright/test": "1.63.0",
     "@types/node": "26.6.3",
     "@types/react": "19.3.0",
@@ -68,6 +70,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.1",
     "vite": "8.3.1",
-    "vitest": "5.0.2"
+    "vitest": "5.0.2",
+    "zod": "4.6.5"
   }
 }

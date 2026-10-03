@@ -1,3 +1,12 @@
 {
-  "label": "Reduce"
+  "label": "Reduce",
+  "tooltip": "Lowers the number of triangles.",
+  "target": "Reduce to",
+  "trianglesUnit": "triangles",
+  "invalidTarget": "Choose a target between {{min, count}} and {{max, count}} triangles.",
+  "before": "Triangles before",
+  "after": "Triangles afterwards",
+  "nothingToDo": "The scan has no more triangles than the target.",
+  "hint": "Reducing takes a few seconds. Fits and regions are carried over to the reduced scan.",
+  "help": "Enter the target count. Flat areas lose triangles first; edges and fillets are kept. A reduced scan makes selecting and fitting faster; very fine details can be lost."
 }

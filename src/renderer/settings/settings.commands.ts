@@ -1,7 +1,7 @@
 import { Settings } from 'lucide-react';
 
 import type { AppCommand } from '../app/commands/types';
-import { openSettings } from './settingsDialogStore';
+import { openDialog } from './appDialogStore';
 
 export const commands: readonly AppCommand[] = [
   {
@@ -10,6 +10,6 @@ export const commands: readonly AppCommand[] = [
     icon: Settings,
     shortcuts: [{ key: ',', ctrl: true }],
     placement: { menu: 'edit', group: 9, order: 1 },
-    run: openSettings,
+    run: () => openDialog('settings'),
   },
 ];

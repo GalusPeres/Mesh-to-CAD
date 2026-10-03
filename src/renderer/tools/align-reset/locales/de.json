@@ -1,3 +1,5 @@
 {
-  "label": "Ausrichtung zurücksetzen"
+  "label": "Ausrichtung zurücksetzen",
+  "tooltip": "Scan wieder in seinen ursprünglichen Koordinaten zeigen.",
+  "notAligned": "Der Scan ist nicht ausgerichtet."
 }

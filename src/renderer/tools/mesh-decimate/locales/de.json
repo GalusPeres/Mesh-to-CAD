@@ -1,3 +1,12 @@
 {
-  "label": "Reduzieren"
+  "label": "Reduzieren",
+  "tooltip": "Verringert die Anzahl der Dreiecke.",
+  "target": "Reduzieren auf",
+  "trianglesUnit": "Dreiecke",
+  "invalidTarget": "Zielwert zwischen {{min, count}} und {{max, count}} Dreiecken wählen.",
+  "before": "Dreiecke vorher",
+  "after": "Dreiecke danach",
+  "nothingToDo": "Der Scan hat nicht mehr Dreiecke als der Zielwert.",
+  "hint": "Das Reduzieren dauert einige Sekunden. Einpassungen und Bereiche werden auf den reduzierten Scan übertragen.",
+  "help": "Die Zielanzahl eingeben; im Deutschen trennt der Punkt die Tausender (200.000). Flache Bereiche verlieren zuerst Dreiecke, Kanten und Rundungen bleiben erhalten. Ein reduzierter Scan macht Auswahl und Einpassen schneller; sehr feine Details können dabei verloren gehen."
 }

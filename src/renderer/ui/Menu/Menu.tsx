@@ -29,6 +29,35 @@ export function Menu({ trigger, children, align = 'start' }: MenuProps) {
   );
 }
 
+/** A menu opened at a point in the window (a context menu); `at` null closes it. */
+export function MenuAt({
+  at,
+  onClose,
+  children,
+}: {
+  at: { x: number; y: number } | null;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Dropdown.Root open={at !== null} onOpenChange={(open) => !open && onClose()} modal={false}>
+      <Dropdown.Trigger asChild>
+        <span aria-hidden className={styles.anchor} style={{ left: at?.x ?? 0, top: at?.y ?? 0 }} />
+      </Dropdown.Trigger>
+      <Dropdown.Portal>
+        <Dropdown.Content
+          className={styles.content}
+          align="start"
+          sideOffset={2}
+          collisionPadding={8}
+        >
+          {children}
+        </Dropdown.Content>
+      </Dropdown.Portal>
+    </Dropdown.Root>
+  );
+}
+
 export interface MenuItemProps {
   label: string;
   icon?: LucideIcon;

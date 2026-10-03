@@ -1,5 +1,19 @@
 {
   "errors": {
-    "parallelInputs": "Cannot align: the second face is parallel to the first."
+    "parallelInputs": "Cannot align: the secondary datum is parallel to the primary datum and sets neither a direction nor a position. Choose a face or axis in another direction.",
+    "noPoint": "Cannot align: the datums do not define an origin. Choose a face in the third direction as the tertiary datum.",
+    "inputNotFound": "Cannot align: a datum no longer exists or is suppressed. Choose the datum again.",
+    "unsupportedInput": "Cannot align: a datum is neither a plane nor an axis, or depends on the alignment itself. Choose another datum.",
+    "tooFewFaces": "Cannot align: a datum has too few triangles ({{count, count}}, at least {{min, count}}).",
+    "fitFailed": "Cannot align: a datum cannot be fitted. Check the selection.",
+    "invalidParams": "Cannot align: the stored datums are invalid. Choose the datums again."
+  },
+  "issues": {
+    "pcaFallback": "No large planes found; aligned to the principal axes of the scan. Check the orientation or use Align to faces.",
+    "singlePlane": "Only one large plane found; the rotation about Z follows the main direction of the scan."
+  },
+  "progress": {
+    "detectingPlanes": "Finding planes in the scan",
+    "fittingInputs": "Fitting the datums"
   }
 }

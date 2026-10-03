@@ -2,19 +2,122 @@
   "project": "Projekt",
   "tree": {
     "scan": "Scan",
+    "scanSummary": "{{file}} · {{faces}}",
     "faces_one": "{{formatted}} Dreieck",
     "faces_other": "{{formatted}} Dreiecke",
     "regions": "Bereiche ({{count}})",
     "region": "Bereich {{number}}",
+    "regionSummary": "{{kind}}, RMS {{rms}}",
+    "regionKinds": {
+      "plane": "Ebenen ({{count}})",
+      "cylinder": "Zylinder ({{count}})",
+      "cone": "Kegel ({{count}})",
+      "sphere": "Kugeln ({{count}})",
+      "torus": "Tori ({{count}})",
+      "freeform": "Freiform ({{count}})",
+      "unknown": "Unbestimmt ({{count}})"
+    },
+    "onlyUnused": "Nur nicht verwendete",
     "bodies": "Körper ({{count}})",
     "body": "Körper {{number}}",
+    "origin": "Ursprung",
+    "axes": "Achsen",
     "history": "Verlauf",
     "alignment": "Ausrichtung"
   },
+  "regionKind": {
+    "plane": "Ebene",
+    "cylinder": "Zylinder",
+    "cone": "Kegel",
+    "sphere": "Kugel",
+    "torus": "Torus",
+    "freeform": "Freiform",
+    "unknown": "Unbestimmt"
+  },
+  "alignmentMethod": {
+    "none": "Scan-Koordinaten",
+    "auto": "Automatisch",
+    "faces": "An Flächen"
+  },
+  "operations": {
+    "repair": "Repariert",
+    "decimate_one": "Reduziert auf {{formatted}} Dreieck",
+    "decimate_other": "Reduziert auf {{formatted}} Dreiecke",
+    "removeSmallParts_one": "{{formatted}} kleines Teil entfernt",
+    "removeSmallParts_other": "{{formatted}} kleine Teile entfernt",
+    "fillHoles_one": "{{formatted}} Loch gefüllt",
+    "fillHoles_other": "{{formatted}} Löcher gefüllt",
+    "deleteFaces_one": "{{formatted}} Dreieck gelöscht",
+    "deleteFaces_other": "{{formatted}} Dreiecke gelöscht",
+    "other": "Bearbeitet"
+  },
+  "state": {
+    "ok": "OK",
+    "warning": "Warnung",
+    "error": "Fehler",
+    "suppressed": "Unterdrückt",
+    "skipped": "Übersprungen: eine Eingabe fehlt"
+  },
+  "menu": {
+    "edit": "Bearbeiten",
+    "rename": "Umbenennen",
+    "hide": "Ausblenden",
+    "show": "Einblenden",
+    "isolate": "Isolieren",
+    "showAll": "Alle einblenden",
+    "suppress": "Unterdrücken",
+    "unsuppress": "Unterdrückung aufheben",
+    "delete": "Löschen"
+  },
+  "rename": {
+    "title": "Umbenennen",
+    "name": "Name",
+    "hint": "Leer lassen für den Standardnamen."
+  },
+  "delete": {
+    "title": "Löschen",
+    "withDependents": "{{name}} wird von {{dependents}} verwendet. Alle {{count}} löschen?",
+    "confirm": "Löschen"
+  },
+  "undo": {
+    "rename": "Umbenennen",
+    "suppress": "Unterdrücken",
+    "unsuppress": "Unterdrückung aufheben",
+    "delete": "Löschen"
+  },
   "properties": {
+    "scanSection": "Scan",
+    "featureSection": "Element",
+    "bodySection": "Körper",
+    "regionSection": "Bereich",
     "file": "Datei",
+    "unit": "Importeinheit",
     "triangles": "Dreiecke",
     "vertices": "Eckpunkte",
-    "noise": "Scanrauschen"
+    "noise": "Scanrauschen",
+    "tolerance": "Toleranz",
+    "operations": "Vorbereitung",
+    "unknown": "Unbekannt",
+    "type": "Typ",
+    "summary": "Werte",
+    "status": "Status",
+    "skipped": "Nicht berechnet: eine Eingabe fehlt oder ist fehlerhaft. Die Eingaben im Verlauf prüfen.",
+    "suppressed": "Unterdrückt: wird beim Neuaufbau übersprungen.",
+    "createdBy": "Erzeugt von",
+    "changedBy": "Zuletzt geändert von",
+    "volume": "Volumen",
+    "area": "Oberfläche",
+    "solids": "Volumenkörper",
+    "maxTolerance": "Größte Kantentoleranz",
+    "validity": "Gültigkeit",
+    "valid": "Geschlossen und gültig",
+    "invalid": "Ungültig",
+    "rms": "RMS",
+    "usedBy": "Verwendet von",
+    "unused": "Nicht verwendet"
+  },
+  "blocked": {
+    "toolOpen": "Erst das offene Werkzeug mit OK oder Abbrechen schließen.",
+    "busy": "Bitte warten, bis die Berechnung fertig ist."
   }
 }

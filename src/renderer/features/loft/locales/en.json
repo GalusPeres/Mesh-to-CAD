@@ -1,3 +1,11 @@
 {
-  "name": "Loft"
+  "name": "Loft",
+  "summary_one": "{{count}} section over {{length}}",
+  "summary_other": "{{count}} sections over {{length}}",
+  "along": "{{axis}}: {{text}}",
+  "stats": {
+    "sections": "Sections",
+    "sectionRms": "Section deviation RMS",
+    "sectionMax": "Section deviation maximum"
+  }
 }

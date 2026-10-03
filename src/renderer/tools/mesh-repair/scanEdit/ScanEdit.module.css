@@ -1,0 +1,17 @@
+.step {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.count {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.hint {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}

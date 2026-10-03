@@ -1,5 +1,14 @@
 {
   "errors": {
-    "noBody": "No body to compare."
+    "noBody": "No body to compare with.",
+    "unknownBody": "Cannot compare: a chosen body no longer exists.",
+    "unknownItem": "Cannot measure: the item no longer exists.",
+    "itemUnavailable": "Cannot measure: the item failed or is suppressed.",
+    "notMeasurable": "Cannot measure: the item has no plane, axis or point.",
+    "noPreview": "The preview is no longer available."
+  },
+  "progress": {
+    "preparing": "Building the reference surface",
+    "comparing": "Computing the deviation"
   }
 }

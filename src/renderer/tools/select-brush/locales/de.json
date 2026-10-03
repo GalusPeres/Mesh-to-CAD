@@ -1,3 +1,5 @@
 {
-  "label": "Pinsel"
+  "label": "Pinsel",
+  "tooltip": "Dreiecke unter dem Pinsel auswählen. Strg entfernt.",
+  "help": "Mit gedrückter linker Maustaste über den Scan malen; mit Strg wird entfernt. Die Pinselgröße ändert sich mit [ und ] oder Strg+Mausrad. Nur sichtbare wählt keine verdeckten Dreiecke. Jeder Strich lässt sich mit Strg+Z rückgängig machen; Esc beendet den Pinsel."
 }

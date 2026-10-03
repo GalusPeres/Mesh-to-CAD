@@ -1,3 +1,41 @@
 {
-  "label": "Freeform patch"
+  "label": "Freeform patch",
+  "tooltip": "Fit a B-spline surface to a region of the scan, for example to split a body.",
+  "help": "Mark the triangles of a curved surface with the brush or smart select, or choose a region. The surface is fitted as a height field and extended by the margin beyond the triangles, so it splits a body reliably. The span count is chosen automatically; more spans follow the scan more closely, stronger smoothing bridges gaps. Before OK, check that at least 95 % of the triangles are within the tolerance.",
+  "noScan": "No scan loaded.",
+  "source": "Input",
+  "sources": {
+    "selection": "Selection",
+    "region": "Region"
+  },
+  "region": "Region",
+  "choose": "Choose …",
+  "triangles": "Triangles",
+  "inputMissing": "Mark triangles with the brush or smart select, or choose a region (at least {{min}}).",
+  "inputsFirst": "Complete the input.",
+  "autoSpans": "Choose spans automatically",
+  "spans": {
+    "u": "Spans U",
+    "v": "Spans V"
+  },
+  "smoothing": "Smoothing",
+  "smoothingLevels": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "margin": "Margin",
+  "result": {
+    "noise": "Scan noise",
+    "rms": "RMS",
+    "max": "Maximum",
+    "withinTolerance": "Within tolerance",
+    "pass": "Within tolerance",
+    "fail": "Not within tolerance",
+    "faces": "Triangles",
+    "spans": "Spans",
+    "spansValue": "{{u}} × {{v}}",
+    "normalSpread": "Normal spread",
+    "poorFit": "Only {{share}} % of the triangles are within the tolerance of ±{{tolerance}}. Use more spans, less smoothing or a smaller selection."
+  }
 }

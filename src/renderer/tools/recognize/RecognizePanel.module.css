@@ -1,0 +1,87 @@
+.hint {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}
+
+.progress {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.listHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.listActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 360px;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 16px 10px 1fr;
+  align-items: center;
+  gap: var(--space-6);
+  min-height: 32px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+}
+
+.hovered {
+  background: var(--bg-hover);
+}
+
+.box {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  color: var(--text-secondary);
+}
+
+.details {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,3 +1,14 @@
 {
-  "label": "STEP exportieren …"
+  "label": "STEP exportieren …",
+  "tooltip": "Körper als STEP-Datei speichern",
+  "help": "Die gewählten Körper werden in Millimetern gespeichert, jeder als eigenes Teil mit dem Projektnamen. Nach dem Schreiben wird die Datei neu eingelesen und mit dem Modell verglichen; erst dann ersetzt sie eine vorhandene Datei. AP214 lesen alle gängigen CAD-Programme, AP242 ist der neuere Standard.",
+  "noBody": "Kein Körper zum Exportieren vorhanden.",
+  "schema": "Format",
+  "schemas": {
+    "AP214": "AP214 (Standard)",
+    "AP242": "AP242"
+  },
+  "dialogTitle": "STEP exportieren",
+  "filterName": "STEP-Dateien",
+  "saved": "STEP gespeichert: {{file}} ({{details}})"
 }

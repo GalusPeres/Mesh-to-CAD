@@ -1,3 +1,8 @@
 {
-  "label": "Auswahl löschen"
+  "label": "Auswahl löschen",
+  "tooltip": "Löscht die ausgewählten Dreiecke aus dem Scan.",
+  "nothingSelected": "Keine Dreiecke ausgewählt.",
+  "deleted_one": "{{count, count}} Dreieck gelöscht",
+  "deleted_other": "{{count, count}} Dreiecke gelöscht",
+  "onlyInPrepare": "Dreiecke lassen sich nur unter Vorbereiten löschen."
 }

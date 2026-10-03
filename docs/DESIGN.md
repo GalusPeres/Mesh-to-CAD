@@ -560,8 +560,8 @@ region looks like the selection blue.
 | `body`                             | `#C4A57A` (warm sand), roughness 0.45, metalness 0; polygon offset in front of the scan, so no z-fighting                  |
 | `bodyEdges`                        | 1 px lines `#2A2723` (dark theme) / `#3A3630` (light theme)                                                                |
 | `previewBody`                      | Body colour; previous preview at 50 % while computing                                                                      |
-| `construction`                     | Amber `#D39B2A` fill at 20 % opacity, drawn with depth offset                                                              |
-| `constructionEdges`                | Amber `#D39B2A` at 100 %, 1 px                                                                                             |
+| `construction`                     | Amber `#D39B2A` fill at 45 % opacity, drawn with depth offset                                                              |
+| `constructionEdges`                | Amber `#D39B2A` at 100 %, 2 px                                                                                             |
 | `patch`                            | Amber `#D39B2A` at 35 % with 1 px iso-lines every 10 % of the parameter range                                              |
 | `sketch`                           | 2 px lines in `--text`; selected entity `--accent-text`; pass/fail `#4DAF63` / `#D24B35`                                   |
 | `sketchPoints`, `sectionPoints`    | 3 px dots, `#4DAF63` while choosing the section, `--text-secondary` in sketch mode                                         |

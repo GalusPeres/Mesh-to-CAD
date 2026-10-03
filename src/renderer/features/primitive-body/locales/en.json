@@ -1,3 +1,5 @@
 {
-  "name": "Primitive body"
+  "name": "Primitive",
+  "fromScan": "length from scan",
+  "fromScanMargin": "length from scan + {{margin}}"
 }

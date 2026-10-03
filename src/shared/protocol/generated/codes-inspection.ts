@@ -2,11 +2,19 @@
 
 export const INSPECTION_ERROR_CODES = [
   'inspection.noBody',
+  'inspection.unknownBody',
+  'inspection.unknownItem',
+  'inspection.itemUnavailable',
+  'inspection.notMeasurable',
+  'inspection.noPreview',
 ] as const;
 export type InspectionErrorCode = (typeof INSPECTION_ERROR_CODES)[number];
 
 export const INSPECTION_ISSUE_CODES = [] as const;
 export type InspectionIssueCode = (typeof INSPECTION_ISSUE_CODES)[number];
 
-export const INSPECTION_PROGRESS_STAGES = [] as const;
+export const INSPECTION_PROGRESS_STAGES = [
+  'inspection.preparing',
+  'inspection.comparing',
+] as const;
 export type InspectionProgressStage = (typeof INSPECTION_PROGRESS_STAGES)[number];

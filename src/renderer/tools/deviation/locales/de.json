@@ -1,3 +1,34 @@
 {
-  "label": "Abweichung"
+  "label": "Abweichung",
+  "tooltip": "Scan farbig mit den Körpern vergleichen",
+  "help": "Die Abweichung ist der Abstand jedes Scanpunkts zur nächsten Körperfläche: positiv, wo der Scan außerhalb liegt (Material zu viel), negativ, wo er innerhalb liegt. Punkte weiter als der maximale Suchabstand bleiben grau. Mit D wird die Farbdarstellung ein- und ausgeschaltet.",
+  "noBody": "Kein Körper zum Vergleichen vorhanden.",
+  "bodies": "Körper",
+  "noBodySelected": "Mindestens einen Körper wählen.",
+  "maxDistance": "Max. Suchabstand",
+  "scaleRange": "Skalenbereich",
+  "rangeModes": {
+    "auto": "Automatisch",
+    "manual": "Manuell"
+  },
+  "range": "Bereich ±",
+  "rangeTooSmall": "Der Bereich muss größer als {{min}} sein (3 × Toleranz). Bis dahin gilt der automatische Bereich.",
+  "scheme": "Farbschema",
+  "schemes": {
+    "standard": "Standard",
+    "colorBlind": "Farbfehlsichtigkeit"
+  },
+  "result": {
+    "noise": "Scanrauschen",
+    "mean": "Mittelwert",
+    "std": "Standardabweichung",
+    "rms": "RMS",
+    "max": "Maximum + / −",
+    "within": "In Toleranz",
+    "points": "Scanpunkte",
+    "noData": "Ohne Daten"
+  },
+  "passed": "Mindestens 95 % in Toleranz",
+  "failed": "Weniger als 95 % in Toleranz",
+  "verdictFailed": "Nur {{share}} der Scanpunkte liegen in der Toleranz ±{{tolerance}}. Körper und Ausrichtung prüfen."
 }

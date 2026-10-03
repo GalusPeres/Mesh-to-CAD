@@ -1,6 +1,59 @@
 {
   "status": {
-    "selected_one": "{{formatted}} selected",
-    "selected_other": "{{formatted}} selected"
+    "selected_one": "{{formatted}} triangle selected",
+    "selected_other": "{{formatted}} triangles selected",
+    "hidden_one": "{{formatted}} hidden",
+    "hidden_other": "{{formatted}} hidden",
+    "clear": "Clear selection (Ctrl+D)"
+  },
+  "hints": {
+    "select-brush": "Left mouse button: add · Ctrl: remove · [ ]: brush size · Right mouse button: orbit",
+    "select-brushRemoving": "Left mouse button: remove · [ ]: brush size · Right mouse button: orbit",
+    "select-smart": "Click: add surface · Ctrl+click: remove · Ctrl+mouse wheel: tolerance",
+    "select-smartRemoving": "Click: remove surface · Ctrl+mouse wheel: tolerance",
+    "select-lasso": "Drag with the left mouse button: draw a shape · Ctrl: remove · Esc: end lasso",
+    "select-lassoRemoving": "Drag with the left mouse button: remove from the selection · Esc: end lasso",
+    "select-rectangle": "Drag with the left mouse button: draw a rectangle · Ctrl: remove · Esc: end rectangle",
+    "select-rectangleRemoving": "Drag with the left mouse button: remove from the selection · Esc: end rectangle",
+    "smartBusy": "Finding surface …",
+    "smartFound_one": "{{formatted}} triangle",
+    "smartFound_other": "{{formatted}} triangles"
+  },
+  "options": {
+    "title": "Selection options",
+    "brushSize": "Brush size",
+    "pixels": "px",
+    "visibleOnly": "Visible only",
+    "throughPart": "Through the part",
+    "smartMode": "Surface type",
+    "modePrimitive": "Shape",
+    "modeSmooth": "Smooth",
+    "tolerance": "Tolerance",
+    "automatic": "Automatic"
+  },
+  "commands": {
+    "selectAllVisible": "Select all visible",
+    "clear": "Clear selection",
+    "invert": "Invert selection",
+    "grow": "Grow selection",
+    "shrink": "Shrink selection",
+    "hide": "Hide selection",
+    "showAll": "Show all triangles",
+    "isolate": "Isolate selection",
+    "saveAsRegion": "Save selection as region",
+    "selectRegion": "Select region",
+    "addToRegion": "Add selection to region",
+    "removeFromRegion": "Remove selection from region",
+    "mergeRegions": "Merge regions",
+    "renameRegion": "Rename region …",
+    "deleteRegions": "Delete region"
+  },
+  "regions": {
+    "defaultName": "Region {{number}}",
+    "saved_one": "Region with {{count, count}} triangle saved.",
+    "saved_other": "Region with {{count, count}} triangles saved.",
+    "renameTitle": "Rename region",
+    "name": "Name",
+    "renameHint": "Without a name the region is called “Region N” again."
   }
 }

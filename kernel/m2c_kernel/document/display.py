@@ -237,13 +237,15 @@ def _scan_factory(key: str, document: Document, blobs: BlobStore) -> PayloadFact
 
     def build() -> ScenePayload:
         from m2c_kernel.mesh.normals import vertex_normals
+        from m2c_kernel.mesh.smoothing import taubin
 
         positions = blobs.get(scan.vertices)
-        faces = blobs.get(scan.faces)
-        normals = vertex_normals(positions.astype(np.float64), faces.astype(np.int64))
+        faces = blobs.get(scan.faces).astype(np.int64)
+        points = taubin(positions.astype(np.float64), faces, scan.display_smoothing)
+        normals = vertex_normals(points, faces)
         return ScanPayload(
             key=key,
-            positions=positions.astype(np.float32),
+            positions=points.astype(np.float32),
             indices=faces.astype(np.uint32),
             normals=normals.astype(np.float32),
         )

@@ -1,0 +1,28 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: calc(var(--status-bar-height) - var(--space-4));
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--bg-hover);
+}
+
+.button:active,
+.button[aria-expanded='true'] {
+  background: var(--bg-pressed);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

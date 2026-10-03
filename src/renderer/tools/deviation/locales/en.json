@@ -1,3 +1,34 @@
 {
-  "label": "Deviation"
+  "label": "Deviation",
+  "tooltip": "Compare the scan with the bodies in colour",
+  "help": "The deviation is the distance of every scan point to the nearest body surface: positive where the scan lies outside (excess material), negative where it lies inside. Points farther than the maximum search distance stay grey. D switches the colour display on and off.",
+  "noBody": "No body to compare with.",
+  "bodies": "Bodies",
+  "noBodySelected": "Select at least one body.",
+  "maxDistance": "Max. search distance",
+  "scaleRange": "Scale range",
+  "rangeModes": {
+    "auto": "Automatic",
+    "manual": "Manual"
+  },
+  "range": "Range ±",
+  "rangeTooSmall": "The range must be larger than {{min}} (3 × tolerance). Until then the automatic range applies.",
+  "scheme": "Colour scheme",
+  "schemes": {
+    "standard": "Standard",
+    "colorBlind": "Colour-blind safe"
+  },
+  "result": {
+    "noise": "Scan noise",
+    "mean": "Mean",
+    "std": "Standard deviation",
+    "rms": "RMS",
+    "max": "Maximum + / −",
+    "within": "Within tolerance",
+    "points": "Scan points",
+    "noData": "Without data"
+  },
+  "passed": "At least 95 % within tolerance",
+  "failed": "Less than 95 % within tolerance",
+  "verdictFailed": "Only {{share}} of the scan points are within the tolerance of ±{{tolerance}}. Check the bodies and the alignment."
 }

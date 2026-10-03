@@ -34,6 +34,7 @@ export interface PreviewResult {
   status: FeatureStatus | null;
   items: SceneItem[];
   bodies: BodyInfo[];
+  resultKey: string | null;
 }
 
 export interface CheckoutParams {

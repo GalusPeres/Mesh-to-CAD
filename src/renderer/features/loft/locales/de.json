@@ -1,3 +1,11 @@
 {
-  "name": "Loft"
+  "name": "Loft",
+  "summary_one": "{{count}} Schnitt über {{length}}",
+  "summary_other": "{{count}} Schnitte über {{length}}",
+  "along": "{{axis}}: {{text}}",
+  "stats": {
+    "sections": "Schnitte",
+    "sectionRms": "Schnittabweichung RMS",
+    "sectionMax": "Schnittabweichung maximal"
+  }
 }

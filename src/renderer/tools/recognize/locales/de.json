@@ -1,0 +1,37 @@
+{
+  "label": "Formen erkennen",
+  "tooltip": "Findet ebene Flächen und darauf Knöpfe, Taschen, Langlöcher, Ringsegmente und Bohrungen und baut sie als bearbeitbare Skizzen und Extrusionen.",
+  "found": "Gefunden",
+  "computing": "Formen werden erkannt …",
+  "stop": "Abbrechen",
+  "stopped": "Erkennung abgebrochen.",
+  "compute": "Erneut erkennen",
+  "nothingFound": "Keine Formen gefunden. Ist der Scan ausgerichtet und hat er ebene Flächen?",
+  "featureCount_one": "{{formatted}} Form",
+  "featureCount_other": "{{formatted}} Formen",
+  "all": "Alle",
+  "none": "Keine",
+  "roles": {
+    "boss": "Erhebung",
+    "pocket": "Tasche",
+    "hole": "Bohrung"
+  },
+  "shapeNames": {
+    "circle": "Kreis",
+    "slot": "Langloch",
+    "roundedRect": "Rechteck",
+    "ringSegment": "Ringsegment",
+    "profile": "Freie Kontur"
+  },
+  "height": "Höhe {{value}}",
+  "depth": "Tiefe {{value}}",
+  "through": "durchgehend",
+  "domed": "gewölbt",
+  "nested": "in Tasche",
+  "profileHint": "Freie Konturen lassen sich nicht automatisch bauen: mit dem Skizzenwerkzeug nachzeichnen.",
+  "target": "Ziel",
+  "targetBody": "Körper",
+  "newBodies": "Neue Körper",
+  "needsBody": "Taschen und Bohrungen werden aus einem Körper geschnitten. Erst den Grundkörper erstellen und hier wählen; ohne Körper werden nur die Erhebungen gebaut.",
+  "help": "Die Erkennung liest den ausgerichteten Scan wie ein Konstrukteur: ebene Flächen und darauf Erhebungen, Taschen und Bohrungen mit Kreis, Langloch, Rechteck oder Ringsegment als Umriss. Gleiche Formen werden gleich groß gemacht, Maße auf 0,05 mm gerundet. Im Bild zeigen Ringe Fuß und Kopf jeder Form; ein Klick auf die Beschriftung oder den Haken wählt sie ab. OK baut je Fläche eine Ebene, je Höhe eine Skizze und je Gruppe eine Extrusion – alles danach im Projektbaum änderbar."
+}

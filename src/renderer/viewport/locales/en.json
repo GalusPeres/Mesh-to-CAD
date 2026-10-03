@@ -1,9 +1,26 @@
 {
   "commands": {
     "fitAll": "Fit all",
+    "fitSelection": "Fit selection",
     "standardViews": "Standard views",
     "perspective": "Perspective",
-    "cycleVisibility": "Scan / bodies / both"
+    "cycleVisibility": "Switch visibility",
+    "sectionPlane": "Section plane"
+  },
+  "visibility": {
+    "label": "Visibility",
+    "both": "Scan and bodies",
+    "scan": "Scan only",
+    "bodies": "Bodies only"
+  },
+  "display": {
+    "label": "Display",
+    "shaded": "Shaded",
+    "shadedEdges": "Shaded + edges",
+    "flat": "Flat",
+    "xray": "X-ray",
+    "regions": "Regions",
+    "deviation": "Deviation"
   },
   "views": {
     "front": "Front",
@@ -13,5 +30,10 @@
     "top": "Top",
     "bottom": "Bottom",
     "iso": "Isometric"
+  },
+  "viewCube": {
+    "home": "Isometric view",
+    "rollLeft": "Rotate view 90° to the left",
+    "rollRight": "Rotate view 90° to the right"
   }
 }

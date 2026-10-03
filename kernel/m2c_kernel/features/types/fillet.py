@@ -1,17 +1,27 @@
-"""Fillet and chamfer: constant-size rounding or bevelling of body edges."""
+"""Fillet and chamfer: constant-size rounding or bevelling of body edges.
+
+Edges are referenced by the face tags on both sides plus a point on the edge
+(ARCHITECTURE.md 4.6), so the references still resolve after upstream changes
+such as a new extrusion height. _Radius aus Scan_ is a helper of the tool, not
+a parameter: the stored size is what the user accepted.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
-from m2c_kernel.features.common import feature_refs, not_implemented
-from m2c_kernel.features.registry import ReadSet, Refs, feature_type
+from m2c_kernel.cad.edges import resolve_edges
+from m2c_kernel.cad.fillet import fillet_edges
+from m2c_kernel.codes.cad import ProgressStage
+from m2c_kernel.document.results import BodyUpdate, FeatureOutput
+from m2c_kernel.features.common import feature_refs
+from m2c_kernel.features.registry import Refs, feature_type
 from m2c_kernel.geometry import Vec3
+from m2c_kernel.protocol.wire import Range
 
 if TYPE_CHECKING:
     from m2c_kernel.document.rebuild import EvalContext
-    from m2c_kernel.document.results import FeatureOutput
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -31,12 +41,11 @@ class FilletParams:
     target_body: str
     edges: list[EdgeRef]
     mode: Literal["fillet", "chamfer"] = "fillet"
-    size: float
-    size_from_scan: bool = False
-    """Take the radius from a cylinder fitted to the scan along the picked edges."""
+    size: Annotated[float, Range(0.001, None)]
+    """Radius of a fillet, distance of a chamfer (mm)."""
 
 
-@feature_type("fillet", params=FilletParams, reads=ReadSet(mesh=True))
+@feature_type("fillet", params=FilletParams)
 class Fillet:
     @staticmethod
     def references(params: FilletParams) -> Refs:
@@ -44,4 +53,8 @@ class Fillet:
 
     @staticmethod
     def evaluate(ctx: EvalContext, params: FilletParams) -> FeatureOutput:
-        raise not_implemented("fillet")
+        body = ctx.body(params.target_body)
+        edges = resolve_edges(body, [(edge.faces, edge.point) for edge in params.edges])
+        with ctx.job.native(ProgressStage.FILLET):
+            rounded = fillet_edges(body, edges, params.size, params.mode, ctx.feature_id)
+        return FeatureOutput(bodies=BodyUpdate(changed={params.target_body: rounded}))

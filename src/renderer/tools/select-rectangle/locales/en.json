@@ -1,3 +1,5 @@
 {
-  "label": "Rectangle"
+  "label": "Rectangle",
+  "tooltip": "Select the triangles inside a rectangle.",
+  "help": "Hold the left mouse button and drag a rectangle; hold Ctrl to remove. Through the part also selects covered triangles."
 }

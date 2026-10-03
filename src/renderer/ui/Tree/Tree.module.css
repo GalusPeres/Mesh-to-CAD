@@ -41,11 +41,18 @@
 }
 
 .label {
+  flex: 0 0 auto;
+  max-width: 65%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* Rows never scroll sideways: the name keeps up to 65 % of the row, the summary takes the rest. */
 .secondary {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin-left: auto;
   padding-left: var(--space-8);
   color: var(--text-secondary);

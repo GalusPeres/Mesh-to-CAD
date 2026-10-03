@@ -1,3 +1,11 @@
 {
-  "label": "Export STL …"
+  "label": "Export STL …",
+  "tooltip": "Save bodies as an STL file",
+  "help": "The chosen bodies are saved as a triangle mesh in millimetres, for example for 3D printing. The accuracy is the largest distance of the triangles from the exact surface: smaller values give more triangles.",
+  "noBody": "No body to export.",
+  "deflection": "Accuracy",
+  "deflectionHint": "0.010 mm for 3D printing, 0.050 mm for a preview.",
+  "dialogTitle": "Export STL",
+  "filterName": "STL files",
+  "saved": "STL saved: {{file}} ({{details}})"
 }

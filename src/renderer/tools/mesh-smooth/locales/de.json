@@ -1,3 +1,12 @@
 {
-  "label": "Glätten"
+  "label": "Glätten",
+  "tooltip": "Glättet die Darstellung des Scans.",
+  "iterations": "Durchgänge",
+  "offHint": "0 schaltet das Glätten aus.",
+  "current": "Aktuell",
+  "off": "aus",
+  "passes_one": "{{count}} Durchgang",
+  "passes_other": "{{count}} Durchgänge",
+  "displayOnly": "Das Glätten wirkt nur auf die Darstellung und den STL-Export des Scans. Einpassen, Skizzen und Abweichung verwenden immer die gemessenen Punkte.",
+  "help": "Mehr Durchgänge glätten stärker, runden aber auch Kanten. Die Einstellung lässt sich jederzeit ändern oder mit 0 ausschalten; der Scan selbst bleibt unverändert."
 }

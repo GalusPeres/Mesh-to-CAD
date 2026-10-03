@@ -147,6 +147,8 @@ export interface ViewportInteraction {
   onPointerUp?(event: ViewportPointerEvent): boolean | void;
   onWheel?(event: ViewportPointerEvent & { deltaY: number }): boolean | void;
   onKeyDown?(event: KeyboardEvent): boolean | void;
+  /** A right click without a drag (the camera did not orbit): open a context menu. */
+  onContextMenu?(event: ViewportPointerEvent): boolean | void;
 }
 
 /** A group of three.js objects owned by a tool; removed from the scene on dispose. */
@@ -154,6 +156,43 @@ export interface Overlay {
   add(object: unknown): void;
   clear(): void;
   dispose(): void;
+  /**
+   * Draw a material's geometry in front of the scan wherever it lies within the
+   * tolerance of it, like bodies (viewport/depthBias.ts). `scale` 1 for surfaces,
+   * more for lines and points that sit on them.
+   */
+  applyDepthBias(material: unknown, scale?: number): void;
+  /** `applyDepthBias` for a fat-line `LineMaterial` (lines wider than one pixel). */
+  applyFatLineDepthBias(material: unknown, scale?: number): void;
+}
+
+/** The scan surface point nearest to a point, in part coordinates. */
+export interface ScanSurfacePoint {
+  point: Vec3;
+  /** Outward unit normal of the scan triangle there. */
+  normal: Vec3;
+  /** Signed distance of the query point: positive outside the material. */
+  distance: number;
+}
+
+export interface ScanSurfaceQueries {
+  /**
+   * The scan point nearest to a part-coordinate point within `maxDistance`, or null.
+   * Null as well until the scan's search structure exists (after `scanTopology()`).
+   */
+  closest(point: Vec3, maxDistance: number): ScanSurfacePoint | null;
+  /**
+   * Signed distances of part-coordinate points (x, y, z triples) to the scan:
+   * positive outside the material, NaN beyond `maxDistance`. With `indices` only
+   * those points are measured. Returns false (and writes nothing) until the scan's
+   * search structure exists.
+   */
+  distances(
+    points: Float32Array,
+    out: Float32Array,
+    maxDistance: number,
+    indices?: Uint32Array,
+  ): boolean;
 }
 
 export interface ScanTopology {
@@ -178,10 +217,14 @@ export interface Viewport {
     options: { visibleOnly: boolean },
   ): Promise<Uint32Array>;
   scanTopology(): Promise<ScanTopology>;
+  /** Closest points on the scan and distances to it (snapping, live deviation). */
+  readonly scanSurface: ScanSurfaceQueries;
   screenToRay(at: ScreenPoint): Ray;
   worldToScreen(point: Vec3): ScreenPoint | null;
   /** Draw the display items of a tool preview (`doc.preview` result); [] removes them. */
   setPreviewItems(owner: string, items: readonly SceneItem[]): void;
+  /** Hide the document items of one owner (a feature being edited in place); null shows all. */
+  setOwnerHidden(owner: string | null): void;
   /** Hover or selection highlight of an object drawn in the scene. */
   highlight(target: { bodyId: string; edge?: number } | { owner: string } | null): void;
   addInteraction(interaction: ViewportInteraction): () => void;

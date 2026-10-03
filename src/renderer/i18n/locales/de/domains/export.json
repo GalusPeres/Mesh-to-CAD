@@ -1,5 +1,22 @@
 {
   "errors": {
-    "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden."
+    "noBody": "Export nicht möglich: Es gibt keinen Körper.",
+    "unknownBody": "Export nicht möglich: Ein gewählter Körper ist nicht mehr vorhanden.",
+    "unknownSurface": "Export nicht möglich: Eine gewählte Fläche ist nicht mehr vorhanden.",
+    "blocked": "Export gesperrt: Ein Körper hat die Prüfung nicht bestanden. Die Körperliste nennt den Grund.",
+    "invalidNames": "Export nicht möglich: Der Produktname fehlt oder ist länger als 200 Zeichen.",
+    "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden. Ordner und Schreibrechte prüfen.",
+    "verifyFailed": "Export fehlgeschlagen: Die geschriebene Datei stimmt nicht mit dem Modell überein. Eine vorhandene Datei ist unverändert."
+  },
+  "issues": {
+    "notValid": "{{body}} ist ungültig",
+    "notClosed": "{{body}} ist nicht geschlossen",
+    "notOneSolid": "{{body}} besteht nicht aus genau einem Volumenkörper",
+    "noVolume": "{{body}} hat kein Volumen",
+    "highTolerance": "{{body}} hat große Kantentoleranzen (bis {{tolerance}})"
+  },
+  "progress": {
+    "writing": "Datei wird geschrieben",
+    "verifying": "Datei wird geprüft"
   }
 }

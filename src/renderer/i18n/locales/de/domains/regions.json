@@ -1,5 +1,18 @@
 {
   "errors": {
-    "unknownRegion": "Der Bereich existiert nicht mehr."
+    "noScan": "Kein Scan geladen.",
+    "staleScan": "Der Scan hat sich geändert. Die Auswahl erneut treffen.",
+    "invalidFace": "Ungültiges Dreieck gewählt.",
+    "emptySelection": "Die Auswahl ist leer. Zuerst Dreiecke auswählen.",
+    "unknownRegion": "Der Bereich existiert nicht mehr.",
+    "mergeNeedsTwo": "Zum Zusammenführen mindestens zwei Bereiche wählen.",
+    "tooManyRegions": "Zu viele Bereiche. Empfindlichkeit verringern oder Mindestgröße erhöhen."
+  },
+  "progress": {
+    "analysing": "Scan analysieren",
+    "reducing": "Scan vereinfachen",
+    "growing": "Bereiche finden",
+    "refining": "Grenzen verfeinern",
+    "transferring": "Bereiche übertragen"
   }
 }

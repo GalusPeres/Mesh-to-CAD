@@ -1,0 +1,94 @@
+/* Controls side by side; a segmented control takes the free width. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.row > [role='radiogroup'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.labelled {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.separator {
+  width: 1px;
+  height: var(--control-height);
+  margin: 0 var(--space-4);
+  background: var(--border);
+}
+
+.facts {
+  margin: var(--space-6) 0 0;
+  color: var(--text-secondary);
+}
+
+.warning {
+  color: var(--error);
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.score .facts {
+  margin: 0;
+}
+
+.big {
+  white-space: nowrap;
+  font-size: var(--text-title);
+  line-height: var(--line-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Tool and mode at the top left of the viewport. */
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.modeName {
+  color: var(--text-secondary);
+}
+
+.placing {
+  border-color: var(--accent);
+}
+
+.placing .modeName {
+  color: var(--accent-text);
+}

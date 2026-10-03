@@ -1,4 +1,39 @@
 {
   "label": "Align to faces",
-  "tooltip": "Alignment to fitted faces and axes (3-2-1)."
+  "tooltip": "Alignment to fitted faces, axes or regions by the 3-2-1 principle.",
+  "help": "The primary datum sets Z (a plane or an axis), the secondary datum X or Y, the optional tertiary datum the origin. Click shapes, reference geometry or regions in the project tree or the viewport; they go into the active field. For a shaft, an axis and an end face are enough. Before OK, check the deviation of the inputs and the tilt of the largest plane.",
+  "roles": {
+    "primary": "Primary datum (Z)",
+    "secondary": "Secondary datum (X/Y)",
+    "tertiary": "Tertiary datum (origin)"
+  },
+  "empty": {
+    "required": "Choose a face or axis",
+    "optional": "Optional"
+  },
+  "clear": "Clear {{role}}",
+  "storedFaces": "Stored triangles",
+  "selection_one": "Selection: {{formatted}} triangle",
+  "selection_other": "Selection: {{formatted}} triangles",
+  "takeSelection": "Use selection as {{role}}",
+  "pickHint": "Click a shape, reference geometry or region in the project tree or viewport.",
+  "inputsFirst": "Choose the primary and secondary datum.",
+  "fit": "{{kind}}, RMS {{rms}}, {{faces}} triangles",
+  "kinds": {
+    "plane": "Plane",
+    "cylinder": "Cylinder",
+    "cone": "Cone",
+    "sphere": "Sphere",
+    "torus": "Torus",
+    "axis": "Axis",
+    "point": "Point"
+  },
+  "problems": {
+    "unknown": "No longer exists or is suppressed.",
+    "unsupported": "Is neither a plane, an axis nor a sphere.",
+    "pointAsPrimary": "A sphere sets no direction; use it as the tertiary datum.",
+    "duplicate": "Already used.",
+    "tooFewFaces": "Too few triangles (at least 200).",
+    "staleSelection": "The selection belongs to an older state of the scan."
+  }
 }

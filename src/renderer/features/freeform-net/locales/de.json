@@ -1,0 +1,18 @@
+{
+  "name": "Freiform-Netz",
+  "summary": "{{faces}} Flächen, {{shape}}",
+  "shapes": {
+    "solid": "Körper",
+    "openSurface": "offene Fläche"
+  },
+  "stats": {
+    "quads": "Vierecke im Netz",
+    "patches": "CAD-Flächen",
+    "rms": "Abweichung RMS",
+    "p95": "Abweichung 95 %",
+    "max": "Abweichung max.",
+    "shape": "Ergebnis",
+    "solid": "Körper",
+    "openSurface": "Offene Fläche"
+  }
+}

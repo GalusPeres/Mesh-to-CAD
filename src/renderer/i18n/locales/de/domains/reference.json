@@ -1,5 +1,8 @@
 {
   "errors": {
-    "unsupportedInput": "Das gewählte Element liefert keine passende Geometrie."
+    "notAPlane": "Hilfsgeometrie nicht möglich: Die gewählte Eingabe ist keine Ebene. Eine Ebene wählen.",
+    "notAnAxis": "Hilfsgeometrie nicht möglich: Die gewählte Eingabe hat keine Achse. Eine Achse oder einen Zylinder wählen.",
+    "parallelPlanes": "Achse nicht möglich: Die Ebenen sind parallel ({{angle, angle}}) und schneiden sich nicht.",
+    "notParallel": "Mittelebene nicht möglich: Die Ebenen sind nicht parallel ({{angle, angle}})."
   }
 }

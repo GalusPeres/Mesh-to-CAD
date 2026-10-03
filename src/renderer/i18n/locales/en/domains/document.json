@@ -10,7 +10,8 @@
     "hasDependents_other": "The item is used by {{count}} other items.",
     "limitExceeded": "At most {{limit, count}} items per project.",
     "featureNotImplemented": "This item type is not available yet.",
-    "inputUnavailable": "Input {{feature}} is not available."
+    "inputUnavailable": "Input {{feature}} is not available.",
+    "hasDependents": "Other elements depend on this element."
   },
   "progress": {
     "rebuilding": "Rebuilding the history"

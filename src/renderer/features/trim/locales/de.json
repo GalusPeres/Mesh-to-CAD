@@ -1,3 +1,7 @@
 {
-  "name": "Teilung"
+  "name": "Teilung",
+  "keeps": {
+    "front": "Vorderseite behalten",
+    "back": "Rückseite behalten"
+  }
 }

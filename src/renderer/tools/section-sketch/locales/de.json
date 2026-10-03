@@ -1,3 +1,129 @@
 {
-  "label": "Skizze"
+  "label": "Skizze",
+  "tooltip": "Schnitt des Scans als Skizze aus Linien, Bögen und Kreisen",
+  "help": "Ebene und Schnittlage wählen; der Schnitt durch den Scan erscheint grün. OK passt Linien, Bögen und Kreise mit Bedingungen und gefangenen Werten ein. Werte in der Elementliste ändern, fehlende Kanten mit Ecke bilden, Linie oder Kreis ergänzen. Skizze beenden übernimmt die Skizze in den Verlauf.",
+  "noScan": "Kein Scan geladen.",
+  "planeKind": {
+    "label": "Ebene",
+    "XY": "Ebene XY",
+    "YZ": "Ebene YZ",
+    "XZ": "Ebene XZ",
+    "feature": "Ebene aus dem Verlauf",
+    "axisNormal": "Senkrecht zu einer Achse",
+    "rotational": "Drehprofil um eine Achse"
+  },
+  "planeFeature": "Ebene",
+  "axis": "Achse",
+  "globalAxis": "Achse {{axis}}",
+  "noPlaneFeatures": "Keine Ebene im Verlauf. Ebene einpassen oder Hilfsgeometrie erstellen.",
+  "pickPlane": "Ebene im Projektbaum oder im Ansichtsfenster anklicken.",
+  "offset": "Versatz der Ebene",
+  "sectionOffset": "Schnitt bei",
+  "angle": "Winkel der Halbebene",
+  "flip": "Normale umkehren",
+  "tolerance": "Toleranz",
+  "toleranceAuto": "Toleranz aus dem Scanrauschen",
+  "result": {
+    "loops_one": "{{count}} geschlossene Kontur",
+    "loops_other": "{{count}} geschlossene Konturen",
+    "chains_one": "{{count}} offene Kontur",
+    "chains_other": "{{count}} offene Konturen",
+    "contours": "Schnitt",
+    "noise": "Scanrauschen",
+    "suggested": "Toleranz aus Scanrauschen",
+    "entitiesInTolerance": "In Toleranz",
+    "entitiesInToleranceValue": "{{passed}} von {{total}}",
+    "empty": "Der Schnitt trifft den Scan nicht. Schnittlage ändern.",
+    "folded": "Punkte aller Winkel gemittelt"
+  },
+  "sketchPlane": "Skizzenebene",
+  "cut": "Schnitt",
+  "cutValue": "{{value}} von der Ebene",
+  "entities": "Elemente",
+  "noEntities": "Keine Elemente.",
+  "entity": {
+    "line": "Linie",
+    "arc": "Bogen",
+    "circle": "Kreis",
+    "axisLine": "Achse"
+  },
+  "drawn": "gezeichnet",
+  "deviation": "Abweichung max. {{value}}",
+  "field": {
+    "startX": "Start X",
+    "startY": "Start Y",
+    "endX": "Ende X",
+    "endY": "Ende Y",
+    "length": "Länge",
+    "angle": "Winkel",
+    "centerX": "Mittelpunkt X",
+    "centerY": "Mittelpunkt Y",
+    "radius": "Radius"
+  },
+  "fixedValue": "Fest: bleibt beim Anpassen erhalten",
+  "release": "Wert freigeben",
+  "draw": "Zeichnen",
+  "actions": {
+    "corner": "Ecke bilden",
+    "line": "Linie zwischen zwei Punkten",
+    "circle": "Kreis mit Mittelpunkt und Radius",
+    "closeGap": "Lücke mit Linie schließen",
+    "delete": "Element löschen",
+    "refit": "Neu anpassen",
+    "changePlane": "Ebene ändern",
+    "addCircle": "Kreis hinzufügen",
+    "cancelMode": "Abbrechen"
+  },
+  "mode": {
+    "cornerFirst": "Ecke bilden: erstes Element anklicken.",
+    "cornerSecond": "Ecke bilden: zweites Element anklicken.",
+    "lineFirst": "Linie: ersten Punkt anklicken.",
+    "lineSecond": "Linie: zweiten Punkt anklicken.",
+    "circle": "Kreis: Mittelpunkt anklicken oder eingeben."
+  },
+  "painted": "Element eingepasst, Abweichung max. {{value}}.",
+  "editFailed": {
+    "noIntersection": "Ecke nicht möglich: Die Elemente schneiden sich nicht.",
+    "samePoint": "Linie nicht möglich: Anfang und Ende sind derselbe Punkt.",
+    "noOpenEnds": "Keine offene Lücke vorhanden.",
+    "notConnectable": "Ecke nicht möglich: Ein Kreis hat keine Enden."
+  },
+  "profile": {
+    "empty": "Keine Elemente",
+    "closed_one": "Profil geschlossen: {{count}} Kontur",
+    "closed_other": "Profil geschlossen: {{count}} Konturen",
+    "open_one": "Profil offen: {{count}} Lücke",
+    "open_other": "Profil offen: {{count}} Lücken",
+    "branched": "Profil verzweigt: An einem Punkt treffen mehr als zwei Elemente zusammen."
+  },
+  "constraints": "Bedingungen",
+  "constraint": {
+    "horizontal": "Horizontal",
+    "vertical": "Vertikal",
+    "parallel": "Parallel",
+    "perpendicular": "Senkrecht",
+    "collinear": "Kollinear",
+    "equalRadius": "Gleiche Radien",
+    "concentric": "Konzentrisch",
+    "tangent": "Tangential"
+  },
+  "removeConstraint": "Bedingung entfernen: {{name}}",
+  "snaps": "Gefangene Werte",
+  "snap": {
+    "radius": "{{entity}}: Radius {{value}}",
+    "x": "{{entity}}: Lage X {{value}}",
+    "y": "{{entity}}: Lage Y {{value}}",
+    "angle": "{{entity}}: Richtung {{value}}",
+    "centerX": "{{entity}}: Mittelpunkt X {{value}}",
+    "centerY": "{{entity}}: Mittelpunkt Y {{value}}",
+    "junction": "{{entity}}: Ecke bei {{value}}",
+    "boltCircle": "Lochkreis ⌀ {{value}}, {{count}} × {{pitch}}"
+  },
+  "caption": {
+    "title": "{{name}} · {{plane}}",
+    "standard": "Ebene {{plane}}",
+    "axisNormal": "Senkrecht zu {{axis}}",
+    "rotational": "Drehprofil um {{axis}}"
+  },
+  "statusHint": "Umschalt+Ziehen: Element anpassen · Alt: Fangen aus · Esc: Werkzeug abbrechen"
 }

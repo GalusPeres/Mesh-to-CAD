@@ -1,3 +1,38 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--panel-header-height);
+  flex: none;
+  padding: 0 var(--space-8) 0 var(--panel-padding);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+
+.headerTitle {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-header);
+  line-height: var(--line-header);
+  font-weight: var(--weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .empty {
   padding: var(--panel-padding);
 }
@@ -11,4 +46,44 @@
 .hint {
   margin: 0;
   color: var(--text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--space-16);
+}
+
+.list li + li {
+  margin-top: var(--space-2);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ok {
+  color: var(--success);
+}
+
+.warning {
+  color: var(--warning);
+}
+
+.error {
+  color: var(--error);
+}
+
+.disabled {
+  color: var(--text-disabled);
+}
+
+.edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  width: calc(100% - 2 * var(--panel-padding));
+  margin: var(--space-8) var(--panel-padding) 0;
 }

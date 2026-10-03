@@ -2,19 +2,122 @@
   "project": "Project",
   "tree": {
     "scan": "Scan",
+    "scanSummary": "{{file}} · {{faces}}",
     "faces_one": "{{formatted}} triangle",
     "faces_other": "{{formatted}} triangles",
     "regions": "Regions ({{count}})",
     "region": "Region {{number}}",
+    "regionSummary": "{{kind}}, RMS {{rms}}",
+    "regionKinds": {
+      "plane": "Planes ({{count}})",
+      "cylinder": "Cylinders ({{count}})",
+      "cone": "Cones ({{count}})",
+      "sphere": "Spheres ({{count}})",
+      "torus": "Tori ({{count}})",
+      "freeform": "Freeform ({{count}})",
+      "unknown": "Undetermined ({{count}})"
+    },
+    "onlyUnused": "Only unused",
     "bodies": "Bodies ({{count}})",
     "body": "Body {{number}}",
+    "origin": "Origin",
+    "axes": "Axes",
     "history": "History",
     "alignment": "Alignment"
   },
+  "regionKind": {
+    "plane": "Plane",
+    "cylinder": "Cylinder",
+    "cone": "Cone",
+    "sphere": "Sphere",
+    "torus": "Torus",
+    "freeform": "Freeform",
+    "unknown": "Undetermined"
+  },
+  "alignmentMethod": {
+    "none": "Scan coordinates",
+    "auto": "Automatic",
+    "faces": "To faces"
+  },
+  "operations": {
+    "repair": "Repaired",
+    "decimate_one": "Reduced to {{formatted}} triangle",
+    "decimate_other": "Reduced to {{formatted}} triangles",
+    "removeSmallParts_one": "{{formatted}} small part removed",
+    "removeSmallParts_other": "{{formatted}} small parts removed",
+    "fillHoles_one": "{{formatted}} hole filled",
+    "fillHoles_other": "{{formatted}} holes filled",
+    "deleteFaces_one": "{{formatted}} triangle deleted",
+    "deleteFaces_other": "{{formatted}} triangles deleted",
+    "other": "Edited"
+  },
+  "state": {
+    "ok": "OK",
+    "warning": "Warning",
+    "error": "Error",
+    "suppressed": "Suppressed",
+    "skipped": "Skipped: an input is missing"
+  },
+  "menu": {
+    "edit": "Edit",
+    "rename": "Rename",
+    "hide": "Hide",
+    "show": "Show",
+    "isolate": "Isolate",
+    "showAll": "Show all",
+    "suppress": "Suppress",
+    "unsuppress": "Unsuppress",
+    "delete": "Delete"
+  },
+  "rename": {
+    "title": "Rename",
+    "name": "Name",
+    "hint": "Leave empty for the default name."
+  },
+  "delete": {
+    "title": "Delete",
+    "withDependents": "{{name}} is used by {{dependents}}. Delete all {{count}}?",
+    "confirm": "Delete"
+  },
+  "undo": {
+    "rename": "Rename",
+    "suppress": "Suppress",
+    "unsuppress": "Unsuppress",
+    "delete": "Delete"
+  },
   "properties": {
+    "scanSection": "Scan",
+    "featureSection": "Item",
+    "bodySection": "Body",
+    "regionSection": "Region",
     "file": "File",
+    "unit": "Import unit",
     "triangles": "Triangles",
     "vertices": "Vertices",
-    "noise": "Scan noise"
+    "noise": "Scan noise",
+    "tolerance": "Tolerance",
+    "operations": "Preparation",
+    "unknown": "Unknown",
+    "type": "Type",
+    "summary": "Values",
+    "status": "Status",
+    "skipped": "Not computed: an input is missing or failed. Check the inputs in the history.",
+    "suppressed": "Suppressed: left out of the rebuild.",
+    "createdBy": "Created by",
+    "changedBy": "Last changed by",
+    "volume": "Volume",
+    "area": "Surface area",
+    "solids": "Solids",
+    "maxTolerance": "Largest edge tolerance",
+    "validity": "Validity",
+    "valid": "Closed and valid",
+    "invalid": "Invalid",
+    "rms": "RMS",
+    "usedBy": "Used by",
+    "unused": "Not used"
+  },
+  "blocked": {
+    "toolOpen": "Close the open tool with OK or Cancel first.",
+    "busy": "Please wait until the calculation has finished."
   }
 }

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Licences – Mesh-to-CAD help</title>
+    <style>
+      :root {
+        --bg-panel: #f5f5f6;
+        --bg-raised: #ffffff;
+        --text: #1c1d20;
+        --text-secondary: #555960;
+        --accent-text: #1f5fc2;
+        --border: #d0d2d6;
+        --border-subtle: #e1e2e5;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-panel: #232428;
+          --bg-raised: #2a2b30;
+          --text: #e4e5e7;
+          --text-secondary: #a3a6ad;
+          --accent-text: #7faef5;
+          --border: #393b41;
+          --border-subtle: #2e3035;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg-panel);
+        color: var(--text);
+        font:
+          14px/1.5 'Segoe UI Variable Text',
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 32px 48px;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 32px 0 8px;
+      }
+      h3 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 24px 0 8px;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      nav {
+        font-size: 13px;
+        margin-bottom: 16px;
+      }
+      code,
+      kbd {
+        font-family: 'Cascadia Mono', Consolas, monospace;
+        font-size: 13px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 4px 12px 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        vertical-align: top;
+      }
+      th {
+        font-weight: 600;
+      }
+      .secondary {
+        color: var(--text-secondary);
+      }
+      ul.tools {
+        list-style: none;
+        padding: 0;
+      }
+      ul.tools li {
+        padding: 4px 0;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="index.html">Back to the overview</a></nav>
+      <h1>Third-party notices</h1>
+      <p>
+        Mesh-to-CAD uses the components below. Installers bundle their licence texts in
+        <code>resources/licenses/</code>; the release build collects them from the installed
+        packages. The versions are pinned in <code>package.json</code> and
+        <code>kernel/requirements.txt</code>.
+      </p>
+      <h2>Application and user interface</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Licence</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Electron (includes Chromium)</td>
+            <td>MIT; Chromium: BSD-3-Clause and others</td>
+            <td>https://github.com/electron/electron</td>
+          </tr>
+          <tr>
+            <td>React, React DOM</td>
+            <td>MIT</td>
+            <td>https://github.com/facebook/react</td>
+          </tr>
+          <tr>
+            <td>three.js</td>
+            <td>MIT</td>
+            <td>https://github.com/mrdoob/three.js</td>
+          </tr>
+          <tr>
+            <td>three-mesh-bvh</td>
+            <td>MIT</td>
+            <td>https://github.com/gkjohnson/three-mesh-bvh</td>
+          </tr>
+          <tr>
+            <td>zustand</td>
+            <td>MIT</td>
+            <td>https://github.com/pmndrs/zustand</td>
+          </tr>
+          <tr>
+            <td>i18next, react-i18next</td>
+            <td>MIT</td>
+            <td>https://github.com/i18next</td>
+          </tr>
+          <tr>
+            <td>Radix UI primitives</td>
+            <td>MIT</td>
+            <td>https://github.com/radix-ui/primitives</td>
+          </tr>
+          <tr>
+            <td>Lucide icons (lucide-react)</td>
+            <td>ISC</td>
+            <td>https://github.com/lucide-icons/lucide</td>
+          </tr>
+        </tbody>
+      </table>
+      <h2>Geometry process</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Licence</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Python</td>
+            <td>PSF License</td>
+            <td>https://www.python.org/</td>
+          </tr>
+          <tr>
+            <td>numpy</td>
+            <td>BSD-3-Clause</td>
+            <td>https://github.com/numpy/numpy</td>
+          </tr>
+          <tr>
+            <td>SciPy</td>
+            <td>BSD-3-Clause</td>
+            <td>https://github.com/scipy/scipy</td>
+          </tr>
+          <tr>
+            <td>trimesh</td>
+            <td>MIT</td>
+            <td>https://github.com/mikedh/trimesh</td>
+          </tr>
+          <tr>
+            <td>NetworkX</td>
+            <td>BSD-3-Clause</td>
+            <td>https://github.com/networkx/networkx</td>
+          </tr>
+          <tr>
+            <td>fast-simplification</td>
+            <td>MIT</td>
+            <td>https://github.com/pyvista/fast-simplification</td>
+          </tr>
+          <tr>
+            <td>Rtree, libspatialindex</td>
+            <td>MIT</td>
+            <td>https://github.com/Toblerity/rtree</td>
+          </tr>
+          <tr>
+            <td>OCP (cadquery-ocp)</td>
+            <td>Apache-2.0</td>
+            <td>https://github.com/CadQuery/OCP</td>
+          </tr>
+          <tr>
+            <td>Open CASCADE Technology</td>
+            <td>LGPL-2.1 with the Open CASCADE exception</td>
+            <td>https://dev.opencascade.org/</td>
+          </tr>
+          <tr>
+            <td>VTK (dependency of OCP)</td>
+            <td>BSD-3-Clause</td>
+            <td>https://vtk.org/</td>
+          </tr>
+          <tr>
+            <td>PyInstaller bootloader</td>
+            <td>GPL-2.0 with the PyInstaller bootloader exception</td>
+            <td>https://github.com/pyinstaller/pyinstaller</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        Open CASCADE Technology is linked dynamically. Its libraries are installed as separate DLL
+        files in the application's <code>resources\kernel</code> folder and can be replaced with
+        modified versions, as the LGPL requires. Its source code is available from the Open CASCADE
+        website.
+      </p>
+      <p>
+        The licence texts of all components are in the installation folder under resources\licenses.
+      </p>
+    </main>
+  </body>
+</html>

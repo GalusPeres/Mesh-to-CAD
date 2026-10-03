@@ -1,3 +1,67 @@
 {
-  "label": "Form einpassen"
+  "label": "Form einpassen",
+  "help": "Dreiecke mit Pinsel oder Flächenauswahl markieren; die Auswahl lässt sich bei offenem Werkzeug ändern. Der Typ wird automatisch gewählt oder vorgegeben, Werte mit dem Schloss festlegen. Vor OK prüfen, ob mindestens 95 % der Dreiecke in der Toleranz liegen und die gefangenen Werte stimmen. Robust ignoriert andere Flächen, die versehentlich mit ausgewählt sind.",
+  "noScan": "Kein Scan geladen.",
+  "selection": "Auswahl",
+  "triangles_one": "{{formatted}} Dreieck",
+  "triangles_other": "{{formatted}} Dreiecke",
+  "selectionEmpty": "Dreiecke mit Pinsel oder Flächenauswahl markieren (mindestens {{min}}).",
+  "selectionTooSmall_one": "Auswahl zu klein: {{formatted}} Dreieck, mindestens {{min}}.",
+  "selectionTooSmall_other": "Auswahl zu klein: {{formatted}} Dreiecke, mindestens {{min}}.",
+  "kind": "Typ",
+  "auto": "Automatisch",
+  "rmsShort": "RMS {{value}}",
+  "values": {
+    "offset": "Abstand zum Ursprung",
+    "radius": "Radius",
+    "halfAngleDeg": "Halber Öffnungswinkel",
+    "majorRadius": "Großer Radius",
+    "minorRadius": "Kleiner Radius",
+    "normal": "Normale",
+    "axis": "Achse",
+    "point": {
+      "sphere": "Mittelpunkt",
+      "cylinder": "Achsenpunkt",
+      "cone": "Spitze",
+      "torus": "Mittelpunkt"
+    }
+  },
+  "relation": "Richtung",
+  "relations": {
+    "free": "Frei",
+    "parallel": "Parallel",
+    "perpendicular": "Senkrecht"
+  },
+  "relationTarget": "Bezug",
+  "axisName": "{{axis}}-Achse",
+  "robust": "Robust (andere Flächen in der Auswahl ignorieren)",
+  "snap": "Konstruktionswerte fangen",
+  "computedHint": "Berechnet: Der Wert kommt aus dem Scan. Klicken zum Festlegen.",
+  "fixedHint": "Fest: Der Wert bleibt beim Einpassen erhalten. Klicken zum Freigeben.",
+  "result": {
+    "noise": "Scanrauschen",
+    "rms": "RMS",
+    "max": "Maximum",
+    "withinTolerance": "In Toleranz",
+    "faces": "Dreiecke",
+    "excluded": "Nicht verwendet",
+    "pass": "In Toleranz",
+    "fail": "Nicht in Toleranz",
+    "poorFit": "Nur {{share}} % der Dreiecke liegen in der Toleranz ±{{tolerance}}. Auswahl prüfen oder anderen Typ wählen."
+  },
+  "snaps": {
+    "axis": {
+      "parallel": "Achse parallel zu {{axis}}",
+      "perpendicular": "Achse senkrecht zu {{axis}}"
+    },
+    "normal": {
+      "parallel": "Normale parallel zu {{axis}}",
+      "perpendicular": "Normale senkrecht zu {{axis}}"
+    },
+    "offset": "Abstand zum Ursprung {{value}}",
+    "radius": "Radius {{value}}",
+    "halfAngle": "Halber Öffnungswinkel {{value}}",
+    "majorRadius": "Großer Radius {{value}}",
+    "minorRadius": "Kleiner Radius {{value}}"
+  }
 }

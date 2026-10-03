@@ -5,10 +5,15 @@ export const MESH_ERROR_CODES = [
   'mesh.fileTooLarge',
   'mesh.unsupportedFormat',
   'mesh.readFailed',
+  'mesh.invalidStl',
   'mesh.empty',
   'mesh.tooManyFaces',
   'mesh.reductionRequired',
   'mesh.unknownImport',
+  'mesh.noScan',
+  'mesh.staleSelection',
+  'mesh.nothingLeft',
+  'mesh.decimationFailed',
 ] as const;
 export type MeshErrorCode = (typeof MESH_ERROR_CODES)[number];
 
@@ -19,5 +24,11 @@ export const MESH_PROGRESS_STAGES = [
   'mesh.reading',
   'mesh.welding',
   'mesh.estimatingNoise',
+  'mesh.repairing',
+  'mesh.removingSmallParts',
+  'mesh.decimating',
+  'mesh.fillingHoles',
+  'mesh.inspecting',
+  'mesh.storing',
 ] as const;
 export type MeshProgressStage = (typeof MESH_PROGRESS_STAGES)[number];

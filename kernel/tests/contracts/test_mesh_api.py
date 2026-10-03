@@ -1,4 +1,4 @@
-"""Contracts of the shared mesh modules (topology, normals, remapping, loading)."""
+"""Contracts of the shared mesh modules (topology, normals, remapping, loading, smoothing)."""
 
 from __future__ import annotations
 
@@ -8,8 +8,9 @@ import numpy as np
 import pytest
 
 from m2c_kernel.mesh.load import RawMesh, read_mesh, weld_vertices
-from m2c_kernel.mesh.normals import face_normals, jet_fit, vertex_normals
+from m2c_kernel.mesh.normals import estimate_noise, face_normals, jet_fit, vertex_normals
 from m2c_kernel.mesh.remap import remap_face_set, remap_labels
+from m2c_kernel.mesh.smoothing import taubin
 from m2c_kernel.mesh.topology import FaceGraph, edge_topology
 from m2c_kernel.protocol.errors import KernelError
 from tests.synthetic import add_scanner_noise, primitive_patch, sphere_scan, write_binary_stl
@@ -110,3 +111,22 @@ def test_reading_rejects_unsupported_files(tmp_path: Path) -> None:
 def test_raw_mesh_is_a_plain_container() -> None:
     mesh = RawMesh(np.zeros((3, 3)), np.array([[0, 1, 2]]))
     assert mesh.faces.shape == (1, 3)
+
+
+def test_noise_estimate_matches_the_jet_fit_on_a_sample() -> None:
+    rng = np.random.default_rng(5)
+    patch = primitive_patch("plane", 40.0, 40.0, resolution=160)
+    noisy = add_scanner_noise(patch.vertices, patch.normals, 0.03, rng)
+    normals = vertex_normals(noisy, patch.faces)
+    estimate = estimate_noise(noisy, normals, np.random.default_rng(1), max_samples=2_000)
+    assert estimate.noise is not None
+    assert estimate.noise == pytest.approx(jet_fit(noisy, normals).noise, rel=0.1)
+    assert 0.0 < estimate.sample_share <= 1.0
+
+
+def test_display_smoothing_keeps_the_vertex_count_and_order() -> None:
+    vertices, faces = sphere_scan(radius=10.0, subdivisions=3, sigma=0.05)
+    smoothed = taubin(vertices, faces, 3)
+    assert smoothed.shape == vertices.shape
+    assert np.linalg.norm(smoothed - vertices, axis=1).max() < 0.5
+    np.testing.assert_array_equal(taubin(vertices, faces, 0), vertices)

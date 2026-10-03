@@ -1,0 +1,25 @@
+{
+  "errors": {
+    "tooFewFaces": "Cannot create surfaces: too few triangles ({{count, count}}, at least {{min, count}}).",
+    "cageFailed": "Cannot create auto surfaces: the scan gives no closed control cage. Repair the scan (fill holes, remove small parts) and try again.",
+    "shapeInvalid": "Cannot create auto surfaces: the surfaces do not form a valid body. Choose more smoothing or another detail level.",
+    "notAutoSurface": "The element is not an auto surface.",
+    "netFailed": "The scan gives no clean quad net. Repair the scan (fill holes, remove small parts) or choose another net density.",
+    "netInvalid": "The freeform net is damaged: its quads do not form one consistently oriented surface. Undo the last change.",
+    "netShapeInvalid": "The net gives no valid CAD faces (folded or crossing quads). Undo the last change or snap the net to the scan.",
+    "notFreeformNet": "The element is not a freeform net."
+  },
+  "issues": {
+    "openSurface": "The scan is open. The result is a surface, not a body. Fill the holes first to get a body.",
+    "partsIgnored": "Only the largest part was processed; {{count, count}} other parts were left out.",
+    "openNet": "The net has open borders. The result is a surface, not a body; it does not count as a body for export and booleans."
+  },
+  "progress": {
+    "net": "Building quad net",
+    "cage": "Building control cage",
+    "fitting": "Fitting control cage to the scan",
+    "patches": "Creating B-spline surfaces",
+    "shape": "Joining surfaces into a body",
+    "deviation": "Computing deviation"
+  }
+}

@@ -16,6 +16,10 @@ export interface Settings {
     /** Clear the triangles a fit used once the fit is committed. */
     clearAfterFit: boolean;
   };
+  /** Local control by automation clients such as the MCP server (docs/AUTOMATION.md). */
+  automation: {
+    enabled: boolean;
+  };
   /** Per-tool preferences (brush size, collapsed sections, ...), keyed by tool id. */
   tools: Record<string, JsonValue>;
 }
@@ -25,6 +29,7 @@ export type SettingsPatch = Partial<{
   theme: ThemeSetting;
   navigation: Partial<Settings['navigation']>;
   selection: Partial<Settings['selection']>;
+  automation: Partial<Settings['automation']>;
   tools: Record<string, JsonValue>;
 }>;
 
@@ -33,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   navigation: { invertWheel: false },
   selection: { clearAfterFit: true },
+  automation: { enabled: false },
   tools: {},
 };
 
@@ -58,6 +64,7 @@ export function validateSettings(input: unknown): Settings {
   const data = record(input);
   const navigation = record(data.navigation);
   const selection = record(data.selection);
+  const automation = record(data.automation);
   const tools = record(data.tools) as Record<string, JsonValue>;
   return {
     language: oneOf(data.language, LANGUAGES, DEFAULT_SETTINGS.language),
@@ -67,6 +74,9 @@ export function validateSettings(input: unknown): Settings {
     },
     selection: {
       clearAfterFit: flag(selection.clearAfterFit, DEFAULT_SETTINGS.selection.clearAfterFit),
+    },
+    automation: {
+      enabled: flag(automation.enabled, DEFAULT_SETTINGS.automation.enabled),
     },
     tools,
   };
@@ -78,6 +88,7 @@ export function applySettingsPatch(current: Settings, patch: SettingsPatch): Set
     ...patch,
     navigation: { ...current.navigation, ...patch.navigation },
     selection: { ...current.selection, ...patch.selection },
+    automation: { ...current.automation, ...patch.automation },
     tools: { ...current.tools, ...patch.tools },
   });
 }

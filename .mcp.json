@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mesh-to-cad": {
+      "command": "node",
+      "args": ["tools/mcp/server.mjs"]
+    }
+  }
+}

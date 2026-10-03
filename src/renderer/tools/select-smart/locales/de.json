@@ -1,3 +1,5 @@
 {
-  "label": "Flächenauswahl"
+  "label": "Flächenauswahl",
+  "tooltip": "Zusammenhängende Fläche unter dem Mauszeiger auswählen.",
+  "help": "Den Mauszeiger kurz auf dem Scan ruhen lassen: die Fläche darunter wird hervorgehoben. Klicken fügt sie hinzu, Strg+Klicken entfernt sie. Form folgt einer Grundform (Ebene, Zylinder, ...), Glatt folgt der Oberfläche bis zu scharfen Kanten. Strg+Mausrad ändert die Toleranz."
 }

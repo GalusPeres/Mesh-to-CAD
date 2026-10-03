@@ -2,6 +2,7 @@
 // The renderer never sees file paths: every file operation goes through a
 // named action that the main process carries out after a native dialog.
 
+import type { AutomationRequest, AutomationResponse } from './automation';
 import type { Settings, SettingsPatch } from './settings';
 
 export type Unsubscribe = () => void;
@@ -21,7 +22,8 @@ export interface KernelErrorPayload {
 }
 
 export type RawResponse =
-  { ok: true; result: unknown; buffers: ArrayBuffer[] } | { ok: false; error: KernelErrorPayload };
+  | { ok: true; result: unknown; buffers: ArrayBuffer[]; revealToken?: string }
+  | { ok: false; error: KernelErrorPayload };
 
 export type KernelEvent =
   | { type: 'progress'; clientId: number; fraction: number | null; stage: string }
@@ -131,5 +133,10 @@ export interface M2CBridge {
     openHelp(language: 'de' | 'en', topic: string): void;
     /** True when started for end-to-end tests (`M2C_E2E=1`); enables test hooks. */
     testMode: boolean;
+  };
+  automation: {
+    /** Requests of the local automation interface; the main process sends them only when enabled. */
+    onRequest(listener: (request: AutomationRequest) => void): Unsubscribe;
+    respond(response: AutomationResponse): void;
   };
 }

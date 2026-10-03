@@ -1,5 +1,14 @@
 {
   "errors": {
-    "noBody": "Kein Körper zum Vergleichen vorhanden."
+    "noBody": "Kein Körper zum Vergleichen vorhanden.",
+    "unknownBody": "Vergleich nicht möglich: Ein gewählter Körper ist nicht mehr vorhanden.",
+    "unknownItem": "Messen nicht möglich: Das Element ist nicht mehr vorhanden.",
+    "itemUnavailable": "Messen nicht möglich: Das Element ist fehlgeschlagen oder unterdrückt.",
+    "notMeasurable": "Messen nicht möglich: Das Element hat keine Ebene, keine Achse und keinen Punkt.",
+    "noPreview": "Die Vorschau ist nicht mehr verfügbar."
+  },
+  "progress": {
+    "preparing": "Vergleichsfläche wird aufgebaut",
+    "comparing": "Abweichung wird berechnet"
   }
 }

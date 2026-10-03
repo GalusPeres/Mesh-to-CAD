@@ -1,0 +1,45 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.filter {
+  padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tree {
+  min-height: 0;
+  overflow: hidden auto;
+}
+
+.warning {
+  flex: none;
+  color: var(--warning);
+}
+
+.error {
+  flex: none;
+  color: var(--error);
+}
+
+.disabled {
+  flex: none;
+  color: var(--text-disabled);
+}
+
+/* The eye toggle shows on hover and keyboard focus, and always while the object is hidden. */
+.eye {
+  visibility: hidden;
+}
+
+:global([role='treeitem']:hover) .eye,
+:global([role='treeitem'][aria-selected='true']) .eye,
+.eye:focus-visible {
+  visibility: visible;
+}
+
+.eyeHidden {
+  visibility: visible;
+}

@@ -110,14 +110,34 @@ def signed_distance(primitive: Primitive, points: npt.ArrayLike) -> FloatArray:
             return np.hypot(rho - major, h) - minor
 
 
-def surface_normals(primitive: Primitive, points: npt.ArrayLike, step: float = 1e-4) -> FloatArray:
-    """Unit gradient of the signed distance: the outward surface normal near each point."""
+def surface_normals(primitive: Primitive, points: npt.ArrayLike) -> FloatArray:
+    """Unit gradient of the signed distance: the outward surface normal near each point.
+
+    Points on an axis (or at a centre) have no defined gradient; they get a zero vector.
+    """
     p = np.asarray(points, dtype=np.float64).reshape(-1, 3)
-    gradient = np.stack(
-        [
-            signed_distance(primitive, p + offset) - signed_distance(primitive, p - offset)
-            for offset in np.eye(3) * step
-        ],
-        axis=1,
-    )
-    return unit(gradient)
+    match primitive:
+        case Plane(normal=normal):
+            return np.tile(unit(normal), (len(p), 1))
+        case Sphere(center=center):
+            return unit(p - np.asarray(center))
+        case Cylinder(origin=origin, axis=axis):
+            return _radial(p, origin, axis)[1]
+        case Cone(apex=apex, axis=axis, half_angle=half_angle):
+            _, outward = _radial(p, apex, axis)
+            gradient: FloatArray = np.cos(half_angle) * outward - np.sin(half_angle) * unit(axis)
+            return gradient
+        case Torus(center=center, axis=axis, major_radius=major):
+            relative, outward = _radial(p, center, axis)
+            a = unit(axis)
+            h = relative @ a
+            rho = np.einsum("ij,ij->i", relative - np.outer(h, a), outward)
+            return unit((rho - major)[:, None] * outward + h[:, None] * a)
+
+
+def _radial(points: FloatArray, origin: Vec3, axis: Vec3) -> tuple[FloatArray, FloatArray]:
+    """Points relative to the axis origin, and the unit direction away from the axis."""
+    a = unit(axis)
+    relative = points - np.asarray(origin)
+    across = relative - np.outer(relative @ a, a)
+    return relative, unit(across)

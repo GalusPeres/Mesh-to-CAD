@@ -5,14 +5,19 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from m2c_kernel.document.rebuild import EvalMesh
 from m2c_kernel.fitting.api import (
+    AppliedSnap,
     Cone,
     Cylinder,
+    FaceState,
+    FitRequest,
     Plane,
     Sphere,
     Torus,
     fit_best,
     fit_primitive,
+    run_fit,
     signed_distance,
     surface_normals,
 )
@@ -87,3 +92,48 @@ def test_automatic_type_choice(kind: str) -> None:
     assert winner.kind == kind
     assert alternatives
     assert alternatives[0].sigma <= alternatives[-1].sigma
+
+
+@pytest.mark.parametrize(
+    "primitive",
+    [
+        Plane(origin=(1, 2, 3), normal=(0, 0.6, 0.8)),
+        Sphere(center=(1, 0, 0), radius=4),
+        Cylinder(origin=(0, 1, 0), axis=(0, 0.6, 0.8), radius=3),
+        Cone(apex=(0, 0, -5), axis=(0, 0, 1), half_angle=np.radians(25)),
+        Torus(center=(0, 0, 1), axis=(0.6, 0, 0.8), major_radius=10, minor_radius=2),
+    ],
+)
+def test_analytic_normals_match_the_distance_gradient(primitive: object) -> None:
+    points = np.random.default_rng(1).uniform(-8, 8, (50, 3))
+    step = 1e-6
+    numeric = np.stack(
+        [
+            signed_distance(primitive, points + offset)
+            - signed_distance(primitive, points - offset)
+            for offset in np.eye(3) * step
+        ],
+        axis=1,
+    )
+    numeric /= np.linalg.norm(numeric, axis=1, keepdims=True)
+    np.testing.assert_allclose(surface_normals(primitive, points), numeric, atol=1e-6)
+
+
+def test_face_states_match_the_renderer() -> None:
+    # src/renderer/viewport/api.ts: FACE_STATE = { none: 0, pass: 1, fail: 2, failFar: 3 }
+    assert (FaceState.NONE, FaceState.PASS, FaceState.FAIL, FaceState.FAIL_FAR) == (0, 1, 2, 3)
+
+
+def test_run_fit_contract() -> None:
+    patch = primitive_patch("cylinder", np.pi / 2, 20.0, resolution=60, radius=5.0)
+    mesh = EvalMesh("mesh:contract", patch.vertices, patch.faces, None)
+    requested = np.r_[np.arange(len(patch.faces)), -1, len(patch.faces) + 5]
+    outcome = run_fit(mesh, requested, FitRequest(kind="auto"), np.random.default_rng(1))
+    assert outcome.primitive.type == "cylinder"
+    assert outcome.face_states.dtype == np.uint8
+    assert len(outcome.face_states) == len(requested)
+    assert outcome.face_states[-2:].tolist() == [FaceState.NONE, FaceState.NONE]
+    # Uncertainties exist for the computed values only; snapped values are fixed.
+    snapped = {snap.id for snap in outcome.snaps}
+    assert set(outcome.stats.uncertainty) == {"direction", "point", "radius"} - snapped
+    assert all(isinstance(snap, AppliedSnap) for snap in outcome.snaps)

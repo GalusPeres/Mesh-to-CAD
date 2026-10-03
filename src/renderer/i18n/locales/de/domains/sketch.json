@@ -1,9 +1,16 @@
 {
   "errors": {
-    "emptySection": "Der Schnitt trifft den Scan nicht."
+    "emptySection": "Skizze nicht möglich: Der Schnitt trifft den Scan nicht. Schnittlage ändern.",
+    "notAPlane": "Skizze nicht möglich: Das gewählte Element ist keine Ebene.",
+    "notAnAxis": "Skizze nicht möglich: Das gewählte Element hat keine Achse.",
+    "invalidGeometry": "Skizze fehlerhaft: Ein Element verweist auf einen fehlenden Punkt.",
+    "tooFewPoints": "Element nicht einpassbar: zu wenige Punkte ({{count, count}})."
   },
   "issues": {
-    "profileOpen_one": "Profil offen: 1 Lücke.",
-    "profileOpen_other": "Profil offen: {{count}} Lücken."
+    "profileOpen_one": "Profil offen: {{count}} Lücke.",
+    "profileOpen_other": "Profil offen: {{count}} Lücken.",
+    "profileInvalid": "Kontur {{loop}} ergibt keine gültige Fläche.",
+    "deviatesFromScan": "Skizze weicht vom Scan ab (max. {{max, length}}). Neu anpassen oder Ebene prüfen.",
+    "sectionEmpty": "Der Schnitt trifft den Scan nicht mehr. Ebene prüfen."
   }
 }

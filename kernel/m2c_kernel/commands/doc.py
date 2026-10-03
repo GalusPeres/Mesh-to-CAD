@@ -66,6 +66,8 @@ class PreviewResult:
     status: FeatureStatus | None
     items: tuple[SceneItem, ...]
     bodies: tuple[BodyInfo, ...]
+    result_key: str | None = None
+    """Result key of the previewed feature (for `inspection.previewDeviation`)."""
 
 
 @command("doc.preview", lane=True)
@@ -105,6 +107,7 @@ def doc_preview(ctx: JobContext, params: PreviewParams) -> PreviewResult:
         status=result.statuses.get(target),
         items=tuple(items),
         bodies=tuple(bodies),
+        result_key=result.result_keys.get(target),
     )
 
 

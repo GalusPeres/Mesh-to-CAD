@@ -1,0 +1,32 @@
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  padding: var(--space-4) 0;
+}
+
+.pressed {
+  background: var(--bg-selected);
+  color: var(--accent-text);
+}
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.pass {
+  color: var(--success);
+}
+
+.warn {
+  flex: none;
+  color: var(--warning);
+}
+
+.hint {
+  margin: var(--space-4) 0;
+  color: var(--text-secondary);
+}

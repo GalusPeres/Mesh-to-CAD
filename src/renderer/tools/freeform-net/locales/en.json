@@ -1,0 +1,121 @@
+{
+  "label": "Freeform net",
+  "tooltip": "Lay a quad net over the scan, automatically or by hand row by row; the deviation shows live as colour.",
+  "help": "For roundings and organic shapes. Auto net lays the net over the scan or the selection in one step; by hand it grows face by face: place a face, then drag border edges. The status bar tells what the mouse does right now. OK creates B-spline faces, a body when the net is closed.",
+  "sections": {
+    "net": "Automatic",
+    "build": "By hand",
+    "deviation": "Deviation"
+  },
+  "source": "Input",
+  "sources": {
+    "scan": "Whole scan",
+    "selection": "Selection"
+  },
+  "selectionMissing": "Select at least {{min}} triangles first.",
+  "density": "Density",
+  "densities": {
+    "coarse": "Coarse",
+    "medium": "Medium",
+    "fine": "Fine"
+  },
+  "generate": "Create",
+  "regenerate": "Create again",
+  "stop": "Stop",
+  "jobs": {
+    "generate": "Creating net",
+    "fit": "Snapping to the scan",
+    "smooth": "Smoothing",
+    "map": "Preparing the surface",
+    "load": "Loading the net"
+  },
+  "tools": {
+    "face": {
+      "label": "Face",
+      "description": "Click four corners on the scan, one after another."
+    },
+    "fit": {
+      "all": {
+        "label": "Snap to scan",
+        "description": "Lay the whole net onto the scan."
+      },
+      "chosen": {
+        "label": "Snap chosen",
+        "description": "Lay only the chosen points onto the scan."
+      }
+    },
+    "smooth": {
+      "all": {
+        "label": "Smooth",
+        "description": "Calm the whole net; it stays close to the scan."
+      },
+      "chosen": {
+        "label": "Smooth chosen",
+        "description": "Calm only the chosen points."
+      }
+    },
+    "flatten": {
+      "label": "Lay on a plane",
+      "description": "Lay the chosen points (at least 3) on their best-fit plane."
+    },
+    "snap": {
+      "label": "Snap to scan",
+      "description": "Dragged points and new rows land on the scan."
+    },
+    "rectangle": {
+      "label": "Rectangle",
+      "description": "Click two opposite corners on the scan."
+    }
+  },
+  "chosenPoints_one": "{{count}} point chosen",
+  "chosenPoints_other": "{{count}} points chosen",
+  "chosenEdges_one": "{{count}} edge chosen",
+  "chosenEdges_other": "{{count}} edges chosen",
+  "heatmap": "Heatmap",
+  "legend": "Green: within tolerance · Yellow to red: outside the scan · Blue: inside · Grey: far away",
+  "scale": "Colour scale (mm)",
+  "score": "within tolerance · RMS {{rms}} · max. {{max}}",
+  "measuring": "Measuring …",
+  "quads_one": "{{count}} quad",
+  "quads_other": "{{count}} quads",
+  "faces_one": "{{count}} CAD face",
+  "faces_other": "{{count}} CAD faces",
+  "irregular_one": "{{count}} irregular point",
+  "irregular_other": "{{count}} irregular points",
+  "irregularHint": "Red points: face borders start here. Fewer of them give larger CAD faces.",
+  "closedBody": "Body",
+  "openSurface": "Open surface",
+  "hints": {
+    "start": "Click the first corner on the scan",
+    "face": "Click corner {{count}} of 4 · Backspace: back · Esc: cancel",
+    "point": "Drag: move · onto a border point: join · Alt: along the normal · Delete: remove",
+    "border": "Drag: move the edge · drag the D grip or with Alt: new row · Double click: whole side · Right click: menu",
+    "edge": "Click: choose · Double click: edge chain · Drag: move · S: split · Right click: menu",
+    "rows": "Release: add the row · yellow points get joined · Esc: cancel",
+    "idle": "Drag an edge's D grip: extend the net · Drag a point: shape · Right click: menu · Space: surface only",
+    "corner": "Click the opposite corner · Backspace: back · Esc: cancel",
+    "empty": "Choose Face or Rectangle (in the panel or by right click), then click on the scan",
+    "handle": "Drag: duplicate the edge into a new row on the scan · drop onto border points: join"
+  },
+  "menu": {
+    "split": "Split",
+    "chain": "Choose edge chain",
+    "bridge": "Bridge two chosen edges",
+    "smooth": "Smooth",
+    "delete": "Delete",
+    "deleteKey": "Del",
+    "snapAll": "Snap all points to the scan",
+    "snapChosen": "Snap chosen points to the scan",
+    "refine": "Increase resolution (1 → 4)",
+    "snap": "Snap to scan",
+    "net": "Show net",
+    "space": "Space",
+    "face": "Place face (4 corners)",
+    "rectangle": "Place rectangle (2 corners)"
+  },
+  "modes": {
+    "face": "Place face: click 4 corners",
+    "rectangle": "Place rectangle: click 2 corners",
+    "edit": "Edit the net"
+  }
+}

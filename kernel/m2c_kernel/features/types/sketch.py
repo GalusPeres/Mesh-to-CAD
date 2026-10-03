@@ -1,114 +1,99 @@
-"""Sketch: lines, arcs and circles on a plane, fitted to a section of the scan."""
+"""Sketch: lines, arcs and circles on a plane, fitted to a section of the scan.
+
+The stored entities are authoritative. A rebuild builds profile faces from them
+and does not refit; if the plane moved (a refitted reference, a new alignment),
+the entities move with it, and the sketch is compared with the current section:
+above the project tolerance it carries `sketch.deviatesFromScan`.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
-from m2c_kernel.features.common import StandardPlane, feature_refs, not_implemented
+from m2c_kernel.codes.sketch import IssueCode
+from m2c_kernel.document.results import DisplaySource, FeatureOutput, Issue
+from m2c_kernel.features.common import feature_refs
 from m2c_kernel.features.registry import ReadSet, Refs, feature_type
-from m2c_kernel.geometry import Vec3
-from m2c_kernel.protocol.wire import BlobRef
+from m2c_kernel.protocol.errors import KernelError
+from m2c_kernel.protocol.wire import JsonValue
+from m2c_kernel.sketch.api import cut, deviation_from, evaluate, section_geometry
+from m2c_kernel.sketch.params import (
+    AxisNormalSource,
+    FeaturePlaneSource,
+    PlanarSection,
+    SketchParams,
+)
+from m2c_kernel.sketch.section import to_xyz
 
 if TYPE_CHECKING:
-    from m2c_kernel.document.rebuild import EvalContext
-    from m2c_kernel.document.results import FeatureOutput
+    from m2c_kernel.document.rebuild import EvalContext, EvalMesh
 
 
-@dataclass(frozen=True, kw_only=True)
-class SketchPlaneRef:
-    reference: StandardPlane | str
-    """A standard plane or the id of a feature that provides a plane."""
-    offset: float = 0.0
-    x_direction: Vec3 | None = None
-    flip: bool = False
+def sketch_references(params: SketchParams) -> tuple[str, ...]:
+    section = params.section
+    if isinstance(section, PlanarSection):
+        source = section.plane
+        if isinstance(source, FeaturePlaneSource):
+            return feature_refs(source.feature)
+        if isinstance(source, AxisNormalSource):
+            return feature_refs(source.axis)
+        return ()
+    return feature_refs(section.axis)
 
 
-@dataclass(frozen=True, kw_only=True)
-class SectionSettings:
-    mode: Literal["single", "stacked", "rotational"] = "single"
-    count: int = 1
-    spacing: float = 1.0
-    axis: str | None = None
-    """Axis feature of rotational sections."""
-    offset: float = 0.0
-    """Section position relative to the sketch plane."""
-    faces: BlobRef | None = None
-    """Restrict the section to these scan triangles."""
-
-
-@dataclass(frozen=True, kw_only=True)
-class SketchPoint:
-    id: str
-    x: float
-    y: float
-
-
-@dataclass(frozen=True, kw_only=True)
-class LineEntity:
-    type: Literal["line"] = "line"
-    id: str
-    start: str
-    end: str
-
-
-@dataclass(frozen=True, kw_only=True)
-class ArcEntity:
-    type: Literal["arc"] = "arc"
-    id: str
-    start: str
-    end: str
-    center: tuple[float, float]
-    radius: float
-    ccw: bool
-
-
-@dataclass(frozen=True, kw_only=True)
-class CircleEntity:
-    type: Literal["circle"] = "circle"
-    id: str
-    center: tuple[float, float]
-    radius: float
-
-
-type SketchEntity = LineEntity | ArcEntity | CircleEntity
-
-type ConstraintKind = Literal[
-    "horizontal",
-    "vertical",
-    "parallel",
-    "perpendicular",
-    "collinear",
-    "equalRadius",
-    "concentric",
-    "tangent",
-]
-
-
-@dataclass(frozen=True, kw_only=True)
-class SketchConstraint:
-    kind: ConstraintKind
-    refs: list[str]
-
-
-@dataclass(frozen=True, kw_only=True)
-class SketchParams:
-    plane: SketchPlaneRef
-    section: SectionSettings = SectionSettings()
-    tolerance: float | None = None
-    """Fit tolerance in mm; None derives it from the section noise."""
-    points: list[SketchPoint] = field(default_factory=list)
-    entities: list[SketchEntity] = field(default_factory=list)
-    loops: list[list[str]] = field(default_factory=list)
-    constraints: list[SketchConstraint] = field(default_factory=list)
+def _mesh(ctx: EvalContext) -> EvalMesh | None:
+    try:
+        return ctx.mesh
+    except KernelError:
+        return None
 
 
 @feature_type("sketch", params=SketchParams, reads=ReadSet(mesh=True, settings=("tolerance",)))
 class Sketch:
     @staticmethod
     def references(params: SketchParams) -> Refs:
-        return Refs(features=feature_refs(params.plane.reference, params.section.axis))
+        return Refs(features=sketch_references(params))
 
     @staticmethod
     def evaluate(ctx: EvalContext, params: SketchParams) -> FeatureOutput:
-        raise not_implemented("sketch")
+        geometry = section_geometry(params.section, ctx.construction)
+        result = evaluate(params, geometry)
+        issues: list[Issue] = []
+        profile = result.profile
+        if profile.open_entities:
+            gaps: list[JsonValue] = [[float(v) for v in gap] for gap in result.gaps]
+            issues.append(Issue(IssueCode.PROFILE_OPEN, {"count": len(gaps), "gaps": gaps}))
+        for loop in result.invalid_loops:
+            issues.append(Issue(IssueCode.PROFILE_INVALID, {"loop": loop}))
+
+        display = [
+            DisplaySource(
+                kind="lines", style="sketch", positions=result.segments, ids=result.segment_entities
+            )
+        ]
+        stats: dict[str, float | None] = {
+            "sketch.entities": float(len(params.entities)),
+            "sketch.loops": float(len(profile.loops)),
+        }
+        mesh = _mesh(ctx)
+        if mesh is not None:
+            section = cut(mesh.vertices, mesh.faces, geometry, mesh.vertex_normals)
+            raw = section.raw_points()
+            if len(raw):
+                display.append(
+                    DisplaySource(
+                        kind="points", style="sectionPoints", positions=to_xyz(geometry.frame, raw)
+                    )
+                )
+            worst = deviation_from(params, section)
+            stats["sketch.deviation"] = worst
+            if worst is None:
+                issues.append(Issue(IssueCode.SECTION_EMPTY))
+            elif worst > ctx.settings.tolerance:
+                issues.append(Issue(IssueCode.DEVIATES_FROM_SCAN, {"max": round(worst, 6)}))
+        return FeatureOutput(
+            sketch=result.profiles,
+            display=tuple(display),
+            stats=stats,
+            issues=tuple(issues),
+        )

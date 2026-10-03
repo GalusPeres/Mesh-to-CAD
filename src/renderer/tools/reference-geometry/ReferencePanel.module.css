@@ -1,0 +1,10 @@
+.active {
+  outline: 1px solid var(--border-strong);
+  outline-offset: 1px;
+  border-radius: var(--radius);
+}
+
+.hint {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}

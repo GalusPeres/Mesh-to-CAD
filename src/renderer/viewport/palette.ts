@@ -25,15 +25,42 @@ export const SCENE_COLORS = {
   brushDark: '#1C1D20',
 } as const;
 
-/** Mix factors of the per-face states over the base colour. */
+/** Recognised shapes: outlines by role, unchecked and hovered ones, and their labels. */
+export const RECOGNITION_COLORS = {
+  boss: '#3F87EE',
+  pocket: '#EC9A3A',
+  hole: '#D24B35',
+  profile: '#9786C9',
+  unchecked: '#7D828A',
+  hover: '#E6CF4F',
+  labelBackground: '#1C1D20',
+  labelText: '#F4F6F7',
+  /** Sprite tint that keeps the label's own colours. */
+  labelPlain: '#FFFFFF',
+} as const;
+
+/** The freeform net being edited: its surface, net lines, open border and control points. */
+export const NET_COLORS = {
+  surface: '#A9C8D6',
+  lines: '#24343C',
+  border: '#F4F6F7',
+  point: '#1C2B33',
+  pointRing: '#F4F6F7',
+  hover: '#E6CF4F',
+  /** Irregular points (valence other than 4): patch borders start there. */
+  irregular: '#D24B35',
+} as const;
+
+/** Mix factors over the base colour and opacities of the scene styles. */
 export const SCENE_MIX = {
   selection: 0.55,
   hover: 0.25,
   passFail: 0.7,
-  constructionFill: 0.2,
-  patchFill: 0.35,
+  constructionFill: 0.45,
   xrayOpacity: 0.3,
   sketchGhostOpacity: 0.15,
+  triangleEdges: 0.12,
+  regionBorder: 0.6,
 } as const;
 
 /** Ten muted region colours; hues 225-290 degrees are excluded (selection blue). */

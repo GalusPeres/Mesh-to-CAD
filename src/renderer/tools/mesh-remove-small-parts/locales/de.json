@@ -1,3 +1,10 @@
 {
-  "label": "Kleine Teile entfernen"
+  "label": "Kleine Teile entfernen",
+  "tooltip": "Entfernt lose Teile wie Reste der Drehplatte oder Staub.",
+  "minShare": "Mindestgröße (Anteil am größten Teil)",
+  "minFaces": "Mindestens Dreiecke",
+  "removedParts": "Entfernte Teile",
+  "removedFaces": "Entfernte Dreiecke",
+  "nothingToDo": "Es gibt keine Teile unter diesen Grenzen.",
+  "help": "Jeder zusammenhängende Teil des Scans, der kleiner als eine der beiden Grenzen ist, wird entfernt; das größte Teil bleibt immer erhalten. Die betroffenen Dreiecke sind rot markiert. Mehrere gleich große Teile eines Scans bleiben mit den Voreinstellungen erhalten."
 }

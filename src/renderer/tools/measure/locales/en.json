@@ -1,3 +1,31 @@
 {
-  "label": "Measure"
+  "label": "Measure",
+  "tooltip": "Measure distances, angles and diameters",
+  "help": "Click two items in the viewport or the project tree: fitted shapes, reference geometry or body faces; origin planes and axes are in the list. For fitted shapes the value is followed by its measurement uncertainty from the scan. The values are only shown, not stored in the project.",
+  "noScan": "No scan loaded.",
+  "first": "Item 1",
+  "second": "Item 2",
+  "none": "–",
+  "pickHint": "Choose in the viewport or the project tree.",
+  "empty": "Choose an item.",
+  "chooseSecond": "Choose a second item to measure distance and angle.",
+  "distance": {
+    "parallel": "Distance",
+    "shortest": "Shortest distance",
+    "point": "Distance",
+    "minimum": "Minimum distance"
+  },
+  "angle": "Angle",
+  "diameter": "Diameter",
+  "diameterFirst": "Diameter item 1",
+  "diameterSecond": "Diameter item 2",
+  "notParallel": "Not parallel ({{angle}}): no distance is defined.",
+  "origin": {
+    "XY": "Origin: plane XY",
+    "YZ": "Origin: plane YZ",
+    "XZ": "Origin: plane XZ",
+    "X": "Origin: axis X",
+    "Y": "Origin: axis Y",
+    "Z": "Origin: axis Z"
+  }
 }

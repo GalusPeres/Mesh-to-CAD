@@ -1,9 +1,13 @@
 {
   "name": "Reference",
   "kinds": {
-    "offsetPlane": "Plane",
-    "midPlane": "Mid-plane",
-    "planeThroughAxis": "Plane through axis",
-    "axisFromPlanes": "Axis"
+    "plane": "Plane",
+    "axis": "Axis"
+  },
+  "summary": {
+    "offsetPlane": "{{plane}} {{distance}}",
+    "planeThroughAxis": "Through {{axis}}, {{angle}}",
+    "midPlane": "Midway between {{a}} and {{b}}",
+    "axisFromPlanes": "Intersection of {{a}} and {{b}}"
   }
 }

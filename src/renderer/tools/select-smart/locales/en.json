@@ -1,3 +1,5 @@
 {
-  "label": "Smart select"
+  "label": "Smart select",
+  "tooltip": "Select the connected surface under the cursor.",
+  "help": "Rest the cursor on the scan: the surface below is highlighted. Click adds it, Ctrl+click removes it. Shape follows one basic shape (plane, cylinder, ...), Smooth follows the surface up to sharp edges. Ctrl+mouse wheel changes the tolerance."
 }

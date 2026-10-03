@@ -1,3 +1,7 @@
 {
-  "label": "Revolve"
+  "label": "Revolve",
+  "help": "Choose a sketch and the axis. The axis can be a line of the sketch, the axis of a fitted cylinder or a reference axis; it must lie in the sketch plane and must not cross the profile. The angle counts counter-clockwise about the axis direction.",
+  "axis": "Axis",
+  "sketchLine": "Sketch line {{id}}",
+  "angle": "Angle"
 }

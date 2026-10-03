@@ -5,9 +5,19 @@
   "filterName": "Scans (STL, OBJ, PLY)",
   "file": "File",
   "triangles": "Triangles",
+  "trianglesUnit": "triangles",
+  "nonFiniteFaces_one": "{{count, count}} triangle with invalid coordinates was left out.",
+  "nonFiniteFaces_other": "{{count, count}} triangles with invalid coordinates were left out.",
   "unit": "Unit of the file",
   "size": "Dimensions",
-  "unitHint": "The scan is very small. It is probably stored in metres; check the unit.",
-  "reductionRequired": "The scan has more than 2,000,000 triangles and must be reduced before import.",
-  "help": "The file does not store a unit. Choose the unit that makes the dimensions match the real part. OK makes the scan the starting point of a new project."
+  "smallScan": "The scan measures {{size}}. Choose the unit: mm, cm, m, in.",
+  "reduce": "Reduce during import",
+  "reduceTo": "Reduce to",
+  "invalidTarget": "Choose a target between {{min, count}} and {{max, count}} triangles.",
+  "reductionRequired": "The scan has {{faces, count}} triangles. It is reduced for working.",
+  "noise": "Scan noise",
+  "noNoise": "cannot be determined",
+  "tolerance": "Tolerance (proposed)",
+  "toleranceHint": "The tolerance applies to the whole project and can be changed in the status bar.",
+  "help": "The file does not store a unit. Choose the unit that makes the dimensions match the real part. The scan is repaired during import; loose small parts are removed. OK makes the scan the starting point of a new project."
 }

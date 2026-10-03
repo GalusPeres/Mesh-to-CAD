@@ -3,6 +3,7 @@
 import type { MethodInfo } from '../wireTypes';
 import type { LengthUnit } from './document-model';
 import type { Vec3 } from './geometry';
+import type { RepairStep } from './mesh-repair';
 
 export interface ImportParams {
   path: string;
@@ -11,19 +12,24 @@ export interface ImportParams {
 /**
  * What the import panel shows before the user confirms the unit.
  *
- * Bounds are in file units. `suggested_unit` is a guess (a part smaller than two
- * units is almost certainly in metres); the user always confirms.
+ * Bounds are in file units. `noise` (mm) and `proposed_tolerance` (mm) are given
+ * per unit, because the noise is measured at the physical scale the unit implies.
+ * `suggested_unit` is a guess (a part smaller than two units is almost certainly
+ * stored in metres); the user always confirms. `counts` holds `mergedVertices`
+ * and `nonFiniteFaces` (dropped while reading).
  */
 export interface ImportReport {
   pendingId: string;
   fileName: string;
   faceCount: number;
   vertexCount: number;
-  mergedVertices: number;
   boundsMin: Vec3;
   boundsMax: Vec3;
   suggestedUnit: LengthUnit;
-  requiresReduction: boolean;
+  noise: Record<string, number | null>;
+  proposedTolerance: Record<string, number>;
+  reductionRequired: boolean;
+  counts: Record<string, number>;
 }
 
 export interface CommitImportParams {
@@ -34,6 +40,7 @@ export interface CommitImportParams {
 
 export interface CommitImportResult {
   revision: number;
+  counts: Record<string, number>;
 }
 
 export interface DiscardImportParams {
@@ -42,14 +49,116 @@ export interface DiscardImportParams {
 
 export type DiscardImportResult = Record<string, never>;
 
+export type InspectParams = Record<string, never>;
+
+/**
+ * Condition of the scan, shown in the scan information panel.
+ *
+ * Lengths in mm, areas in mm², volumes in mm³. `volume` is null unless the scan
+ * is closed (every edge has exactly two faces). `small_parts` counts the loose
+ * parts that *Kleine Teile entfernen* would remove with its default settings.
+ */
+export interface MeshReport {
+  scanKey: string;
+  faceCount: number;
+  vertexCount: number;
+  watertight: boolean;
+  boundaryLoops: number;
+  boundaryEdges: number;
+  nonManifoldEdges: number;
+  inconsistentEdges: number;
+  components: number;
+  smallParts: number;
+  degenerateFaces: number;
+  duplicateFaces: number;
+  syntheticFaces: number;
+  area: number;
+  volume: number | null;
+  size: Vec3;
+  noise: number | null;
+}
+
+/**
+ * What a preparation step did or, for a dry run, would do.
+ *
+ * `changed` is false when the step finds nothing to do; then nothing is committed.
+ * `revision` is the new revision, or null for a dry run and for no change.
+ * `affected_faces` (dry runs only) are the faces of the current scan that the step
+ * removes or flips, or the faces around the holes it fills.
+ */
+export interface MeshEditResult {
+  counts: Record<string, number>;
+  faceCount: number;
+  vertexCount: number;
+  changed: boolean;
+  revision: number | null;
+  affectedFaces: Uint32Array;
+}
+
+export interface RepairParams {
+  steps?: RepairStep[];
+  dryRun?: boolean;
+}
+
+export interface RemoveSmallPartsParams {
+  minRatio?: number;
+  minFaces?: number;
+  dryRun?: boolean;
+}
+
+export const REMOVE_SMALL_PARTS_PARAMS_RANGES = { minRatio: { min: 0, max: 1 }, minFaces: { min: 0, max: 1000000 } } as const;
+
+export interface FillHolesParams {
+  maxPerimeter: number;
+  dryRun?: boolean;
+}
+
+export const FILL_HOLES_PARAMS_RANGES = { maxPerimeter: { min: 0, max: 100000 } } as const;
+
+export interface DecimateParams {
+  targetFaces: number;
+  dryRun?: boolean;
+}
+
+export const DECIMATE_PARAMS_RANGES = { targetFaces: { min: 1000, max: 2000000 } } as const;
+
+export interface DeleteFacesParams {
+  faces: Uint32Array;
+  scanKey: string;
+}
+
+export interface SetSmoothingParams {
+  iterations: number;
+}
+
+export const SET_SMOOTHING_PARAMS_RANGES = { iterations: { min: 0, max: 20 } } as const;
+
+export interface SetSmoothingResult {
+  revision: number | null;
+}
+
 export interface MeshMethods {
   'mesh.import': { params: ImportParams; result: ImportReport };
   'mesh.commitImport': { params: CommitImportParams; result: CommitImportResult };
   'mesh.discardImport': { params: DiscardImportParams; result: DiscardImportResult };
+  'mesh.inspect': { params: InspectParams; result: MeshReport };
+  'mesh.repair': { params: RepairParams; result: MeshEditResult };
+  'mesh.removeSmallParts': { params: RemoveSmallPartsParams; result: MeshEditResult };
+  'mesh.fillHoles': { params: FillHolesParams; result: MeshEditResult };
+  'mesh.decimate': { params: DecimateParams; result: MeshEditResult };
+  'mesh.deleteFaces': { params: DeleteFacesParams; result: MeshEditResult };
+  'mesh.setSmoothing': { params: SetSmoothingParams; result: SetSmoothingResult };
 }
 
 export const MESH_METHODS = {
   'mesh.import': { lane: false, caller: 'main', exclusive: false },
-  'mesh.commitImport': { lane: false, caller: 'renderer', exclusive: false },
+  'mesh.commitImport': { lane: false, caller: 'renderer', exclusive: true },
   'mesh.discardImport': { lane: false, caller: 'renderer', exclusive: false },
+  'mesh.inspect': { lane: false, caller: 'renderer', exclusive: false },
+  'mesh.repair': { lane: true, caller: 'renderer', exclusive: false },
+  'mesh.removeSmallParts': { lane: true, caller: 'renderer', exclusive: false },
+  'mesh.fillHoles': { lane: true, caller: 'renderer', exclusive: false },
+  'mesh.decimate': { lane: true, caller: 'renderer', exclusive: true },
+  'mesh.deleteFaces': { lane: false, caller: 'renderer', exclusive: false },
+  'mesh.setSmoothing': { lane: false, caller: 'renderer', exclusive: false },
 } as const satisfies Record<keyof MeshMethods, MethodInfo>;

@@ -1,0 +1,8 @@
+.computing {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+}
+
+.stale {
+  opacity: 0.5;
+}

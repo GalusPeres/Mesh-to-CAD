@@ -1,3 +1,47 @@
 {
-  "label": "Reference geometry"
+  "label": "Reference geometry",
+  "help": "Choose the kind of reference geometry and pick its inputs from the list, in the project tree or in the viewport. Distance and angle can be typed or dragged at the arrow and the arc. Planes serve as sketch planes and extrude limits, axes as revolve axes and for alignment.",
+  "definition": "Kind",
+  "types": {
+    "offsetPlane": "Offset plane",
+    "planeThroughAxis": "Plane through axis",
+    "midPlane": "Mid-plane",
+    "axisFromPlanes": "Axis from two planes"
+  },
+  "slots": {
+    "offsetPlane": {
+      "plane": "Plane"
+    },
+    "planeThroughAxis": {
+      "axis": "Axis"
+    },
+    "midPlane": {
+      "a": "First plane",
+      "b": "Second plane"
+    },
+    "axisFromPlanes": {
+      "a": "First plane",
+      "b": "Second plane"
+    }
+  },
+  "origin": {
+    "XY": "XY plane",
+    "YZ": "YZ plane",
+    "XZ": "XZ plane",
+    "X": "X axis",
+    "Y": "Y axis",
+    "Z": "Z axis"
+  },
+  "pick": "Choose …",
+  "pickHint": {
+    "plane": "Click a plane in the project tree or in the viewport.",
+    "axis": "Click an axis or a cylinder in the project tree or in the viewport."
+  },
+  "distance": "Distance",
+  "angle": "Angle",
+  "incomplete": "Inputs missing.",
+  "created": {
+    "plane": "Plane computed.",
+    "axis": "Axis computed."
+  }
 }

@@ -2,21 +2,27 @@
 
 import type { BlobRef } from '../wireTypes';
 
+export type SpanCount = number;
+
 export interface FreeformPatchParams {
   faces: BlobRef;
   sourceRegion: string | null;
-  spans: [number, number] | null;
+  spans: [SpanCount, SpanCount] | null;
   smoothing: number;
   margin: number;
 }
 
+export const FREEFORM_PATCH_PARAMS_RANGES = { smoothing: { min: 0, max: 1 }, margin: { min: 0, max: 50 } } as const;
+
 export interface FreeformPatchInput {
   faces: Uint32Array;
   sourceRegion?: string | null;
-  spans?: [number, number] | null;
+  spans?: [SpanCount, SpanCount] | null;
   smoothing?: number;
   margin?: number;
 }
+
+export const FREEFORM_PATCH_INPUT_RANGES = { smoothing: { min: 0, max: 1 }, margin: { min: 0, max: 50 } } as const;
 
 export interface FreeformPatchFeatureType {
   type: 'freeformPatch';

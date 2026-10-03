@@ -2,10 +2,6 @@
 
 import type { BodyOperation, StandardAxis } from './features-common';
 
-export type RevolveAxis = SketchLineAxis | FeatureAxis | GlobalAxis;
-
-export type RevolveAxisInput = SketchLineAxisInput | FeatureAxisInput | GlobalAxisInput;
-
 export interface SketchLineAxis {
   type: 'sketchLine';
   entity: string;
@@ -39,6 +35,10 @@ export interface GlobalAxisInput {
   axis: StandardAxis;
 }
 
+export type RevolveAxis = SketchLineAxis | FeatureAxis | GlobalAxis;
+
+export type RevolveAxisInput = SketchLineAxisInput | FeatureAxisInput | GlobalAxisInput;
+
 export interface RevolveParams {
   sketch: string;
   loops: string[] | null;
@@ -57,6 +57,8 @@ export interface RevolveParamsInput {
   operation?: BodyOperation;
   targetBody?: string | null;
 }
+
+export const REVOLVE_PARAMS_RANGES = { angleDeg: { min: 0, max: 360 } } as const;
 
 export interface RevolveFeatureType {
   type: 'revolve';

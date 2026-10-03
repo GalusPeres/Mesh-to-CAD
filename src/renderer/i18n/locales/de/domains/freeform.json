@@ -1,5 +1,21 @@
 {
   "errors": {
-    "tooCurved": "Freiformfläche nicht möglich: Der Bereich ist zu stark gekrümmt."
+    "tooCurved": "Freiformfläche nicht möglich: Die Normalen des Bereichs streuen um {{spreadDeg, angle}} (höchstens {{maxDeg, angle}}). Bereich teilen oder einen Loft verwenden.",
+    "tooFewFaces": "Freiformfläche nicht möglich: Auswahl zu klein ({{count, count}} Dreiecke, mindestens {{min, count}}).",
+    "fitFailed": "Freiformfläche nicht möglich: Die Berechnung findet keine Lösung. Auswahl prüfen.",
+    "invalidSurface": "Freiformfläche nicht möglich: Die Fläche ist geometrisch ungültig. Weniger Spannen oder mehr Glättung wählen.",
+    "invalidRange": "Loft nicht möglich: Das Ende ({{end, length}}) muss hinter dem Anfang ({{start, length}}) liegen.",
+    "notAnAxis": "Loft nicht möglich: Das gewählte Element hat keine Achse. Achse, Zylinder, Kegel oder Ebene wählen.",
+    "noSection": "Loft nicht möglich: Bei {{position, length}} ergibt der Scan keine geschlossene Kontur. Anfang und Ende in den Scan legen oder Löcher füllen.",
+    "loftFailed": "Loft fehlgeschlagen: Die Schnitte lassen sich nicht zu einem Körper verbinden. Schnittzahl oder Bereich ändern.",
+    "notAFreeformFeature": "Das Element ist keine Freiformfläche und kein Loft."
+  },
+  "issues": {
+    "poorFit": "Nur {{share, percent}} der Dreiecke liegen in der Toleranz ±{{tolerance, length}}. Mehr Spannen, weniger Glättung oder eine kleinere Auswahl wählen."
+  },
+  "progress": {
+    "fittingPatch": "Freiformfläche anpassen",
+    "sectioning": "Scan schneiden",
+    "lofting": "Loft erzeugen"
   }
 }

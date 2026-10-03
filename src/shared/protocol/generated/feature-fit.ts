@@ -2,10 +2,17 @@
 
 import type { BlobRef } from '../wireTypes';
 import type { StandardAxis } from './features-common';
+import type { SnapId } from './fitting-intent';
 import type { PrimitiveKind } from './fitting-primitives';
 import type { Vec3 } from './geometry';
 
-/** Parameters fixed by the user; every other parameter is computed by the fit. */
+/**
+ * Parameters fixed by the user; every other parameter is computed by the fit.
+ *
+ * `direction` is the plane normal or the axis; `point` lies on the plane or the
+ * axis, or is the apex or the centre; `offset` is the plane's signed distance
+ * from the origin along its normal.
+ */
 export interface FitFixed {
   direction: Vec3 | null;
   point: Vec3 | null;
@@ -27,6 +34,12 @@ export interface FitFixedInput {
   offset?: number | null;
 }
 
+/**
+ * The direction is parallel or perpendicular to a global axis or another feature.
+ *
+ * Between a plane normal and an axis, parallel means perpendicular directions:
+ * a plane parallel to Z is vertical.
+ */
 export interface FitRelation {
   type: 'parallel' | 'perpendicular';
   to: StandardAxis | string;
@@ -40,7 +53,7 @@ export interface FitParams {
   fixed: FitFixed;
   relation: FitRelation | null;
   snap: boolean;
-  rejectedSnaps: string[];
+  rejectedSnaps: SnapId[];
 }
 
 /** Like `FitParams`, but the triangles arrive as indices and are stored as a blob. */
@@ -52,7 +65,7 @@ export interface FitInput {
   fixed?: FitFixedInput;
   relation?: FitRelation | null;
   snap?: boolean;
-  rejectedSnaps?: string[];
+  rejectedSnaps?: SnapId[];
 }
 
 export interface FitFeatureType {

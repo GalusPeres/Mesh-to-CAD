@@ -1,6 +1,14 @@
 {
   "errors": {
     "tooFewFaces": "Form nicht einpassbar: Auswahl zu klein ({{count, count}} Dreiecke, mindestens {{min, count}}).",
-    "didNotConverge": "Form nicht einpassbar: Die Berechnung findet keine Lösung. Auswahl prüfen oder anderen Typ wählen."
+    "didNotConverge": "Form nicht einpassbar: Die Berechnung findet keine Lösung. Auswahl prüfen oder anderen Typ wählen.",
+    "invalidRelation": "Form nicht einpassbar: Die Richtungsbedingung passt nicht zum Typ oder zum Bezug. Bedingung ändern.",
+    "fixedNotApplicable": "Form nicht einpassbar: Ein fester Wert passt nicht zum Typ. Wert freigeben oder Typ ändern.",
+    "invalidValue": "Form nicht einpassbar: Ein fester Wert ist ungültig. Radien müssen größer als 0 sein, der halbe Öffnungswinkel zwischen 0° und 90° liegen.",
+    "staleSelection": "Die Auswahl gehört zu einem älteren Stand des Scans. Neu auswählen.",
+    "notAFit": "Das Element ist keine eingepasste Form."
+  },
+  "issues": {
+    "poorFit": "Nur {{share, percent}} der Dreiecke liegen in der Toleranz ±{{tolerance, length}}. Auswahl prüfen oder anderen Typ wählen."
   }
 }

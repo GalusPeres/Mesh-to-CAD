@@ -1,103 +1,177 @@
 import * as THREE from 'three';
 
-import type {
-  SceneItem,
-  SceneManifest,
-  ScenePayload,
-} from '@shared/protocol/generated/document-display';
+import type { SceneItem, SceneManifest } from '@shared/protocol/generated/document-display';
 
+import { settingsStore } from '../state/settingsStore';
+import { type DisplayMode, type SectionPlane, setSectionPlane } from '../state/viewStore';
 import type {
   CameraView,
-  HandleFactory,
   Overlay,
   PickHit,
   PickOptions,
   Ray,
+  ScanSurfaceQueries,
   ScanTopology,
-  ScanView,
   ScreenPoint,
   Vec3,
   Viewport,
   ViewportInteraction,
 } from './api';
 import { CameraRig } from './CameraRig';
-import { type DisplayObject, type ThemeColors, createDisplayObject } from './displayItems';
-import { createHandleFactory } from './handles';
+import { createDepthBias } from './depthBias';
+import { CornerWidgets } from './cornerWidgets';
+import type { ThemeColors } from './displayItems';
+import { type InternalHandleFactory, createHandleFactory } from './handles';
+import { type HighlightTarget, ItemLayer, type PayloadFetcher } from './itemLayer';
+import { createOverlayGroup } from './overlays';
 import { SCENE_COLORS } from './palette';
 import { PointerRouter } from './PointerRouter';
-import { ScanMesh } from './scanMesh';
-import { ScanProxy, computeScanTopology, facesInCircle, facesInPolygon } from './scanPicking';
+import { createScanSurfaceQueries } from './scanDistance';
+import { ScanLayer } from './scanLayer';
+import { ScanQueries } from './scanQueries';
+import { type PickScene, pickScene } from './scenePicking';
+import { type SceneChange, SceneSync } from './sceneSync';
+import { SectionPlaneController } from './sectionPlane';
+import { warmUpShaders } from './shaderWarmUp';
+import { captureCanvas, createViewportRenderer } from './rendererSetup';
+import type { CubeLabels } from './viewCube';
 
-export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
+export type { PayloadFetcher } from './itemLayer';
 
-const EDGE_PICK_PX = 5;
-
+const ALL_KINDS: readonly PickHit['kind'][] = ['scan', 'body', 'edge', 'item'];
 const tuple = (vector: THREE.Vector3): Vec3 => [vector.x, vector.y, vector.z];
 
 /**
- * The 3D scene: scan, display items, previews, overlays and handles, picking,
- * and rendering on demand (every change calls `invalidate()`, which schedules
- * one frame).
+ * The 3D scene: scan, display items, previews, overlays, handles and the corner
+ * widgets; picking; rendering on demand (every change calls `invalidate()`, which
+ * schedules one frame). Tools see it only through viewport/api.ts.
  */
 export class SceneController implements Viewport {
-  readonly scan: ScanView;
+  readonly scan: ScanLayer;
   readonly camera: CameraView;
-  readonly handles: HandleFactory;
+  readonly handles: InternalHandleFactory;
+  readonly scanSurface: ScanSurfaceQueries;
+  readonly rig: CameraRig;
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly rig: CameraRig;
-  private readonly pointer: PointerRouter;
+  private readonly handleScene = new THREE.Scene();
   private readonly scanGroup = new THREE.Group();
-  private readonly itemGroup = new THREE.Group();
-  private readonly previewGroup = new THREE.Group();
   private readonly overlayGroup = new THREE.Group();
-  private readonly handleGroup = new THREE.Group();
-  private scanMesh: ScanMesh | null = null;
-  private readonly items = new Map<string, DisplayObject>();
-  private readonly previews = new Map<string, DisplayObject[]>();
-  private topology: Promise<ScanTopology> | null = null;
-  private syncToken = 0;
-  private frameRequest = 0;
-  private theme: ThemeColors;
+  private readonly bias = createDepthBias();
+  private readonly pointer: PointerRouter;
+  private readonly section: SectionPlaneController;
+  private readonly items: ItemLayer;
+  private readonly sync: SceneSync;
+  private readonly queries: ScanQueries;
+  private readonly widgets: CornerWidgets;
+  private readonly frameHooks = new Set<() => void>();
   private readonly resizeObserver: ResizeObserver;
-  private readonly raycaster = new THREE.Raycaster();
+  private theme: ThemeColors;
+  private tolerance = 0.1;
+  private display: { mode: DisplayMode; deviationVisible: boolean } = {
+    mode: 'shaded',
+    deviationVisible: false,
+  };
+  private frameRequest = 0;
+  private contextLost = false;
 
   constructor(
     private readonly container: HTMLElement,
-    private readonly fetchPayloads: PayloadFetcher,
+    fetchPayloads: PayloadFetcher,
     theme: ThemeColors,
   ) {
     this.theme = theme;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setClearColor(theme.viewportBackground);
+    this.renderer = createViewportRenderer(container, theme.viewportBackground);
     const canvas = this.renderer.domElement;
-    canvas.dataset.testid = 'viewport-canvas';
-    canvas.tabIndex = 0;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    container.appendChild(canvas);
+
+    this.handles = createHandleFactory({
+      group: this.handleScene,
+      bias: this.bias,
+      addInteraction: (interaction) => this.addInteraction(interaction),
+      screenToRay: (at) => this.screenToRay(at),
+      worldToScreen: (point) => this.worldToScreen(point),
+      worldPerPixel: (point) => this.rig.worldPerPixel(point),
+      colors: () => ({
+        neutral: this.theme.text,
+        outline: this.theme.bgApp,
+        accent: this.theme.accent,
+      }),
+      beforeFrame: (update) => {
+        this.frameHooks.add(update);
+        return () => this.frameHooks.delete(update);
+      },
+      invalidate: () => this.invalidate(),
+    });
+    this.section = new SectionPlaneController({
+      handles: this.handles,
+      bias: this.bias,
+      scanGroup: this.scanGroup,
+      scan: () => this.scan.current,
+      sceneRadius: () => this.sceneBounds().getBoundingSphere(new THREE.Sphere()).radius,
+      commit: (plane) => setSectionPlane(plane),
+      invalidate: () => this.invalidate(),
+    });
+    const clipping = [this.section.clippingPlane];
+    this.queries = new ScanQueries(this.renderer, clipping, {
+      visibleScan: () => (this.scanGroup.visible ? this.scan.current : null),
+      scanMatrix: this.scanGroup.matrix,
+      camera: () => this.rig.camera,
+      size: () => this.size(),
+      pickScene: () => this.pickScene(),
+    });
+    this.scanSurface = createScanSurfaceQueries(() => this.scan.current, this.scanGroup.matrix);
+    this.scan = new ScanLayer(clipping, (change) => {
+      if (change === 'visibility') this.visibleFacesChanged();
+      this.invalidate();
+    });
+    this.items = new ItemLayer(
+      () => ({ bias: this.bias, clipping, theme: this.theme }),
+      fetchPayloads,
+      () => this.invalidate(),
+    );
+    this.sync = new SceneSync({
+      fetch: fetchPayloads,
+      scan: this.scan,
+      items: this.items,
+      scanGroup: this.scanGroup,
+      changed: (change) => this.sceneChanged(change),
+      firstScan: () => this.fitAll(false),
+    });
+    // The rig reports its first pose right away; everything it notifies exists by now.
+    this.rig = new CameraRig(this.scene, canvas, {
+      pickPivot: (at) => this.pick(at, { kinds: ['scan', 'body'] })?.point ?? null,
+      invertWheel: () => settingsStore.getState().navigation.invertWheel,
+      onChange: () => this.viewChanged(),
+    });
+    this.pointer = new PointerRouter(canvas, (enabled) => this.rig.setNavigationEnabled(enabled));
 
     this.scene.add(
       new THREE.HemisphereLight(SCENE_COLORS.hemisphereSky, SCENE_COLORS.hemisphereGround, 0.9),
     );
     this.scanGroup.matrixAutoUpdate = false;
-    this.scene.add(
-      this.scanGroup,
-      this.itemGroup,
-      this.previewGroup,
-      this.overlayGroup,
-      this.handleGroup,
-    );
+    this.scene.add(this.scanGroup, this.items.group, this.items.previewGroup, this.overlayGroup);
 
-    this.rig = new CameraRig(this.scene, canvas, () => this.invalidate());
-    this.pointer = new PointerRouter(canvas, (enabled) => this.rig.setNavigationEnabled(enabled));
+    this.widgets = new CornerWidgets(theme, this.bias, this.pointer, {
+      rig: this.rig,
+      width: () => this.size().width,
+      invalidate: () => this.invalidate(),
+    });
     canvas.addEventListener('auxclick', (event) => {
       if (event.button === 1 && event.detail === 2) this.fitAll();
     });
+    canvas.addEventListener('webglcontextlost', () => {
+      this.contextLost = true;
+      cancelAnimationFrame(this.frameRequest);
+      this.frameRequest = 0;
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      // three.js re-creates its GL state; every buffer and texture is uploaded again.
+      this.contextLost = false;
+      this.invalidateFaceIds();
+      this.invalidate();
+    });
 
-    this.scan = new ScanProxy(() => this.scanMesh);
     this.camera = {
       fitAll: () => this.fitAll(),
       fitBox: (min, max) => this.rig.fitBox(min, max),
@@ -106,19 +180,20 @@ export class SceneController implements Viewport {
       setProjection: (projection) => this.rig.setProjection(projection),
       setOrbitLocked: (locked) => this.rig.setOrbitLocked(locked),
     };
-    this.handles = createHandleFactory({
-      group: this.handleGroup,
-      addInteraction: (interaction) => this.addInteraction(interaction),
-      screenToRay: (at) => this.screenToRay(at),
-      worldToScreen: (point) => this.worldToScreen(point),
-      worldPerPixel: (point) => this.rig.worldPerPixel(point),
-      neutralColor: () => this.theme.text,
-      invalidate: () => this.invalidate(),
-    });
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
     this.resize();
+    warmUpShaders(this.renderer, this.rig.camera, this.scene, {
+      materials: [
+        this.scan.materials.opaque,
+        this.scan.materials.transparent,
+        this.queries.faceIds.material(0),
+      ],
+      display: { bias: this.bias, clipping, theme },
+    }).catch((error: unknown) => {
+      window.m2c.app.log({ level: 'warn', message: `shader warm-up failed: ${String(error)}` });
+    });
   }
 
   dispose(): void {
@@ -126,134 +201,100 @@ export class SceneController implements Viewport {
     this.resizeObserver.disconnect();
     this.pointer.dispose();
     this.rig.dispose();
-    this.scanMesh?.dispose();
-    for (const item of this.items.values()) item.dispose();
-    for (const list of this.previews.values()) list.forEach((item) => item.dispose());
+    this.section.dispose();
+    this.sync.dispose();
+    this.items.dispose();
+    this.queries.dispose();
+    this.widgets.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
 
-  stats(): { scanFaces: number; items: number } {
-    return { scanFaces: this.scanMesh?.faceCount ?? 0, items: this.items.size };
+  // Settings from the stores (ViewportCanvas) -----------------------------------------
+
+  syncScene(manifest: SceneManifest | null): Promise<void> {
+    return this.sync.sync(manifest);
   }
 
   setTheme(theme: ThemeColors): void {
     this.theme = theme;
     this.renderer.setClearColor(theme.viewportBackground);
+    this.scan.setDisplay(this.display.mode, this.display.deviationVisible, theme.text);
+    this.items.setTheme();
+    this.widgets.setTheme(theme);
+    this.handles.refreshAll();
+    this.invalidate();
+  }
+
+  setCubeLabels(labels: CubeLabels): void {
+    this.widgets.setLabels(labels);
     this.invalidate();
   }
 
   setVisibility(scan: boolean, bodies: boolean): void {
     this.scanGroup.visible = scan;
-    this.itemGroup.visible = bodies;
+    this.items.group.visible = bodies;
+    this.items.previewGroup.visible = bodies;
     this.invalidate();
   }
 
-  /** Bring the drawn scene in line with a manifest, fetching payloads it does not have. */
-  async syncScene(manifest: SceneManifest | null): Promise<void> {
-    const token = ++this.syncToken;
-    const scanEntry = manifest?.scan ?? null;
-    const wantedItems = new Map((manifest?.items ?? []).map((item) => [item.key, item]));
-    const missing = [...wantedItems.keys()].filter((key) => !this.items.has(key));
-    const needsScan = scanEntry !== null && this.scanMesh?.scanKey !== scanEntry.key;
-    if (needsScan) missing.unshift(scanEntry.key);
+  setDisplay(mode: DisplayMode, deviationVisible: boolean): void {
+    this.display = { mode, deviationVisible };
+    this.scan.setDisplay(mode, deviationVisible, this.theme.text);
+    this.items.setBodyEdgesVisible(mode !== 'shaded');
+  }
 
-    const payloads = missing.length ? await this.fetchPayloads(missing) : [];
-    if (token !== this.syncToken) return;
-    const byKey = new Map(payloads.map((payload) => [payload.key, payload]));
-
-    const firstScan = needsScan && !this.scanMesh;
-    if (!scanEntry) {
-      this.replaceScan(null);
-    } else {
-      const payload = byKey.get(scanEntry.key);
-      if (needsScan && payload?.type === 'scan') {
-        this.replaceScan(new ScanMesh(payload, scanEntry.key, () => this.invalidate()));
-      }
-      // Positions are relative to the scan origin in scan coordinates; the
-      // alignment transform places them in part coordinates.
-      const matrix = new THREE.Matrix4().set(
-        ...(scanEntry.transform as Parameters<THREE.Matrix4['set']>),
-      );
-      matrix.multiply(new THREE.Matrix4().makeTranslation(...scanEntry.origin));
-      this.scanGroup.matrix.copy(matrix);
-      this.scanGroup.matrixWorldNeedsUpdate = true;
-    }
-    this.syncItems(wantedItems, byKey);
-    if (firstScan) this.fitAll();
+  setTolerance(tolerance: number): void {
+    this.tolerance = tolerance > 0 ? tolerance : 0.1;
+    this.scan.setTolerance(this.tolerance);
     this.invalidate();
+  }
+
+  setSectionPlane(plane: SectionPlane | null): void {
+    if (plane === this.section.plane) return;
+    this.section.set(plane);
+    this.invalidateFaceIds();
+  }
+
+  /** A section through the middle of the scene that cuts away the half facing the viewer. */
+  defaultSectionPlane(): SectionPlane {
+    const center = this.sceneBounds().getCenter(new THREE.Vector3());
+    const towardsCamera = new THREE.Vector3(0, 0, 1).applyQuaternion(this.rig.camera.quaternion);
+    return SectionPlaneController.facingViewer(tuple(center), towardsCamera);
+  }
+
+  fitSelection(): void {
+    const bounds = this.scan.current?.selectionBounds();
+    if (!bounds) {
+      this.fitAll();
+      return;
+    }
+    bounds.applyMatrix4(this.scanGroup.matrix);
+    this.rig.fitBox(tuple(bounds.min), tuple(bounds.max));
+  }
+
+  // Viewport ------------------------------------------------------------------------------
+
+  stats(): { scanFaces: number; items: number } {
+    return { scanFaces: this.scan.current?.shownFaces ?? 0, items: this.items.count };
+  }
+
+  setOwnerHidden(owner: string | null): void {
+    this.items.setHiddenOwner(owner);
   }
 
   setPreviewItems(owner: string, items: readonly SceneItem[]): void {
-    for (const object of this.previews.get(owner) ?? []) {
-      this.previewGroup.remove(object.object);
-      object.dispose();
-    }
-    this.previews.delete(owner);
-    this.invalidate();
-    if (items.length === 0) return;
-    void this.fetchPayloads(items.map((item) => item.key)).then((payloads) => {
-      const byKey = new Map(payloads.map((payload) => [payload.key, payload]));
-      const objects = items.flatMap((item) => {
-        const payload = byKey.get(item.key);
-        const object = payload ? createDisplayObject(item, payload, this.theme) : null;
-        return object ? [object] : [];
-      });
-      objects.forEach((object) => this.previewGroup.add(object.object));
-      this.previews.set(owner, objects);
-      this.invalidate();
+    this.items.setPreview(owner, items).catch((error: unknown) => {
+      window.m2c.app.log({ level: 'error', message: `preview items failed: ${String(error)}` });
     });
   }
 
-  highlight(target: { bodyId: string; edge?: number } | { owner: string } | null): void {
-    for (const { item, object } of this.items.values()) {
-      if (!(object instanceof THREE.Mesh)) continue;
-      const material = object.material as THREE.MeshStandardMaterial;
-      const hit =
-        !!target &&
-        ('owner' in target ? item.owner === target.owner : item.bodyId === target.bodyId);
-      if (hit) material.emissive.set(SCENE_COLORS.selection);
-      else material.emissive.setRGB(0, 0, 0);
-      material.emissiveIntensity = hit ? 0.25 : 0;
-    }
-    this.invalidate();
+  highlight(target: HighlightTarget): void {
+    this.items.highlight(target);
   }
 
   pick(at: ScreenPoint, options: PickOptions = {}): PickHit | null {
-    const kinds = options.kinds ?? ['scan', 'body', 'edge', 'item'];
-    this.raycaster.setFromCamera(this.rig.toNdc(at), this.rig.camera);
-    this.raycaster.params.Line = {
-      threshold: this.rig.worldPerPixel(this.rig.target) * EDGE_PICK_PX,
-    };
-    const targets: THREE.Object3D[] = [];
-    if (kinds.includes('scan') && this.scanMesh && this.scanGroup.visible)
-      targets.push(this.scanMesh.mesh);
-    if (this.itemGroup.visible)
-      targets.push(...[...this.items.values()].map((item) => item.object));
-    for (const hit of this.raycaster.intersectObjects(targets, false)) {
-      const point = tuple(hit.point);
-      if (hit.object === this.scanMesh?.mesh) {
-        if (hit.faceIndex == null || this.scanMesh.isHidden(hit.faceIndex)) continue;
-        return { kind: 'scan', face: hit.faceIndex, point };
-      }
-      const item = hit.object.userData.item as SceneItem | undefined;
-      if (!item) continue;
-      if (item.bodyId && hit.object instanceof THREE.Mesh && kinds.includes('body')) {
-        const faceIds = hit.object.userData.faceIds as Uint32Array;
-        return { kind: 'body', bodyId: item.bodyId, face: faceIds[hit.faceIndex ?? 0] ?? 0, point };
-      }
-      if (item.bodyId && hit.object instanceof THREE.LineSegments && kinds.includes('edge')) {
-        const ids = hit.object.userData.ids as Uint32Array;
-        return {
-          kind: 'edge',
-          bodyId: item.bodyId,
-          edge: ids[Math.floor((hit.index ?? 0) / 2)] ?? 0,
-          point,
-        };
-      }
-      if (kinds.includes('item')) return { kind: 'item', key: item.key, owner: item.owner, point };
-    }
-    return null;
+    return pickScene(this.pickScene(), at, options.kinds ?? ALL_KINDS);
   }
 
   pickScanFacesInCircle(
@@ -261,48 +302,24 @@ export class SceneController implements Viewport {
     radiusPx: number,
     options: { visibleOnly: boolean },
   ): Uint32Array {
-    if (!this.scanMesh) return new Uint32Array();
-    const { toClip, toView } = this.scanProjection();
-    return facesInCircle(
-      this.scanMesh,
-      at,
-      radiusPx,
-      this.size(),
-      toClip,
-      options.visibleOnly ? toView : null,
-    );
+    return this.queries.circle(at, radiusPx, options.visibleOnly);
   }
 
   pickScanFacesInPolygon(
     polygon: Float32Array,
     options: { visibleOnly: boolean },
   ): Promise<Uint32Array> {
-    if (!this.scanMesh) return Promise.resolve(new Uint32Array());
-    const { toClip, toView } = this.scanProjection();
-    return Promise.resolve(
-      facesInPolygon(
-        this.scanMesh,
-        polygon,
-        this.size(),
-        toClip,
-        options.visibleOnly ? toView : null,
-      ),
-    );
+    return this.queries.polygon(polygon, options.visibleOnly);
   }
 
   scanTopology(): Promise<ScanTopology> {
-    const mesh = this.scanMesh;
-    if (!mesh) return Promise.reject(new Error('no scan loaded'));
-    this.topology ??= Promise.resolve(computeScanTopology(mesh, this.scanGroup.matrix));
-    return this.topology;
+    return this.queries.scanTopology(this.scan.current);
   }
 
   screenToRay(at: ScreenPoint): Ray {
-    this.raycaster.setFromCamera(this.rig.toNdc(at), this.rig.camera);
-    return {
-      origin: tuple(this.raycaster.ray.origin),
-      direction: tuple(this.raycaster.ray.direction),
-    };
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(this.rig.toNdc(at), this.rig.camera);
+    return { origin: tuple(raycaster.ray.origin), direction: tuple(raycaster.ray.direction) };
   }
 
   worldToScreen(point: Vec3): ScreenPoint | null {
@@ -314,92 +331,109 @@ export class SceneController implements Viewport {
   }
 
   createOverlay(): Overlay {
-    const group = new THREE.Group();
-    this.overlayGroup.add(group);
-    return {
-      add: (object) => {
-        group.add(object as THREE.Object3D);
-        this.invalidate();
-      },
-      clear: () => {
-        group.clear();
-        this.invalidate();
-      },
-      dispose: () => {
-        this.overlayGroup.remove(group);
-        this.invalidate();
-      },
-    };
+    return createOverlayGroup(this.overlayGroup, this.bias, () => this.invalidate());
   }
 
   invalidate(): void {
-    if (this.frameRequest) return;
-    this.frameRequest = requestAnimationFrame(() => {
-      this.frameRequest = 0;
-      this.renderer.render(this.scene, this.rig.camera);
-    });
+    if (this.frameRequest || this.contextLost) return;
+    this.frameRequest = requestAnimationFrame(() => this.frame());
   }
 
   capture(options: { width?: number; height?: number } = {}): Promise<Blob> {
-    const previous = this.size();
-    const resized = !!(options.width && options.height);
-    if (resized) this.renderer.setSize(options.width ?? 0, options.height ?? 0, false);
-    this.renderer.render(this.scene, this.rig.camera);
-    return new Promise((resolve, reject) => {
-      this.renderer.domElement.toBlob((blob) => {
-        if (resized) this.renderer.setSize(previous.width, previous.height, false);
-        if (blob) resolve(blob);
-        else reject(new Error('capture failed'));
-      }, 'image/png');
-    });
-  }
-
-  private syncItems(wanted: Map<string, SceneItem>, payloads: Map<string, ScenePayload>): void {
-    for (const [key, object] of this.items) {
-      if (wanted.has(key)) continue;
-      this.itemGroup.remove(object.object);
-      object.dispose();
-      this.items.delete(key);
-    }
-    for (const [key, item] of wanted) {
-      const payload = payloads.get(key);
-      if (this.items.has(key) || !payload) continue;
-      const object = createDisplayObject(item, payload, this.theme);
-      if (!object) continue;
-      this.items.set(key, object);
-      this.itemGroup.add(object.object);
-    }
-  }
-
-  private replaceScan(mesh: ScanMesh | null): void {
-    if (this.scanMesh) {
-      this.scanGroup.remove(this.scanMesh.mesh);
-      this.scanMesh.dispose();
-    }
-    this.scanMesh = mesh;
-    this.topology = null;
-    if (mesh) this.scanGroup.add(mesh.mesh);
-  }
-
-  private fitAll(): void {
-    const box = new THREE.Box3();
-    const bounds = this.scanMesh?.mesh.geometry.boundingBox;
-    if (bounds) box.union(bounds.clone().applyMatrix4(this.scanGroup.matrix));
-    for (const item of this.items.values()) box.expandByObject(item.object);
-    if (!box.isEmpty()) this.rig.fitBox(tuple(box.min), tuple(box.max));
-  }
-
-  /** Matrices from scan-local coordinates to clip space and (rotation only) to view space. */
-  private scanProjection(): { toClip: THREE.Matrix4; toView: THREE.Matrix3 } {
-    const camera = this.rig.camera;
-    const toCamera = new THREE.Matrix4().multiplyMatrices(
-      camera.matrixWorldInverse,
-      this.scanGroup.matrix,
-    );
-    return {
-      toClip: new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, toCamera),
-      toView: new THREE.Matrix3().setFromMatrix4(toCamera),
+    const size = this.size();
+    const draw = (width: number, height: number) => {
+      this.rig.resize(width, height);
+      this.prepareFrame();
+      this.renderer.render(this.scene, this.rig.camera);
     };
+    const restore = () => {
+      this.resize();
+      this.frame();
+    };
+    const width = Math.round(options.width ?? size.width);
+    const height = Math.round(options.height ?? size.height);
+    return captureCanvas(this.renderer, width, height, draw, restore);
+  }
+
+  // Internals -------------------------------------------------------------------------------
+
+  private pickScene(): PickScene {
+    return {
+      rig: this.rig,
+      size: this.size(),
+      scan: this.scanGroup.visible ? this.scan.current : null,
+      scanMatrix: this.scanGroup.matrix,
+      items: this.items,
+      clippingPlane: this.section.clippingPlane,
+      sectionOn: this.section.plane !== null,
+      bias: this.bias.uniform.value,
+    };
+  }
+
+  private invalidateFaceIds(): void {
+    this.queries.invalidateIds();
+  }
+
+  private viewChanged(): void {
+    this.invalidateFaceIds();
+    this.invalidate();
+  }
+
+  /** Faces were hidden or shown, or the scan changed: ids and the section outline change. */
+  private visibleFacesChanged(): void {
+    this.invalidateFaceIds();
+    this.section.scanChanged();
+  }
+
+  private sceneChanged(change: SceneChange): void {
+    if (change !== 'items') this.visibleFacesChanged();
+    if (change === 'scan' || change === 'placement') this.queries.resetTopology();
+    const box = this.sceneBounds();
+    if (!box.isEmpty()) {
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      this.rig.setSceneBounds(tuple(sphere.center), sphere.radius);
+    }
+    this.invalidate();
+  }
+
+  private sceneBounds(): THREE.Box3 {
+    const box = this.items.bounds();
+    const mesh = this.scan.current;
+    if (mesh) box.union(mesh.bounds.clone().applyMatrix4(this.scanGroup.matrix));
+    return box;
+  }
+
+  private fitAll(animate = true): void {
+    const box = this.sceneBounds();
+    if (!box.isEmpty()) this.rig.fitBox(tuple(box.min), tuple(box.max), animate);
+  }
+
+  /** Per-frame work before drawing: chunk uploads, screen-size handles, the outline. */
+  private prepareFrame(): void {
+    const mesh = this.scan.current;
+    if (mesh && !mesh.complete && mesh.showNextChunk()) {
+      this.invalidateFaceIds();
+      if (!mesh.complete) this.invalidate();
+    }
+    for (const hook of this.frameHooks) hook();
+    this.section.update();
+    // Items within this distance of the scan are drawn in front of it.
+    this.bias.uniform.value = 2 * this.tolerance + 2 * this.rig.worldPerPixel(this.rig.target);
+    this.widgets.follow(this.rig.camera.quaternion);
+  }
+
+  private frame(): void {
+    this.frameRequest = 0;
+    if (this.contextLost) return;
+    this.prepareFrame();
+    const renderer = this.renderer;
+    renderer.render(this.scene, this.rig.camera);
+    renderer.autoClear = false;
+    renderer.render(this.handleScene, this.rig.camera);
+    renderer.autoClear = true;
+    const { width, height } = this.size();
+    this.widgets.render(renderer, width, height);
+    this.scan.current?.afterRender();
   }
 
   private size(): { width: number; height: number } {
@@ -411,8 +445,11 @@ export class SceneController implements Viewport {
 
   private resize(): void {
     const { width, height } = this.size();
+    if (this.renderer.getPixelRatio() !== window.devicePixelRatio)
+      this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(width, height, false);
     this.rig.resize(width, height);
+    this.invalidateFaceIds();
     this.invalidate();
   }
 }

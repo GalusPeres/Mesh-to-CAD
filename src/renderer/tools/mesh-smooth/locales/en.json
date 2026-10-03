@@ -1,3 +1,12 @@
 {
-  "label": "Smooth"
+  "label": "Smooth",
+  "tooltip": "Smooths how the scan is displayed.",
+  "iterations": "Passes",
+  "offHint": "0 turns smoothing off.",
+  "current": "Current",
+  "off": "off",
+  "passes_one": "{{count}} pass",
+  "passes_other": "{{count}} passes",
+  "displayOnly": "Smoothing only changes the display and the STL export of the scan. Fitting, sketches and deviation always use the measured points.",
+  "help": "More passes smooth more but also round edges. The setting can be changed at any time or turned off with 0; the scan itself stays unchanged."
 }

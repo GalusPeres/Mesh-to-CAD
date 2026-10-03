@@ -11,9 +11,15 @@ import { childEnvironment, root } from './paths.mjs';
 const require = createRequire(import.meta.url);
 const electronBinary = require('electron');
 
-const server = await createServer({ configFile: path.join(root, 'vite.renderer.config.ts') });
+// With M2C_INSTANCE (several apps side by side) the dev server takes any free port.
+const server = await createServer({
+  configFile: path.join(root, 'vite.renderer.config.ts'),
+  ...(process.env.M2C_INSTANCE ? { server: { port: 0 } } : {}),
+});
 await server.listen();
-const rendererUrl = `http://127.0.0.1:${server.config.server.port}`;
+const address = server.httpServer?.address();
+const port = typeof address === 'object' && address ? address.port : server.config.server.port;
+const rendererUrl = `http://127.0.0.1:${port}`;
 
 let electron = null;
 let stopping = false;

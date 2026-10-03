@@ -1,3 +1,19 @@
 {
-  "label": "Segment"
+  "label": "Segment",
+  "tooltip": "Splits the scan into regions that each follow one basic shape.",
+  "scan": "Scan",
+  "onlySelection_one": "Selection only ({{formatted}} triangle)",
+  "onlySelection_other": "Selection only ({{formatted}} triangles)",
+  "sensitivity": "Sensitivity",
+  "sensitivityHint": "Low: few large regions. High: many small regions.",
+  "minArea": "Minimum size",
+  "areaUnit": "mm²",
+  "stop": "Cancel",
+  "stopped": "Calculation cancelled.",
+  "compute": "Compute preview",
+  "found": "Found",
+  "regionCount_one": "{{count}} region",
+  "regionCount_other": "{{count}} regions",
+  "nothingFound": "No regions found. Raise the sensitivity or lower the minimum size.",
+  "help": "The preview colours every region found; the list shows type, RMS and triangle count. Sensitivity sets how finely the scan is split; regions smaller than the minimum size are dropped. With Selection only, just the selected part is split again and other regions are kept. OK adds the regions to the project tree, where they can be renamed, merged and deleted."
 }

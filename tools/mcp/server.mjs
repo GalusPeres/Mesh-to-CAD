@@ -1,0 +1,367 @@
+#!/usr/bin/env node
+// MCP server for Mesh-to-CAD (docs/AUTOMATION.md).
+//
+// It drives the running application through its local automation interface, so
+// every change appears live in the user's window and stays undoable there. The
+// application publishes port and token in automation.json in its user data
+// folder once "Allow control by AI assistants (MCP)" is enabled in the settings
+// (or it was started with M2C_AUTOMATION=1).
+//
+// Coordinates are part coordinates in millimetres (after the alignment), the
+// same as the application shows.
+
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+
+import { automationClient } from '../automation/client.mjs';
+import { registerRecognitionTools } from './recognition.mjs';
+
+/**
+ * The abort signal of the running tool call. When the client gives up (its request
+ * timeout), the request to the app is aborted too, and the app cancels the kernel job
+ * instead of letting it block every later edit.
+ */
+const callSignal = new AsyncLocalStorage();
+const { rpc, kernel, ui } = automationClient(() => callSignal.getStore());
+const uint32 = (values) => ({ $typed: 'uint32', values });
+
+async function applyOps(ops, label) {
+  const { revision } = await kernel('doc.get');
+  return kernel('doc.apply', { baseRevision: revision, ops, label });
+}
+
+function summarise(snapshot) {
+  const { document, status } = snapshot;
+  const scan = document.scan;
+  return {
+    revision: snapshot.revision,
+    scan: scan && {
+      file: scan.source?.fileName ?? null,
+      faces: scan.faceCount,
+      noiseMm: scan.noise,
+    },
+    alignment: document.alignment?.method ?? null,
+    toleranceMm: document.settings?.tolerance,
+    features: document.features.map((feature) => {
+      const state = status.features[feature.id];
+      return {
+        id: feature.id,
+        type: feature.type,
+        name: feature.name,
+        state: state?.state,
+        issues: state?.issues?.map((issue) => issue.code),
+        error: state?.error?.code,
+        stats: state?.stats,
+      };
+    }),
+    bodies: status.bodies.map((body) => ({
+      id: body.id,
+      owner: body.owner,
+      valid: body.valid,
+      volumeMm3: body.volume,
+      areaMm2: body.area,
+    })),
+  };
+}
+
+async function facesInBox({ min, max, facing, maxAngleDeg }) {
+  const result = await kernel('automation.facesInBox', {
+    min,
+    max,
+    facing: facing ?? null,
+    maxAngleDeg: maxAngleDeg ?? 30,
+  });
+  return result.faces;
+}
+
+const text = (value) => ({
+  content: [
+    { type: 'text', text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) },
+  ],
+});
+
+const vec3 = z.tuple([z.number(), z.number(), z.number()]);
+const region = {
+  min: vec3.describe('Corner of the box in part coordinates (mm)'),
+  max: vec3.describe('Opposite corner of the box (mm)'),
+  facing: vec3
+    .optional()
+    .describe('Keep only triangles facing this direction, e.g. [0,0,1] for a top surface'),
+  maxAngleDeg: z
+    .number()
+    .min(0)
+    .max(180)
+    .optional()
+    .describe('Allowed angle to `facing` (default 30)'),
+};
+
+const server = new McpServer({ name: 'mesh-to-cad', version: '0.1.0' });
+
+/** Register a tool whose requests to the app follow the call's abort signal. */
+function tool(name, config, handler) {
+  const run = (args, extra) => callSignal.run(extra?.signal, () => handler(args));
+  server.registerTool(
+    name,
+    config,
+    config.inputSchema ? (args, extra) => run(args, extra) : (extra) => run({}, extra),
+  );
+}
+
+tool(
+  'app_status',
+  {
+    description:
+      'State of the running Mesh-to-CAD app: scan, alignment, feature history with status and ' +
+      'statistics, bodies, open tool and selection. Start here.',
+  },
+  async () => {
+    const [ping, snapshot, uiState] = await Promise.all([
+      rpc('ping'),
+      kernel('doc.get'),
+      ui({ type: 'state' }),
+    ]);
+    return text({ app: ping, ui: uiState, document: summarise(snapshot) });
+  },
+);
+
+tool(
+  'import_scan',
+  {
+    description: 'Load a scan (STL, OBJ, PLY) from a file path. Replaces the current scan.',
+    inputSchema: {
+      path: z.string().describe('Absolute path of the mesh file'),
+      unit: z.enum(['mm', 'cm', 'm', 'in']).default('mm'),
+      reduceTo: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Triangle count to reduce to (max 2,000,000)'),
+    },
+  },
+  async ({ path: file, unit, reduceTo }) => {
+    const report = await kernel('mesh.import', { path: file });
+    const target = reduceTo ?? (report.reductionRequired ? 1_000_000 : null);
+    const committed = await kernel('mesh.commitImport', {
+      pendingId: report.pendingId,
+      unit,
+      reduceTo: target,
+    });
+    return text({
+      file: report.fileName,
+      trianglesInFile: report.faceCount,
+      reducedTo: target,
+      boundsInFileUnits: [report.boundsMin, report.boundsMax],
+      revision: committed.revision,
+    });
+  },
+);
+
+tool(
+  'align_auto',
+  {
+    description:
+      'Align the scan automatically: largest plane to XY, a perpendicular plane to X. Use the ' +
+      'adjustments to turn the part the right way up or around.',
+    inputSchema: {
+      flipZ: z.boolean().default(false).describe('Turn the part upside down'),
+      flipX: z.boolean().default(false),
+      rotateZ90: z.number().int().min(0).max(3).default(0).describe('Quarter turns around Z'),
+    },
+  },
+  async ({ flipZ, flipX, rotateZ90 }) => {
+    await applyOps(
+      [{ type: 'setAlignment', method: 'auto', params: null, adjust: { flipZ, flipX, rotateZ90 } }],
+      'alignment',
+    );
+    return text(await kernel('automation.bounds'));
+  },
+);
+
+tool(
+  'scan_bounds',
+  { description: 'Bounding box of the aligned scan in part coordinates (mm), to choose regions.' },
+  async () => text(await kernel('automation.bounds')),
+);
+
+tool(
+  'select_region',
+  {
+    description:
+      'Select the scan triangles whose centres lie in a box (optionally only those facing a ' +
+      'direction) and show the selection in the app.',
+    inputSchema: region,
+  },
+  async (input) => {
+    const faces = await facesInBox(input);
+    await ui({ type: 'selectFaces', faces });
+    return text({ selectedTriangles: faces.length });
+  },
+);
+
+tool(
+  'click',
+  {
+    description:
+      'Click a button or control in the app like the user would: by its data-testid (e.g. ' +
+      '"freeform-net-generate") or by its visible label (e.g. "Netz erzeugen").',
+    inputSchema: { target: z.string().describe('data-testid or visible button label') },
+  },
+  async ({ target }) => text(await ui({ type: 'click', target })),
+);
+
+tool(
+  'press_key',
+  {
+    description:
+      'Press a key in the app like the user: "Escape" closes a dialog or the open tool, ' +
+      '"Enter" confirms it, letters run tool shortcuts (e.g. "k" opens Formen erkennen).',
+    inputSchema: {
+      key: z.string().describe('KeyboardEvent.key, e.g. "Escape", "Enter", "k"'),
+      ctrl: z.boolean().optional(),
+      shift: z.boolean().optional(),
+      alt: z.boolean().optional(),
+    },
+  },
+  async (input) => text(await ui({ type: 'key', ...input })),
+);
+
+registerRecognitionTools({ tool, kernel, text, summarise });
+
+tool(
+  'fit_shape',
+  {
+    description:
+      'Fit a plane, cylinder, cone, sphere or torus to the triangles in a box and add it to the ' +
+      'history (like Form einpassen). kind "auto" picks the type.',
+    inputSchema: {
+      ...region,
+      kind: z.enum(['auto', 'plane', 'cylinder', 'cone', 'sphere', 'torus']).default('auto'),
+      robust: z.boolean().default(false).describe('Ignore other surfaces inside the box'),
+    },
+  },
+  async ({ kind, robust, ...box }) => {
+    const faces = await facesInBox(box);
+    if (faces.length === 0) throw new Error('No triangles in this box. Check scan_bounds.');
+    const scan = (await kernel('doc.get')).document.scan;
+    const preview = await kernel(
+      'fit.preview',
+      { faces: uint32(faces), scanKey: scan.key, kind, robust },
+      'fit.preview:mcp',
+    );
+    const chosen = preview.primitive.type;
+    await applyOps(
+      [
+        {
+          type: 'addFeature',
+          feature: { type: 'fit', params: { faces: uint32(faces), kind: chosen, robust } },
+        },
+      ],
+      'fit',
+    );
+    return text({
+      kind: chosen,
+      triangles: faces.length,
+      primitive: preview.primitive,
+      stats: preview.stats,
+    });
+  },
+);
+
+tool(
+  'auto_surface',
+  {
+    description:
+      'Turn the whole scan into a smooth solid of B-spline surfaces (Auto-Flächen). Takes seconds ' +
+      'to a few minutes. Returns patch count and deviation from the scan.',
+    inputSchema: {
+      detail: z.enum(['coarse', 'medium', 'fine']).default('medium'),
+      smoothing: z.enum(['low', 'medium', 'high']).default('low'),
+    },
+  },
+  async ({ detail, smoothing }) => {
+    await applyOps(
+      [{ type: 'addFeature', feature: { type: 'autoSurface', params: { detail, smoothing } } }],
+      'autoSurface',
+    );
+    const summary = summarise(await kernel('doc.get'));
+    return text({ feature: summary.features.at(-1), bodies: summary.bodies });
+  },
+);
+
+tool(
+  'export_step',
+  {
+    description: 'Export bodies as a STEP file (all bodies unless ids are given).',
+    inputSchema: {
+      path: z.string().describe('Absolute path of the .step file to write'),
+      bodies: z.array(z.string()).optional(),
+      schema: z.enum(['AP214', 'AP242']).default('AP214'),
+    },
+  },
+  async ({ path: file, bodies, schema }) => {
+    const snapshot = await kernel('doc.get');
+    const ids = bodies ?? snapshot.status.bodies.map((body) => body.id);
+    if (ids.length === 0) throw new Error('There is no body to export yet.');
+    return text(await kernel('export.step', { path: file, bodies: ids, names: ids, schema }));
+  },
+);
+
+tool(
+  'apply_ops',
+  {
+    description:
+      'Apply document operations (addFeature, updateFeature, deleteFeature, setSuppressed, ' +
+      'setAlignment, setSettings) as one undoable step. Params use the wire format of ' +
+      'src/shared/protocol/generated; typed arrays as {"$typed":"uint32","values":[...]}.',
+    inputSchema: {
+      ops: z.array(z.record(z.string(), z.any())),
+      label: z.string().default('automation'),
+    },
+  },
+  async ({ ops, label }) => text(await applyOps(ops, label)),
+);
+
+tool(
+  'kernel_call',
+  {
+    description:
+      'Call any kernel method directly (see kernel/m2c_kernel/commands). Params in camelCase ' +
+      'wire format. For experts; prefer the specific tools.',
+    inputSchema: {
+      method: z.string(),
+      params: z.record(z.string(), z.any()).default({}),
+      lane: z.string().optional(),
+    },
+  },
+  async ({ method, params, lane }) => text(await kernel(method, params, lane)),
+);
+
+tool(
+  'list_commands',
+  { description: 'Commands of the app (menus, views, tools) with their ids and availability.' },
+  async () => text(await ui({ type: 'listCommands' })),
+);
+
+tool(
+  'run_command',
+  {
+    description: 'Run an app command by id, e.g. a standard view, undo, or opening a tool.',
+    inputSchema: { id: z.string() },
+  },
+  async ({ id }) => text(await ui({ type: 'runCommand', id })),
+);
+
+tool(
+  'screenshot',
+  { description: 'Screenshot of the Mesh-to-CAD window as the user sees it.' },
+  async () => {
+    const image = await rpc('screenshot');
+    return { content: [{ type: 'image', data: image.data, mimeType: image.mimeType }] };
+  },
+);
+
+await server.connect(new StdioServerTransport());

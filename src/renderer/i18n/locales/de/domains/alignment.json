@@ -1,5 +1,19 @@
 {
   "errors": {
-    "parallelInputs": "Ausrichtung nicht möglich: Die zweite Fläche ist parallel zur ersten."
+    "parallelInputs": "Ausrichten nicht möglich: Der Sekundärbezug ist parallel zum Primärbezug und legt weder Richtung noch Lage fest. Eine Fläche oder Achse in anderer Richtung wählen.",
+    "noPoint": "Ausrichten nicht möglich: Die Bezüge legen keinen Ursprung fest. Als Tertiärbezug eine Fläche in der dritten Richtung wählen.",
+    "inputNotFound": "Ausrichten nicht möglich: Ein Bezug existiert nicht mehr oder ist unterdrückt. Bezug neu wählen.",
+    "unsupportedInput": "Ausrichten nicht möglich: Ein Bezug ist weder Ebene noch Achse oder hängt selbst von der Ausrichtung ab. Anderen Bezug wählen.",
+    "tooFewFaces": "Ausrichten nicht möglich: Ein Bezug hat zu wenige Dreiecke ({{count, count}}, mindestens {{min, count}}).",
+    "fitFailed": "Ausrichten nicht möglich: Ein Bezug lässt sich nicht einpassen. Auswahl prüfen.",
+    "invalidParams": "Ausrichten nicht möglich: Die gespeicherten Bezüge sind ungültig. Bezüge neu wählen."
+  },
+  "issues": {
+    "pcaFallback": "Keine großen Ebenen gefunden; nach den Hauptachsen des Scans ausgerichtet. Lage prüfen oder An Flächen ausrichten verwenden.",
+    "singlePlane": "Nur eine große Ebene gefunden; die Drehung um Z folgt der Hauptrichtung des Scans."
+  },
+  "progress": {
+    "detectingPlanes": "Ebenen im Scan suchen",
+    "fittingInputs": "Bezüge einpassen"
   }
 }

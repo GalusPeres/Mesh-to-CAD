@@ -1,3 +1,129 @@
 {
-  "label": "Sketch"
+  "label": "Sketch",
+  "tooltip": "Section of the scan as a sketch of lines, arcs and circles",
+  "help": "Choose the plane and where to cut; the section through the scan appears in green. OK fits lines, arcs and circles with constraints and snapped values. Change values in the entity list and add missing edges with Form corner, Line or Circle. Finish sketch adds the sketch to the history.",
+  "noScan": "No scan loaded.",
+  "planeKind": {
+    "label": "Plane",
+    "XY": "Plane XY",
+    "YZ": "Plane YZ",
+    "XZ": "Plane XZ",
+    "feature": "Plane from the history",
+    "axisNormal": "Perpendicular to an axis",
+    "rotational": "Rotational profile about an axis"
+  },
+  "planeFeature": "Plane",
+  "axis": "Axis",
+  "globalAxis": "Axis {{axis}}",
+  "noPlaneFeatures": "No plane in the history. Fit a plane or create reference geometry.",
+  "pickPlane": "Click a plane in the project tree or in the viewport.",
+  "offset": "Plane offset",
+  "sectionOffset": "Cut at",
+  "angle": "Half-plane angle",
+  "flip": "Reverse normal",
+  "tolerance": "Tolerance",
+  "toleranceAuto": "Tolerance from scan noise",
+  "result": {
+    "loops_one": "{{count}} closed contour",
+    "loops_other": "{{count}} closed contours",
+    "chains_one": "{{count}} open contour",
+    "chains_other": "{{count}} open contours",
+    "contours": "Section",
+    "noise": "Scan noise",
+    "suggested": "Tolerance from scan noise",
+    "entitiesInTolerance": "In tolerance",
+    "entitiesInToleranceValue": "{{passed}} of {{total}}",
+    "empty": "The section does not meet the scan. Change where to cut.",
+    "folded": "Points of all angles averaged"
+  },
+  "sketchPlane": "Sketch plane",
+  "cut": "Section",
+  "cutValue": "{{value}} from the plane",
+  "entities": "Entities",
+  "noEntities": "No entities.",
+  "entity": {
+    "line": "Line",
+    "arc": "Arc",
+    "circle": "Circle",
+    "axisLine": "Axis"
+  },
+  "drawn": "drawn",
+  "deviation": "Deviation max. {{value}}",
+  "field": {
+    "startX": "Start X",
+    "startY": "Start Y",
+    "endX": "End X",
+    "endY": "End Y",
+    "length": "Length",
+    "angle": "Angle",
+    "centerX": "Centre X",
+    "centerY": "Centre Y",
+    "radius": "Radius"
+  },
+  "fixedValue": "Fixed: kept when refitting",
+  "release": "Release value",
+  "draw": "Draw",
+  "actions": {
+    "corner": "Form corner",
+    "line": "Line between two points",
+    "circle": "Circle by centre and radius",
+    "closeGap": "Close gap with a line",
+    "delete": "Delete entity",
+    "refit": "Refit",
+    "changePlane": "Change plane",
+    "addCircle": "Add circle",
+    "cancelMode": "Cancel"
+  },
+  "mode": {
+    "cornerFirst": "Form corner: click the first entity.",
+    "cornerSecond": "Form corner: click the second entity.",
+    "lineFirst": "Line: click the first point.",
+    "lineSecond": "Line: click the second point.",
+    "circle": "Circle: click the centre or type it."
+  },
+  "painted": "Entity fitted, deviation max. {{value}}.",
+  "editFailed": {
+    "noIntersection": "Cannot form the corner: the entities do not intersect.",
+    "samePoint": "Cannot draw the line: start and end are the same point.",
+    "noOpenEnds": "There is no open gap.",
+    "notConnectable": "Cannot form the corner: a circle has no ends."
+  },
+  "profile": {
+    "empty": "No entities",
+    "closed_one": "Profile closed: {{count}} contour",
+    "closed_other": "Profile closed: {{count}} contours",
+    "open_one": "Profile open: {{count}} gap",
+    "open_other": "Profile open: {{count}} gaps",
+    "branched": "Profile branched: more than two entities meet at one point."
+  },
+  "constraints": "Constraints",
+  "constraint": {
+    "horizontal": "Horizontal",
+    "vertical": "Vertical",
+    "parallel": "Parallel",
+    "perpendicular": "Perpendicular",
+    "collinear": "Collinear",
+    "equalRadius": "Equal radii",
+    "concentric": "Concentric",
+    "tangent": "Tangent"
+  },
+  "removeConstraint": "Remove constraint: {{name}}",
+  "snaps": "Snapped values",
+  "snap": {
+    "radius": "{{entity}}: radius {{value}}",
+    "x": "{{entity}}: position X {{value}}",
+    "y": "{{entity}}: position Y {{value}}",
+    "angle": "{{entity}}: direction {{value}}",
+    "centerX": "{{entity}}: centre X {{value}}",
+    "centerY": "{{entity}}: centre Y {{value}}",
+    "junction": "{{entity}}: corner at {{value}}",
+    "boltCircle": "Bolt circle ⌀ {{value}}, {{count}} × {{pitch}}"
+  },
+  "caption": {
+    "title": "{{name}} · {{plane}}",
+    "standard": "Plane {{plane}}",
+    "axisNormal": "Perpendicular to {{axis}}",
+    "rotational": "Rotational profile about {{axis}}"
+  },
+  "statusHint": "Shift+drag: fit entity · Alt: snapping off · Esc: cancel tool"
 }

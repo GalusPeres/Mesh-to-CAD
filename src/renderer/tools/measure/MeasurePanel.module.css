@@ -1,0 +1,13 @@
+.hint,
+.secondary {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.hint {
+  margin-top: var(--space-4);
+}
+
+.uncertainty {
+  color: var(--text-secondary);
+}

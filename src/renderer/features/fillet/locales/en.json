@@ -1,3 +1,13 @@
 {
-  "name": "Fillet"
+  "name": "Fillet",
+  "modes": {
+    "fillet": "Fillet",
+    "chamfer": "Chamfer"
+  },
+  "summary": {
+    "fillet_one": "R {{size}}, {{count}} edge",
+    "fillet_other": "R {{size}}, {{count}} edges",
+    "chamfer_one": "{{size}}, {{count}} edge",
+    "chamfer_other": "{{size}}, {{count}} edges"
+  }
 }

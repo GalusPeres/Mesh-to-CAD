@@ -1,0 +1,40 @@
+.drawing {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.options {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-floating);
+  color: var(--text);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  white-space: nowrap;
+}
+
+.optionLabel {
+  color: var(--text-secondary);
+}
+
+.field {
+  width: 88px;
+}
+
+.hint {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}

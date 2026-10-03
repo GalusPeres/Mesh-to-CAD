@@ -1,0 +1,47 @@
+{
+  "commands": {
+    "help": "Show help",
+    "gettingStarted": "Getting started",
+    "shortcuts": "Keyboard shortcuts",
+    "example": {
+      "bracket": "Open example: bracket",
+      "flange": "Open example: flange",
+      "knob": "Open example: knob"
+    }
+  },
+  "examples": {
+    "open": "Open example",
+    "bracket": "Bracket",
+    "flange": "Flange",
+    "knob": "Knob",
+    "missing": "Example not found: {{file}} is missing from the installation."
+  },
+  "start": {
+    "openedAt": "{{date, datetime}}"
+  },
+  "pages": {
+    "title": "Mesh-to-CAD help",
+    "overview": "Overview",
+    "intro": "These pages describe the tools of Mesh-to-CAD. In the application, F1 opens the page of the active tool.",
+    "gettingStarted": "Getting started",
+    "gettingStartedText": "From the bundled example scan to a STEP file.",
+    "licenses": "Licences",
+    "licensesText": "The licence texts of all components are in the installation folder under resources\\licenses.",
+    "tools": "Tools",
+    "file": "File",
+    "stage": "Stage",
+    "shortcut": "Shortcut",
+    "howTo": "How to",
+    "noDescription": "There is no description for this tool yet.",
+    "notAvailable": "Not available yet",
+    "back": "Back to the overview",
+    "mouse": "Mouse",
+    "mouseRows": [
+      ["Orbit", "Right drag; drag on the view cube"],
+      ["Pan", "Middle drag, Shift + right drag"],
+      ["Zoom", "Wheel (to the cursor), Ctrl + right drag"],
+      ["Fit all", "Middle double-click"],
+      ["Context menu", "Right click without dragging"]
+    ]
+  }
+}

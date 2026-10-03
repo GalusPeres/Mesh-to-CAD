@@ -1,3 +1,19 @@
 {
-  "label": "Segmentieren"
+  "label": "Segmentieren",
+  "tooltip": "Teilt den Scan in Bereiche, die je einer Grundform folgen.",
+  "scan": "Scan",
+  "onlySelection_one": "Nur Auswahl ({{formatted}} Dreieck)",
+  "onlySelection_other": "Nur Auswahl ({{formatted}} Dreiecke)",
+  "sensitivity": "Empfindlichkeit",
+  "sensitivityHint": "Niedrig: wenige große Bereiche. Hoch: viele kleine Bereiche.",
+  "minArea": "Mindestgröße",
+  "areaUnit": "mm²",
+  "stop": "Abbrechen",
+  "stopped": "Berechnung abgebrochen.",
+  "compute": "Vorschau berechnen",
+  "found": "Gefunden",
+  "regionCount_one": "{{count}} Bereich",
+  "regionCount_other": "{{count}} Bereiche",
+  "nothingFound": "Keine Bereiche gefunden. Empfindlichkeit erhöhen oder Mindestgröße verringern.",
+  "help": "Die Vorschau färbt jeden gefundenen Bereich ein; die Liste zeigt Typ, RMS und Anzahl der Dreiecke. Die Empfindlichkeit bestimmt, wie fein geteilt wird, kleinere Bereiche als die Mindestgröße entfallen. Mit Nur Auswahl wird nur der ausgewählte Teil neu geteilt, andere Bereiche bleiben erhalten. OK übernimmt die Bereiche in den Projektbaum; dort lassen sie sich umbenennen, zusammenführen und löschen."
 }

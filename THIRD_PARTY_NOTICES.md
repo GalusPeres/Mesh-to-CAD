@@ -19,19 +19,20 @@ are pinned in `package.json` and `kernel/requirements.txt`.
 
 ## Geometry process
 
-| Component               | Licence                                           | Source                                         |
-| ----------------------- | ------------------------------------------------- | ---------------------------------------------- |
-| Python                  | PSF License                                       | https://www.python.org/                        |
-| numpy                   | BSD-3-Clause                                      | https://github.com/numpy/numpy                 |
-| SciPy                   | BSD-3-Clause                                      | https://github.com/scipy/scipy                 |
-| trimesh                 | MIT                                               | https://github.com/mikedh/trimesh              |
-| NetworkX                | BSD-3-Clause                                      | https://github.com/networkx/networkx           |
-| fast-simplification     | MIT                                               | https://github.com/pyvista/fast-simplification |
-| Rtree, libspatialindex  | MIT                                               | https://github.com/Toblerity/rtree             |
-| OCP (cadquery-ocp)      | Apache-2.0                                        | https://github.com/CadQuery/OCP                |
-| Open CASCADE Technology | LGPL-2.1 with the Open CASCADE exception          | https://dev.opencascade.org/                   |
-| VTK (dependency of OCP) | BSD-3-Clause                                      | https://vtk.org/                               |
-| PyInstaller bootloader  | GPL-2.0 with the PyInstaller bootloader exception | https://github.com/pyinstaller/pyinstaller     |
+| Component                            | Licence                                                               | Source                                         |
+| ------------------------------------ | --------------------------------------------------------------------- | ---------------------------------------------- |
+| Python                               | PSF License                                                           | https://www.python.org/                        |
+| numpy                                | BSD-3-Clause                                                          | https://github.com/numpy/numpy                 |
+| SciPy                                | BSD-3-Clause                                                          | https://github.com/scipy/scipy                 |
+| trimesh                              | MIT                                                                   | https://github.com/mikedh/trimesh              |
+| NetworkX                             | BSD-3-Clause                                                          | https://github.com/networkx/networkx           |
+| fast-simplification                  | MIT                                                                   | https://github.com/pyvista/fast-simplification |
+| PyNanoInstantMeshes (Instant Meshes) | BSD-3-Clause; bundles oneTBB (Apache-2.0), Eigen (MPL-2.0) and others | https://github.com/vork/PyNanoInstantMeshes    |
+| Rtree, libspatialindex               | MIT                                                                   | https://github.com/Toblerity/rtree             |
+| OCP (cadquery-ocp)                   | Apache-2.0                                                            | https://github.com/CadQuery/OCP                |
+| Open CASCADE Technology              | LGPL-2.1 with the Open CASCADE exception                              | https://dev.opencascade.org/                   |
+| VTK (dependency of OCP)              | BSD-3-Clause                                                          | https://vtk.org/                               |
+| PyInstaller bootloader               | GPL-2.0 with the PyInstaller bootloader exception                     | https://github.com/pyinstaller/pyinstaller     |
 
 Open CASCADE Technology is linked dynamically. Its libraries are installed as separate DLL files
 in the application's `resources\kernel` folder and can be replaced with modified versions, as the

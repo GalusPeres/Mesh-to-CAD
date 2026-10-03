@@ -3,8 +3,6 @@
 import type { JsonValue } from '../wireTypes';
 import type { AlignmentAdjustInput, DocumentSettingsInput } from './document-model';
 
-export type DocOp = AddFeature | UpdateFeature | RenameFeature | DeleteFeature | SetSuppressed | SetAlignment | SetSettings;
-
 export interface NewFeature {
   type: string;
   name?: string | null;
@@ -51,3 +49,5 @@ export interface SetSettings {
   type: 'setSettings';
   settings: DocumentSettingsInput;
 }
+
+export type DocOp = AddFeature | UpdateFeature | RenameFeature | DeleteFeature | SetSuppressed | SetAlignment | SetSettings;
