@@ -128,7 +128,8 @@ export function createNetInteraction(
     const under = picked === null ? picking.edgeAt(at) : null;
     editor.setHover(picked, nearby);
     build.setHoverEdge(under?.edge ?? null);
-    setNetHint(picked !== null ? 'point' : under ? (under.border ? 'border' : 'edge') : 'idle');
+    const point = picked !== null && editor.isPinned(picked) ? 'pinned' : 'point';
+    setNetHint(picked !== null ? point : under ? (under.border ? 'border' : 'edge') : 'idle');
   };
 
   const placeCorner = (at: ScreenPoint) => {
@@ -333,7 +334,7 @@ export function createNetInteraction(
         return true;
       }
       if (plain && key === 'q' && editor.getState().selected + editor.getState().chosenEdges > 0) {
-        void editor.smoothChosen();
+        void editor.shape.smoothChosen();
         return true;
       }
       if (plain && key === 's') {

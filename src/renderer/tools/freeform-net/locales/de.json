@@ -65,12 +65,30 @@
     "rectangle": {
       "label": "Rechteck",
       "description": "Zwei gegenüberliegende Ecken auf den Scan klicken."
+    },
+    "pin": {
+      "label": "Fixieren",
+      "description": "Die gewählten Punkte bleiben beim Ziehen, Anschmiegen und Glätten, wo sie sind."
+    },
+    "unpin": {
+      "label": "Lösen",
+      "description": "Die gewählten fixierten Punkte lassen sich wieder bewegen."
+    },
+    "neighbours": {
+      "label": "Nachbarn nicht bewegen",
+      "description": "Ein gezogener Punkt verformt die Fläche nur bis zu seinen Nachbarpunkten; die bleiben stehen."
+    },
+    "strength": {
+      "label": "Zugstärke",
+      "description": "Gezogene Punkte folgen der Maus nur zu diesem Anteil, für feines Nachjustieren."
     }
   },
   "chosenPoints_one": "{{count}} Punkt gewählt",
   "chosenPoints_other": "{{count}} Punkte gewählt",
   "chosenEdges_one": "{{count}} Kante gewählt",
   "chosenEdges_other": "{{count}} Kanten gewählt",
+  "pinnedPoints_one": "{{count}} fixiert",
+  "pinnedPoints_other": "{{count}} fixiert",
   "heatmap": "Heatmap",
   "legend": "Grün: innerhalb der Toleranz · Gelb bis Rot: außerhalb des Scans · Blau: innerhalb · Grau: weit entfernt",
   "scale": "Farbskala (mm)",
@@ -95,7 +113,8 @@
     "idle": "Kante am D-Griff ziehen: Netz erweitern · Punkt ziehen: formen · Rechtsklick: Menü · Leertaste: nur Fläche",
     "corner": "Gegenüberliegende Ecke klicken · Rücktaste: zurück · Esc: abbrechen",
     "empty": "Fläche oder Rechteck wählen (rechts oder Rechtsklick), dann auf den Scan klicken",
-    "handle": "Ziehen: Kante verdoppeln, neue Reihe auf den Scan · auf Randpunkte fallen lassen: verbinden"
+    "handle": "Ziehen: Kante verdoppeln, neue Reihe auf den Scan · auf Randpunkte fallen lassen: verbinden",
+    "pinned": "Fixiert: bleibt beim Ziehen, Anschmiegen und Glätten · Klick, dann Rechtsklick: lösen"
   },
   "menu": {
     "split": "Teilen",
@@ -111,7 +130,11 @@
     "net": "Netz zeigen",
     "space": "Leertaste",
     "face": "Fläche setzen (4 Ecken)",
-    "rectangle": "Rechteck setzen (2 Ecken)"
+    "rectangle": "Rechteck setzen (2 Ecken)",
+    "pin": "Gewählte Punkte fixieren",
+    "unpin": "Gewählte Punkte lösen",
+    "neighbours": "Nachbarn nicht bewegen",
+    "strength": "Zugstärke"
   },
   "modes": {
     "face": "Fläche setzen: 4 Ecken klicken",

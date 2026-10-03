@@ -7,11 +7,21 @@ import { createStore } from 'zustand/vanilla';
 
 /**
  * start / face / corner: placing a face (first corner, next corner, rectangle's second
- * corner); empty: no net and not placing; point / edge / border / handle: under the
+ * corner); empty: no net and not placing; point / pinned / edge / border / handle: under the
  * pointer; rows: duplicating edges; idle: nothing under the pointer.
  */
 export type NetHint =
-  'start' | 'face' | 'corner' | 'empty' | 'point' | 'edge' | 'border' | 'handle' | 'rows' | 'idle';
+  | 'start'
+  | 'face'
+  | 'corner'
+  | 'empty'
+  | 'point'
+  | 'pinned'
+  | 'edge'
+  | 'border'
+  | 'handle'
+  | 'rows'
+  | 'idle';
 
 /** Placing a face by four corners, a rectangle by two, or editing the net. */
 export type NetMode = 'face' | 'rectangle' | 'edit';

@@ -92,16 +92,16 @@ describe('NetHistory', () => {
     history.reset(net(0));
     history.push(net(1));
     history.push(net(2));
-    expect(history.undo()?.vertices[0]).toBe(1);
-    expect(history.undo()?.vertices[0]).toBe(0);
+    expect(history.undo()?.net.vertices[0]).toBe(1);
+    expect(history.undo()?.net.vertices[0]).toBe(0);
     expect(history.canUndo).toBe(false);
-    expect(history.redo()?.vertices[0]).toBe(1);
+    expect(history.redo()?.net.vertices[0]).toBe(1);
     history.push(net(5));
     expect(history.canRedo).toBe(false);
     // The limit keeps only the newest three states.
     history.push(net(6));
-    expect(history.undo()?.vertices[0]).toBe(5);
-    expect(history.undo()?.vertices[0]).toBe(1);
+    expect(history.undo()?.net.vertices[0]).toBe(5);
+    expect(history.undo()?.net.vertices[0]).toBe(1);
     expect(history.canUndo).toBe(false);
   });
 });
