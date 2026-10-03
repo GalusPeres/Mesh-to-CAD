@@ -77,7 +77,8 @@ export class NetShaping {
 
   /**
    * Push the net's open border 0.5 mm past the planes and bodies it ends at, so that
-   * trimming against them cuts cleanly (QuickSurface: Offset by reference surfaces).
+   * trimming against them cuts cleanly (QuickSurface: Offset by reference surfaces);
+   * the kernel then fits the inner points to the scan again.
    */
   async pushPast(references: PushReferences): Promise<void> {
     const net = this.host.net();
@@ -89,6 +90,7 @@ export class NetShaping {
       planes: references.planes,
       bodies: references.bodies,
       fixed: fixedMask(count, this.host.pinned(), new Set()),
+      faces: this.host.faces(),
     });
     if (!result) return;
     if (result.moved > 0)

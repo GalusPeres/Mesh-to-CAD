@@ -83,6 +83,7 @@ export interface PushPastParams {
   tolerance?: number;
   reach?: number;
   fixed?: Uint8Array | null;
+  faces?: Uint32Array | null;
 }
 
 export const PUSH_PAST_PARAMS_RANGES = { tolerance: { min: 0.01, max: 5 }, reach: { min: 0.1, max: 50 } } as const;

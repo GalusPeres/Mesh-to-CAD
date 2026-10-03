@@ -72,10 +72,10 @@ async function roundingNet(d) {
   const before = DEPTH - R - 2;
   const below = HEIGHT - R - 2;
   for (const point of [
-    [2, before, HEIGHT],
-    [LENGTH - 2, before, HEIGHT],
-    [LENGTH - 2, DEPTH, below],
-    [2, DEPTH, below],
+    [1, before, HEIGHT],
+    [LENGTH - 1, before, HEIGHT],
+    [LENGTH - 1, DEPTH, below],
+    [1, DEPTH, below],
   ])
     await d.tap(await d.at(point));
   await d.settle();

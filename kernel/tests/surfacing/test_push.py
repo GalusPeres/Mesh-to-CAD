@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -12,6 +14,9 @@ from m2c_kernel.document.results import Body
 from m2c_kernel.surfacing.net import net_shape
 from m2c_kernel.surfacing.push import Reference, plane_reference, push_past
 from m2c_kernel.surfacing.subdivision import limit_matrix
+from tests.kernel_process import KernelProcess
+from tests.surfacing.test_rim import _wall
+from tests.synthetic import write_binary_stl
 from tests.synthetic.nets import BandNet, band_net
 
 pytestmark = pytest.mark.occt
@@ -127,3 +132,44 @@ def test_a_rounding_net_passes_the_faces_it_ends_at() -> None:
     shape = net_shape(pushed.vertices, net.quads, lambda: None)
     body = Body(shape=box, face_tags=tuple(f"b:{i}" for i in range(6)))
     assert len(split_cells([body], [SurfaceInput(shape.shape, "n")], [], "t")) == 2
+
+
+def _buffer(index: int, array: np.ndarray) -> dict[str, object]:
+    return {"$buf": index, "dtype": str(array.dtype), "shape": list(array.shape)}
+
+
+def test_push_through_the_protocol_keeps_the_inner_rows_on_the_scan(
+    kernel: KernelProcess, tmp_path: Path
+) -> None:
+    # An elliptic wall (20 x 12) from z = 0 to 10; a band on it from z = 0.6 is pushed
+    # past the XY plane at the wall's foot, then its inner rows are fitted again.
+    vertices, faces = _wall()
+    path = write_binary_stl(tmp_path / "wall.stl", vertices, faces)
+    report = kernel.call("mesh.import", {"path": str(path)}, origin="main").result
+    assert kernel.call("mesh.commitImport", {"pendingId": report["pendingId"], "unit": "mm"}).ok
+    assert kernel.call("automation.bounds").result["min"][2] == pytest.approx(0.0)
+    net = band_net(bottom=0.6, top=4.6, radius_bottom=20, radius_top=20)
+    cage, quads = net.vertices.astype(np.float64), net.quads.astype(np.uint32)
+    answer = kernel.call(
+        "net.pushPast",
+        {
+            "vertices": _buffer(0, cage),
+            "quads": _buffer(1, quads),
+            "planes": ["XY"],
+            "bodies": [],
+        },
+        buffers=[cage, quads],
+        lane="net.pushPast:test",
+        timeout=120,
+    )
+    assert answer.ok, answer.header.get("error")
+    assert answer.result["moved"] == net.around and answer.result["references"] == ["XY"]
+    pushed = np.frombuffer(answer.buffers[answer.result["vertices"]["$buf"]], np.float64)
+    limits = _limits(net, pushed.reshape(-1, 3))
+    assert np.allclose(limits[: net.around, 2], -0.5, atol=1e-6)
+    inner = limits[net.around : net.rows * net.around]
+    radial = np.hypot(inner[:, 0] / 20.0, inner[:, 1] / 12.0)
+    # Without the fit the inner rows stay 2.5 % inside the wall; with it, close to it
+    # (the first row bends towards the border held below the wall's foot).
+    assert np.all(np.abs(radial - 1.0) < 0.01)
+    assert np.all(np.abs(radial[net.around :] - 1.0) < 0.003)
