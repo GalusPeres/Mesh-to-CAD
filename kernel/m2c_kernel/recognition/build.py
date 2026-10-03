@@ -10,7 +10,9 @@ For every base plane with chosen features the document gets
 - one `extrude` per family (equal shape, size and height), named like the family
   when the client gives names: bosses are added, pockets cut (through holes a
   little beyond the part), so the user edits one value per family; without a body
-  every boss becomes a body of its own (a body is one solid).
+  every boss becomes a body of its own (a body is one solid);
+- for a feature with an inclined top, a plane fitted to its top and an extrusion up
+  to that plane of its own (`build_inclined.py`).
 
 The sketches compare themselves with the scan where the outlines were measured, at
 half the height (depth) of their features, not at the foot, which fillets widen.
@@ -24,7 +26,7 @@ pocket would otherwise cut them away).
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -32,76 +34,16 @@ import numpy as np
 
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.api import Feature, Recognition
-from m2c_kernel.recognition.chain import Chain
+from m2c_kernel.recognition.build_inclined import inclined_extrusion
+from m2c_kernel.recognition.build_rounding import TopEdges, top_edges
 from m2c_kernel.recognition.planes import BasePlane
+from m2c_kernel.recognition.sketch_ops import SketchDraft, as_list, chain_entities
 
 THROUGH_MARGIN_MM = 1.0
 """Through holes are cut this much beyond the far side."""
 OVERLAP_MM = 0.5
 """Added and cut extrusions start this far behind their sketch plane."""
 PLANE_TOLERANCE_FACTOR = 4.0
-
-
-@dataclass
-class _Sketch:
-    """Points, entities and constraints of one sketch under construction (JSON form)."""
-
-    points: list[dict[str, Any]] = field(default_factory=list)
-    entities: list[dict[str, Any]] = field(default_factory=list)
-    constraints: list[dict[str, Any]] = field(default_factory=list)
-    counter: int = 0
-
-    def point(self, xy: FloatArray) -> str:
-        self.counter += 1
-        pid = f"p{self.counter}"
-        self.points.append({"id": pid, "x": float(xy[0]), "y": float(xy[1])})
-        return pid
-
-    def entity(self, kind: str, **values: Any) -> str:
-        self.counter += 1
-        eid = f"e{self.counter}"
-        self.entities.append({"type": kind, "id": eid, **values})
-        return eid
-
-    def line(self, start: str, end: str) -> str:
-        return self.entity("line", start=start, end=end)
-
-    def arc(self, start: str, end: str, centre: FloatArray, radius: float, ccw: bool) -> str:
-        return self.entity(
-            "arc",
-            start=start,
-            end=end,
-            center=[float(centre[0]), float(centre[1])],
-            radius=float(radius),
-            ccw=ccw,
-        )
-
-    def constrain(self, kind: str, *refs: str) -> None:
-        self.constraints.append({"kind": kind, "refs": list(refs)})
-
-
-def chain_loop(sketch: _Sketch, chain: Chain, shift: FloatArray) -> str:
-    """Add an outline's lines and arcs to the sketch (moved by `shift`); returns its loop id.
-
-    Neighbouring edges share their point; the chain's relations become constraints.
-    """
-    if chain.is_circle:
-        edge = chain.edges[0]
-        assert edge.centre is not None
-        centre = np.array(edge.centre) + shift
-        return sketch.entity("circle", center=_list(centre), radius=edge.radius)
-    ids = [sketch.point(np.array(edge.start) + shift) for edge in chain.edges]
-    entities: list[str] = []
-    for i, edge in enumerate(chain.edges):
-        start, end = ids[i], ids[(i + 1) % len(ids)]
-        if edge.centre is None:
-            entities.append(sketch.line(start, end))
-        else:
-            centre = np.array(edge.centre) + shift
-            entities.append(sketch.arc(start, end, centre, edge.radius, edge.ccw))
-    for kind, refs in chain.relations:
-        sketch.constrain(kind, *(entities[ref] for ref in refs))
-    return entities[0]
 
 
 # Operations ------------------------------------------------------------------------------
@@ -126,6 +68,8 @@ class FeaturePlan:
 
     features: list[NewFeatureOp]
     skipped: list[int]
+    top_edges: list[TopEdges] = field(default_factory=list)
+    """Where the built features' top edges are, for their fillets."""
 
 
 def plan_features(
@@ -135,6 +79,7 @@ def plan_features(
     next_id: int,
     target_body: str | None,
     names: Mapping[int, str] | None = None,
+    top_faces: Callable[[int], np.ndarray] = lambda _: np.zeros(0, dtype=np.uint32),
 ) -> FeaturePlan:
     """Plane, sketches and extrusions for the chosen features.
 
@@ -147,9 +92,11 @@ def plan_features(
             new bodies and leaves pockets out.
         names: Display names by feature index; a family's extrusions take the name
             of its first feature.
+        top_faces: The full scan's triangles of a feature's inclined top, by index.
     """
     planned: list[NewFeatureOp] = []
     skipped: list[int] = []
+    edges: list[TopEdges] = []
     number = next_id
 
     def add(
@@ -181,19 +128,35 @@ def plan_features(
             {
                 "faces": {"$buf": 0, "dtype": "uint32", "shape": [len(faces)]},
                 "kind": "plane",
-                "fixed": {"direction": _list(plane.normal), "point": _list(plane.origin)},
+                "fixed": {"direction": as_list(plane.normal), "point": as_list(plane.origin)},
                 "snap": False,
             },
             (faces,),
         )
         shift = np.array([plane.origin @ plane.x_axis, plane.origin @ plane.y_axis])
         for stage in _stages(features, members):
-            _extrusions(add, plane, plane_id, shift, features, stage, target_body, names or {})
-    return FeaturePlan(planned, skipped)
-
-
-def _list(values: np.ndarray) -> list[float]:
-    return [float(value) for value in values]
+            inclined = [i for i in stage if features[i].relief.top == "inclined"]
+            flat = [i for i in stage if i not in inclined]
+            if flat:
+                edges += _extrusions(
+                    add, plane, plane_id, shift, features, flat, target_body, names or {}
+                )
+            edges += [
+                inclined_extrusion(
+                    add,
+                    plane,
+                    plane_id,
+                    shift,
+                    index,
+                    features[index],
+                    top_faces(index),
+                    target_body,
+                    (names or {}).get(index),
+                    OVERLAP_MM,
+                )
+                for index in inclined
+            ]
+    return FeaturePlan(planned, skipped, edges)
 
 
 def _stages(features: Sequence[Feature], members: list[int]) -> list[list[int]]:
@@ -221,16 +184,19 @@ def _extrusions(
     stage: list[int],
     target_body: str | None,
     names: Mapping[int, str],
-) -> None:
+) -> list[TopEdges]:
+    """Sketches and extrusions of one stage; returns where their top edges are."""
+    edges: list[TopEdges] = []
     by_height: dict[tuple[float, float], list[int]] = {}
     for index in stage:
         relief = features[index].relief
         by_height.setdefault((round(relief.level, 4), round(relief.height, 4)), []).append(index)
     for (level, height), indices in by_height.items():
-        sketch = _Sketch()
-        loops = {
-            index: chain_loop(sketch, features[index].outline.chain, shift) for index in indices
+        sketch = SketchDraft()
+        entities = {
+            index: chain_entities(sketch, features[index].outline.chain, shift) for index in indices
         }
+        loops = {index: ids[0] for index, ids in entities.items()}
         # Bosses rise along the normal, pockets sink against it: compare with the
         # scan halfway up, where the outlines were measured.
         sign = 1.0 if features[indices[0]].relief.kind == "boss" else -1.0
@@ -242,7 +208,7 @@ def _extrusions(
                     "plane": {"type": "feature", "feature": plane_id},
                     "offset": level,
                     "sectionOffset": sign * height / 2.0,
-                    "xDirection": _list(plane.x_axis),
+                    "xDirection": as_list(plane.x_axis),
                 },
                 "points": sketch.points,
                 "entities": sketch.entities,
@@ -260,7 +226,7 @@ def _extrusions(
             if not target_body:
                 # A new body is one solid: every boss of the family becomes its own.
                 for index in members:
-                    add(
+                    body = add(
                         "extrude",
                         {
                             "sketch": sketch_id,
@@ -271,8 +237,11 @@ def _extrusions(
                         },
                         name=name,
                     )
+                    edges.append(
+                        top_edges(index, features[index], plane, entities[index], body, body)
+                    )
                 continue
-            add(
+            extrusion = add(
                 "extrude",
                 {
                     "sketch": sketch_id,
@@ -284,6 +253,11 @@ def _extrusions(
                 },
                 name=name,
             )
+            edges += [
+                top_edges(index, features[index], plane, entities[index], target_body, extrusion)
+                for index in members
+            ]
+    return edges
 
 
 def _family(index: int, feature: Feature) -> tuple[object, ...]:

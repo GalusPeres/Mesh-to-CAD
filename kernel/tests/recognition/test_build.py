@@ -32,9 +32,9 @@ from m2c_kernel.document.model import Document, Scan, ScanSource
 from m2c_kernel.document.ops import AddFeature, NewFeature
 from m2c_kernel.mesh.normals import vertex_normals
 from m2c_kernel.protocol.wire import RawObject, from_json
-from m2c_kernel.recognition.build import _Sketch, chain_loop
 from m2c_kernel.recognition.chain import Chain, chain_points
 from m2c_kernel.recognition.outline import Outline, free_outline
+from m2c_kernel.recognition.sketch_ops import SketchDraft, chain_loop
 from m2c_kernel.session.jobs import JobContext
 from m2c_kernel.session.session import Session
 from m2c_kernel.sketch.api import evaluate, section_geometry
@@ -72,7 +72,7 @@ CHAINS = [shape.chain for shape in SHAPES] + [_star()]
 
 @pytest.mark.parametrize("chain", CHAINS, ids=[*(s.kind for s in SHAPES), "profile"])
 def test_outline_becomes_one_closed_loop_of_the_same_area(chain: Chain) -> None:
-    sketch = _Sketch()
+    sketch = SketchDraft()
     loop = chain_loop(sketch, chain, np.zeros(2))
     section = PlanarSection(plane=StandardPlaneSource(plane="XY"))
     params = from_json(

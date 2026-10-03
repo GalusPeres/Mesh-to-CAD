@@ -22,6 +22,10 @@ type IntArray = npt.NDArray[np.int64]
 type BoolArray = npt.NDArray[np.bool_]
 
 UP_FACING = 0.9
+INCLINED_SHARE = 0.6
+"""The top's triangles rise above this share of the height (an inclined top's low end
+lies well below its high end)."""
+MIN_TILT_DEG = 2.0
 TOP_SHARE = 0.1
 """Less upward area near the top than this share of the outline: no top face (a dome,
 or a pocket without a floor: a through hole)."""
@@ -53,14 +57,31 @@ class PlaneContext:
     normals: FloatArray
 
 
+type TopKind = Literal["flat", "inclined", "domed", "through"]
+
+
+@dataclass(frozen=True)
+class Top:
+    """The top of a boss or the floor of a pocket.
+
+    `plane` is (a, b, c) of the plane h = a u + b v + c the top lies on (flat: a = b =
+    0); None for a domed top and a through hole.
+    """
+
+    kind: TopKind
+    plane: tuple[float, float, float] | None = None
+
+
 def top_of(
     context: PlaneContext, part: IntArray, sign: float, level: float, height: float, area: float
-) -> tuple[Literal["flat", "domed", "through"], float | None]:
-    """The top of a boss or the floor of a pocket, and the height of a flat one.
+) -> Top:
+    """The top of a boss or the floor of a pocket, and the plane of a flat or inclined one.
 
     The top is made of the triangles near it that face up (out of the material,
     along the plane normal, for both). It is flat when their corners lie on a plane
-    parallel to the base; their mean height is then the feature's height.
+    parallel to the base, inclined when they lie on a plane tilted by more than
+    `MIN_TILT_DEG` that rises across the top by more than the flatness tolerance (the
+    arms of a direction pad slope down towards its centre), domed otherwise.
     """
     member = np.zeros(len(context.uvh), dtype=bool)
     member[part] = True
@@ -70,13 +91,21 @@ def top_of(
     double_area = np.linalg.norm(normal, axis=1)
     facing = normal[:, 2] / np.maximum(double_area, 1e-300)
     rise = sign * (corners[:, :, 2].mean(axis=1) - level)
-    up = (facing > UP_FACING) & (rise > 0.8 * height)
+    up = (facing > UP_FACING) & (rise > INCLINED_SHARE * height)
     if 0.5 * float(double_area[up].sum()) < TOP_SHARE * area:
-        return ("through" if sign < 0 else "domed"), None
-    heights = context.uvh[np.unique(faces[up]), 2]
-    if float(np.std(heights)) >= max(FLAT_TOP_FACTOR * context.noise, 0.05):
-        return "domed", None
-    return "flat", sign * (float(np.mean(heights)) - level)
+        return Top("through" if sign < 0 else "domed")
+    points = context.uvh[np.unique(faces[up])]
+    tolerance = max(FLAT_TOP_FACTOR * context.noise, 0.05)
+    design = np.column_stack([points[:, :2], np.ones(len(points))])
+    (a, b, c), *_ = np.linalg.lstsq(design, points[:, 2], rcond=None)
+    if float(np.std(points[:, 2] - design @ (a, b, c))) >= tolerance:
+        return Top("domed")
+    tilted = np.degrees(np.arctan(np.hypot(a, b))) > MIN_TILT_DEG
+    if tilted and float(np.ptp(design @ (a, b, c))) >= tolerance:
+        return Top("inclined", (float(a), float(b), float(c)))
+    if float(np.std(points[:, 2])) >= tolerance:
+        return Top("domed")
+    return Top("flat", (0.0, 0.0, float(np.mean(points[:, 2]))))
 
 
 def section_contour(context: PlaneContext, part: IntArray, at: float) -> FloatArray | None:

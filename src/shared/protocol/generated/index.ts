@@ -5,6 +5,7 @@ import { type AutomationMethods, AUTOMATION_METHODS } from './automation';
 import { type DebugMethods, DEBUG_METHODS } from './debug';
 import { type DocMethods, DOC_METHODS } from './doc';
 import { type ExportMethods, EXPORT_METHODS } from './export';
+import { type FilletMethods, FILLET_METHODS } from './fillet';
 import { type FitMethods, FIT_METHODS } from './fit';
 import { type FreeformMethods, FREEFORM_METHODS } from './freeform';
 import { type InspectionMethods, INSPECTION_METHODS } from './inspection';
@@ -45,7 +46,7 @@ import type { RevolveFeatureType } from './feature-revolve';
 import type { SketchFeatureType } from './feature-sketch';
 import type { TrimFeatureType } from './feature-trim';
 
-export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RecognizeMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
+export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FilletMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RecognizeMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
 
 export const METHOD_TABLE = {
   ...ALIGNMENT_METHODS,
@@ -53,6 +54,7 @@ export const METHOD_TABLE = {
   ...DEBUG_METHODS,
   ...DOC_METHODS,
   ...EXPORT_METHODS,
+  ...FILLET_METHODS,
   ...FIT_METHODS,
   ...FREEFORM_METHODS,
   ...INSPECTION_METHODS,

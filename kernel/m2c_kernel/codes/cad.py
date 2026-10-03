@@ -36,6 +36,8 @@ class ErrorCode(StrEnum):
     CHAMFER_FAILED = "cad.chamferFailed"
     EDGE_NOT_FOUND = "cad.edgeNotFound"
     NO_EDGES = "cad.noEdges"
+    NO_SCAN_AT_EDGES = "cad.noScanAtEdges"
+    """Too few scan points along the edges show a rounding to measure."""
     TARGET_REQUIRED = "cad.targetRequired"
     TOOLS_REQUIRED = "cad.toolsRequired"
     TOOL_IS_TARGET = "cad.toolIsTarget"

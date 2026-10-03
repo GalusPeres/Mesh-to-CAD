@@ -28,6 +28,7 @@ export interface RecognizedFeature {
   rms: number;
   parent: number | null;
   group: number;
+  rounding: number | null;
   label: Vec3;
 }
 
@@ -44,12 +45,14 @@ export interface BuildParams {
   features: number[];
   targetBody?: string | null;
   names?: string[] | null;
+  roundEdges?: number[] | null;
 }
 
 export interface BuildResult {
   revision: number;
   added: string[];
   skipped: number[];
+  unrounded: number[];
 }
 
 export interface RecognizeMethods {
