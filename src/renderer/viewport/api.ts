@@ -30,6 +30,12 @@ export type PickHit =
   | { kind: 'edge'; bodyId: string; edge: number; point: Vec3 }
   | { kind: 'item'; key: string; owner: string; point: Vec3 };
 
+/** Objects the project tree hides: bodies by body id, other items by their owner feature. */
+export interface HiddenObjects {
+  bodies: readonly string[];
+  owners: readonly string[];
+}
+
 export interface PickOptions {
   kinds?: readonly PickHit['kind'][];
 }
@@ -225,6 +231,11 @@ export interface Viewport {
   setPreviewItems(owner: string, items: readonly SceneItem[]): void;
   /** Hide the document items of one owner (a feature being edited in place); null shows all. */
   setOwnerHidden(owner: string | null): void;
+  /**
+   * Leave out hidden bodies and the other document items (sections, planes, sketches)
+   * of hidden features, as the project tree hides them. Tool previews stay drawn.
+   */
+  setHiddenObjects(hidden: HiddenObjects): void;
   /** Hover or selection highlight of an object drawn in the scene. */
   highlight(target: { bodyId: string; edge?: number } | { owner: string } | null): void;
   addInteraction(interaction: ViewportInteraction): () => void;

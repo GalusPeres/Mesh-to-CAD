@@ -72,6 +72,9 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
+  /** What the pointer finds at a screen point: scan, body, edge or item. */
+  const pick = (screen) => ui({ type: 'pick', x: screen.x, y: screen.y });
+
   /** Wait until the open tool has no job running (fit, deviation, build). */
   async function settle(timeoutMs = 120_000) {
     const end = Date.now() + timeoutMs;
@@ -120,6 +123,7 @@ export function createDriver(client, out) {
     press,
     command,
     toolInfo,
+    pick,
     settle,
     until,
     shot,

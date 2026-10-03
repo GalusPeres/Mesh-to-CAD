@@ -115,13 +115,8 @@ describe('object visibility', () => {
     expect(viewStore.getState().visibility).toBe('scan');
   });
 
-  it('offers hiding single objects only when the viewport can do it', () => {
+  it('hides single bodies and features, not regions', () => {
     const ref = { kind: 'body', id: 'f1' } as const;
-    expect(canHide(ref)).toBe(false);
-    toggleHidden(ref, snapshot);
-    expect(objectVisibilityStore.getState()).toEqual(EMPTY_HIDDEN);
-
-    registerViewport({ setHiddenObjects } as unknown as Viewport);
     expect(canHide(ref)).toBe(true);
     expect(canHide({ kind: 'region', id: 'r1' })).toBe(false);
     toggleHidden(ref, snapshot);
