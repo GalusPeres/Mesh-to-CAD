@@ -6,6 +6,7 @@ import { settingsStore } from '../state/settingsStore';
 import { type DisplayMode, type SectionPlane, setSectionPlane } from '../state/viewStore';
 import type {
   CameraView,
+  HiddenObjects,
   Overlay,
   PickHit,
   PickOptions,
@@ -281,6 +282,10 @@ export class SceneController implements Viewport {
 
   setOwnerHidden(owner: string | null): void {
     this.items.setHiddenOwner(owner);
+  }
+
+  setHiddenObjects(hidden: HiddenObjects): void {
+    this.items.setHiddenObjects(hidden);
   }
 
   setPreviewItems(owner: string, items: readonly SceneItem[]): void {
