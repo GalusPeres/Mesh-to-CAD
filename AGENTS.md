@@ -76,6 +76,10 @@ is written by `npm run codegen` only.
    - **Close-ups of every corner and edge.** Take them three ways: bodies only with
      colours off (Space, D), with the scan shown, and with the heatmap. Look for bulges,
      steps, gaps, floating parts and construction drawn over the body.
+   - **The remote pipeline** for anything that changes how the reference remote is built:
+     `M2C_INSTANCE=<issue> npm run usertest -- remote --scan=<path to the scan>`. It
+     rebuilds the remote, measures it region by region and compares with the last run.
+     Put its table in the pull request; no region may get worse without a reason.
 4. Committed with `Closes #n`, pushed. No co-author or "generated with" lines.
 
 ## Talking with the user
