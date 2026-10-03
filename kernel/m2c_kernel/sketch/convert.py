@@ -7,7 +7,16 @@ from dataclasses import replace
 
 import numpy as np
 
-from m2c_kernel.sketch.model import Arc, Circle, Constraint, Line, Point, WorkSketch, line_through
+from m2c_kernel.sketch.model import (
+    Arc,
+    Circle,
+    Constraint,
+    Line,
+    Point,
+    Shape,
+    WorkSketch,
+    line_through,
+)
 from m2c_kernel.sketch.params import (
     ArcEntity,
     CircleEntity,
@@ -16,6 +25,7 @@ from m2c_kernel.sketch.params import (
     SketchEntity,
     SketchParams,
     SketchPoint,
+    SketchShape,
     SketchSnap,
 )
 
@@ -74,6 +84,11 @@ def to_work(params: SketchParams) -> tuple[WorkSketch, list[Constraint]]:
         for c in params.constraints
         if all(ref in sketch.entities for ref in c.refs)
     ]
+    sketch.shapes = [
+        Shape(s.id, s.kind, tuple(s.entities))
+        for s in params.shapes
+        if all(ref in sketch.entities for ref in s.entities)
+    ]
     return sketch, constraints
 
 
@@ -126,4 +141,9 @@ def to_params(
         entities=entities,
         constraints=[SketchConstraint(kind=c.kind, refs=list(c.refs)) for c in constraints],
         snaps=base.snaps if snaps is None else snaps,
+        shapes=[
+            SketchShape(id=s.id, kind=s.kind, entities=list(s.entities))
+            for s in sketch.shapes
+            if all(ref in sketch.entities for ref in s.entities)
+        ],
     )

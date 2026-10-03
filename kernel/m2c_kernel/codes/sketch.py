@@ -9,6 +9,8 @@ class ErrorCode(StrEnum):
     NOT_AN_AXIS = "sketch.notAnAxis"
     INVALID_GEOMETRY = "sketch.invalidGeometry"
     TOO_FEW_POINTS = "sketch.tooFewPoints"
+    NO_OUTLINE = "sketch.noOutline"
+    NO_CORNER = "sketch.noCorner"
 
 
 class IssueCode(StrEnum):

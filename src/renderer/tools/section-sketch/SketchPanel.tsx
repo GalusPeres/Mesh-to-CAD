@@ -10,6 +10,7 @@ import { describeError } from '../../kernel/describeError';
 import { type KernelFailure, isSilentFailure } from '../../kernel/KernelFailure';
 import { kernel } from '../../kernel/kernel';
 import { documentStore, useDocument } from '../../state/documentStore';
+import { objectSelectionStore } from '../../state/objectSelectionStore';
 import { InlineMessage } from '../../ui/InlineMessage/InlineMessage';
 import { ToolPanel } from '../framework/ToolPanel';
 import { toFailure, useCommit, usePreview } from '../framework/hooks';
@@ -17,7 +18,14 @@ import { closeTool } from '../framework/toolActions';
 import type { ToolPanelProps } from '../framework/types';
 import { sectionText } from './describe';
 import { PlaneStep } from './PlaneStep';
-import { emptySketch, scanCenter, sectionFor } from './planeChoice';
+import {
+  emptySketch,
+  featureSection,
+  providesPlane,
+  scanCenter,
+  sectionFor,
+  usableFeatures,
+} from './planeChoice';
 import { SketchStep } from './SketchStep';
 import { FIT_LANE, useSketchDraft } from './useSketchDraft';
 
@@ -45,23 +53,22 @@ export function SketchPanel({ activation, editTarget, close }: ToolPanelProps) {
   const [initial] = useState<SketchParams>(() => {
     const stored = storedSketch(edited);
     if (stored) return stored;
+    // A plane selected before the tool opens becomes the sketch plane.
+    const picked = objectSelectionStore.getState().selected[0];
+    const plane = usableFeatures(features, null).find(
+      (feature) => feature.id === picked?.id && providesPlane(feature),
+    );
+    if (picked?.kind === 'feature' && plane) return emptySketch(featureSection(plane));
     const scan = documentStore.getState().snapshot?.scene.scan;
-    const start = emptySketch({
-      type: 'planar',
-      plane: { type: 'standard', plane: 'XY' },
-      offset: 0,
-      sectionOffset: 0,
-      xDirection: null,
-      flip: false,
-    });
-    return {
-      ...start,
-      section: sectionFor('XY', start.section, { plane: null, axis: 'Z' }, scanCenter(scan)),
-    };
+    // Coming from no planar section, the cut starts through the middle of the scan.
+    const none = { type: 'rotational' as const, axis: 'Z', angleDeg: 0 };
+    return emptySketch(sectionFor('XY', none, { plane: null, axis: 'Z' }, scanCenter(scan)));
   });
   const [step, setStep] = useState<'plane' | 'sketch'>(
     initial.entities.length ? 'sketch' : 'plane',
   );
+  // Fit every contour at once, or start empty and fit the outlines one click at a time.
+  const [fitAll, setFitAll] = useState(true);
   const sketch = useSketchDraft(initial, step === 'sketch');
   const { draft } = sketch;
 
@@ -145,7 +152,9 @@ export function SketchPanel({ activation, editTarget, close }: ToolPanelProps) {
       editingName={edited ? sketchName : undefined}
       canCommit={canCommit}
       busy={commit.busy || fitting}
-      onCommit={() => (step === 'plane' ? fitSection() : void commit.commit())}
+      onCommit={() =>
+        step === 'sketch' ? void commit.commit() : fitAll ? fitSection() : setStep('sketch')
+      }
       onCancel={() => void closeTool()}
     >
       {!hasScan && <InlineMessage severity="info">{t('sectionSketch.noScan')}</InlineMessage>}
@@ -156,6 +165,8 @@ export function SketchPanel({ activation, editTarget, close }: ToolPanelProps) {
           editTarget={editTarget}
           names={names}
           preview={section}
+          fitAll={fitAll}
+          onFitAllChange={setFitAll}
         />
       ) : (
         <SketchStep

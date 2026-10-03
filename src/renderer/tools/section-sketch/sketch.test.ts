@@ -82,6 +82,7 @@ function openCorner(): SketchParams {
     snaps: [],
     dimensions: [],
     rejectedSnaps: [],
+    shapes: [],
   };
 }
 

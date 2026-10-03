@@ -37,15 +37,23 @@ function withoutUnusedPoints(sketch: SketchParams): SketchParams {
   return { ...sketch, points: sketch.points.filter((point) => used.has(point.id)) };
 }
 
-export function deleteEntity(sketch: SketchParams, entityId: string): SketchParams {
-  const refersTo = (ids: readonly string[]) => ids.includes(entityId);
+/** Delete entities with everything that refers to them; a shape loses its meaning with any. */
+export function deleteEntities(sketch: SketchParams, entityIds: readonly string[]): SketchParams {
+  const refersTo = (ids: readonly string[]) => ids.some((id) => entityIds.includes(id));
   return withoutUnusedPoints({
     ...sketch,
-    entities: sketch.entities.filter((entity) => entity.id !== entityId),
+    entities: sketch.entities.filter((entity) => !entityIds.includes(entity.id)),
     constraints: sketch.constraints.filter((constraint) => !refersTo(constraint.refs)),
-    snaps: sketch.snaps.filter((snap) => snap.entity !== entityId && !refersTo(snap.members)),
-    dimensions: sketch.dimensions.filter((dimension) => dimension.entity !== entityId),
+    snaps: sketch.snaps.filter(
+      (snap) => !entityIds.includes(snap.entity) && !refersTo(snap.members),
+    ),
+    dimensions: sketch.dimensions.filter((dimension) => !entityIds.includes(dimension.entity)),
+    shapes: sketch.shapes.filter((shape) => !refersTo(shape.entities)),
   });
+}
+
+export function deleteEntity(sketch: SketchParams, entityId: string): SketchParams {
+  return deleteEntities(sketch, [entityId]);
 }
 
 /**
