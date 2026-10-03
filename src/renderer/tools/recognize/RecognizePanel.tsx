@@ -29,6 +29,7 @@ import {
 } from './model';
 import styles from './RecognizePanel.module.css';
 import { type Recognition, useRecognition } from './useRecognition';
+import { useRecognitionInfo } from './useRecognitionInfo';
 import { useRecognitionOverlay } from './useRecognitionOverlay';
 
 const KEY = 'tools:recognize';
@@ -76,6 +77,7 @@ export function RecognizePanel({ close }: ToolPanelProps) {
   );
   const [hovered, setHovered] = useState<number | null>(null);
   useRecognitionOverlay(result, checked, hovered, { onToggle: toggle, onHover: setHovered });
+  useRecognitionInfo(recognition, groups, checked);
 
   const bodies = useMemo(() => (snapshot ? availableBodies(snapshot, null) : []), [snapshot]);
   const bodyLabel = useBodyLabel();
