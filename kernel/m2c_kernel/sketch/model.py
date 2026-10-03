@@ -15,6 +15,8 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 
+from m2c_kernel.sketch.params import ShapeKind
+
 type FloatArray = npt.NDArray[np.float64]
 type Origin = Literal["fit", "drawn", "axis"]
 
@@ -109,6 +111,15 @@ class FixedValue:
     point: tuple[float, float] = (0.0, 0.0)
 
 
+@dataclass(frozen=True)
+class Shape:
+    """Entities that form one recognised outline shape (see `SketchShape`)."""
+
+    id: str
+    kind: ShapeKind
+    entities: tuple[str, ...]
+
+
 @dataclass
 class WorkSketch:
     points: dict[str, Point] = field(default_factory=dict)
@@ -116,6 +127,7 @@ class WorkSketch:
     samples: dict[str, FloatArray] = field(default_factory=dict)
     """Section points per fitted entity."""
     constraints: list[Constraint] = field(default_factory=list)
+    shapes: list[Shape] = field(default_factory=list)
 
     def incidence(self) -> dict[str, list[tuple[Entity, str]]]:
         """For every point, the entity ends (`start` or `end`) that meet there."""

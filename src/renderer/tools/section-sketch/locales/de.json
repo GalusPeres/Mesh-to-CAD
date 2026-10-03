@@ -1,7 +1,7 @@
 {
   "label": "Skizze",
   "tooltip": "Schnitt des Scans als Skizze aus Linien, Bögen und Kreisen",
-  "help": "Ebene und Schnittlage wählen; der Schnitt durch den Scan erscheint grün. OK passt Linien, Bögen und Kreise mit Bedingungen und gefangenen Werten ein. Werte in der Elementliste ändern, fehlende Kanten mit Ecke bilden, Linie oder Kreis ergänzen. Skizze beenden übernimmt die Skizze in den Verlauf.",
+  "help": "Ebene und Schnittlage wählen; der Schnitt durch den Scan erscheint grün. Mit Alle Konturen einpassen passt OK den ganzen Schnitt ein, sonst beginnt die Skizze leer. Ein Klick in eine Kontur passt Kreis, Langloch, Rechteck oder Ringsegment mit Konstruktionswerten ein, Umschalt+Ziehen eine Linie oder einen Bogen, Strg an einer Ecke verrundet sie mit dem Radius vom Scan. Skizze beenden übernimmt die Skizze in den Verlauf.",
   "noScan": "Kein Scan geladen.",
   "planeKind": {
     "label": "Ebene",
@@ -34,7 +34,8 @@
     "entitiesInTolerance": "In Toleranz",
     "entitiesInToleranceValue": "{{passed}} von {{total}}",
     "empty": "Der Schnitt trifft den Scan nicht. Schnittlage ändern.",
-    "folded": "Punkte aller Winkel gemittelt"
+    "folded": "Punkte aller Winkel gemittelt",
+    "deviation": "Abweichung max."
   },
   "sketchPlane": "Skizzenebene",
   "cut": "Schnitt",
@@ -74,13 +75,6 @@
     "addCircle": "Kreis hinzufügen",
     "cancelMode": "Abbrechen"
   },
-  "mode": {
-    "cornerFirst": "Ecke bilden: erstes Element anklicken.",
-    "cornerSecond": "Ecke bilden: zweites Element anklicken.",
-    "lineFirst": "Linie: ersten Punkt anklicken.",
-    "lineSecond": "Linie: zweiten Punkt anklicken.",
-    "circle": "Kreis: Mittelpunkt anklicken oder eingeben."
-  },
   "painted": "Element eingepasst, Abweichung max. {{value}}.",
   "editFailed": {
     "noIntersection": "Ecke nicht möglich: Die Elemente schneiden sich nicht.",
@@ -117,7 +111,8 @@
     "centerX": "{{entity}}: Mittelpunkt X {{value}}",
     "centerY": "{{entity}}: Mittelpunkt Y {{value}}",
     "junction": "{{entity}}: Ecke bei {{value}}",
-    "boltCircle": "Lochkreis ⌀ {{value}}, {{count}} × {{pitch}}"
+    "boltCircle": "Lochkreis ⌀ {{value}}, {{count}} × {{pitch}}",
+    "length": "{{entity}}: Länge {{value}}"
   },
   "caption": {
     "title": "{{name}} · {{plane}}",
@@ -125,5 +120,39 @@
     "axisNormal": "Senkrecht zu {{axis}}",
     "rotational": "Drehprofil um {{axis}}"
   },
-  "statusHint": "Umschalt+Ziehen: Element anpassen · Alt: Fangen aus · Esc: Werkzeug abbrechen"
+  "fitAll": "Alle Konturen einpassen",
+  "hint": {
+    "idle": "Klick in Kontur: Form einpassen · Umschalt+Ziehen: Linie/Bogen · Strg: Ecke verrunden · Esc: Abbrechen",
+    "idleCtrl": "Strg+Klick auf Ecke: verrunden · Strg+Ziehen über zwei Elemente: Ecke bilden",
+    "outline": "Klick: Form der Kontur einpassen · Umschalt+Ziehen: Linie/Bogen",
+    "select": "Klick: auswählen · Entf: löschen",
+    "fillet": "Strg+Klick: Ecke mit Radius vom Scan verrunden",
+    "corner": "Ecke bilden",
+    "working": "Wird eingepasst …",
+    "cornerFirst": "Ecke bilden: erstes Element anklicken · Esc: Abbrechen",
+    "cornerSecond": "Ecke bilden: zweites Element anklicken · Esc: Abbrechen",
+    "lineFirst": "Linie: ersten Punkt anklicken · Esc: Abbrechen",
+    "lineSecond": "Linie: zweiten Punkt anklicken · Esc: Abbrechen",
+    "circle": "Kreis: Mittelpunkt anklicken oder eingeben · Alt: Fangen aus · Esc: Abbrechen"
+  },
+  "shape": {
+    "circle": "Kreis",
+    "slot": "Langloch",
+    "roundedRect": "Rechteck",
+    "ringArm": "Ringsegment"
+  },
+  "size": {
+    "diameter": "Durchmesser",
+    "length": "Länge",
+    "width": "Breite",
+    "corner": "Eckradius",
+    "outer": "Außenradius",
+    "inner": "Innenradius"
+  },
+  "fitted": "{{shape}}: {{size}} · Abweichung max. {{value}}",
+  "fittedFree": "Freie Kontur: {{count}} Elemente · Abweichung max. {{value}}",
+  "filleted": "Verrundung R {{value}} (gemessen {{measured}})",
+  "profileRow": "Kontur {{number}}",
+  "entityCount_one": "{{count}} Element",
+  "entityCount_other": "{{count}} Elemente"
 }

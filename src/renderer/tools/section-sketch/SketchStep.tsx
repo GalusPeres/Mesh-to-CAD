@@ -1,46 +1,38 @@
-import { Circle, CornerDownRight, Link2, Slash, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import type { SectionResult } from '@shared/protocol/generated/sketch';
+import type { EntityFitInfo, SectionResult } from '@shared/protocol/generated/sketch';
 
 import { useFormatter } from '../../i18n/useFormatter';
-import { describeError } from '../../kernel/describeError';
-import { kernel } from '../../kernel/kernel';
 import { Button } from '../../ui/Button/Button';
-import { IconButton } from '../../ui/IconButton/IconButton';
 import { InlineMessage } from '../../ui/InlineMessage/InlineMessage';
-import { NumberField } from '../../ui/NumberField/NumberField';
 import { PanelSection } from '../../ui/PanelSection/PanelSection';
-import { PropertyRow, PropertyValue } from '../../ui/PropertyRow/PropertyRow';
-import { toFailure } from '../framework/hooks';
+import { PropertyValue } from '../../ui/PropertyRow/PropertyRow';
 import { entityLabels } from './describe';
+import { deviationLabels } from './deviationLabels';
 import { pointOf, xy } from './draftGeometry';
-import {
-  type EditResult,
-  addCircle,
-  closeGap,
-  deleteEntity,
-  formCorner,
-  lineBetween,
-} from './edits';
+import { addCircle, closeGap, deleteEntities } from './edits';
 import { EntityEditor } from './EntityEditor';
 import { EntityList } from './EntityList';
+import { groupOf, selectedEntities, sketchGroups } from './sketchGroups';
 import {
-  type SketchMode,
   enterSketchMode,
   leaveSketchMode,
   setSketchActions,
   updateSketchSession,
 } from './sketchSession';
-import { pickEntity, pickPoint, snapTargets, snapToTarget } from './sketchPicking';
 import type { Vec2 } from './sketchMath';
 import styles from './SketchPanel.module.css';
 import { SketchResult } from './SketchResult';
+import { SketchToolbar } from './SketchToolbar';
+import { shapeLabel, shapeSizes } from './shapeSizes';
 import type { SketchDraft } from './useSketchDraft';
+import { useSketchGestures } from './useSketchGestures';
 import { useSketchViewport } from './useSketchViewport';
 
 const K = 'sectionSketch';
+const NO_FITS: readonly EntityFitInfo[] = [];
 
 interface SketchStepProps {
   sketch: SketchDraft;
@@ -52,52 +44,31 @@ interface SketchStepProps {
   onRefit: () => void;
 }
 
-interface Notice {
-  severity: 'info' | 'warning';
-  text: string;
-}
-
-/** Step 2, sketch mode: drawing tools, entities with numeric editing, result. */
+/** Step 2, sketch mode: gestures in the view, entities with numeric editing, result. */
 export function SketchStep(props: SketchStepProps) {
   const { sketch, section, caption, planeText, refitting, onChangePlane, onRefit } = props;
   const { t } = useTranslation(['tools', 'common']);
   const format = useFormatter();
-  const { draft } = sketch;
+  const { draft, edit } = sketch;
   const state = sketch.fit ?? sketch.lastFit;
-  const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<SketchMode>('select');
-  const [pending, setPending] = useState<string | null>(null);
-  const [circle, setCircle] = useState<{ center: Vec2; radius: number }>({
-    center: [0, 0],
-    radius: 5,
-  });
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const frame = state?.frame ?? section?.frame ?? null;
+  const gestures = useSketchGestures(sketch, section, frame);
+  const { mode, startMode, pending, selected, setSelected, circle, apply } = gestures;
   const labels = useMemo(() => entityLabels(draft, t), [draft, t]);
+  const groups = useMemo(() => sketchGroups(draft), [draft]);
+  const selectedIds = useMemo(() => selectedEntities(groups, selected), [groups, selected]);
+  const selectedShape = draft.shapes.find((shape) => shape.id === selected) ?? null;
   const selectedEntity = draft.entities.find((entity) => entity.id === selected) ?? null;
   const selectedFit = sketch.fit?.fits.find((fit) => fit.entity === selected) ?? null;
+  const fits = sketch.fit?.fits ?? state?.fits ?? NO_FITS;
 
-  const edit = sketch.edit;
-  const apply = useCallback(
-    (result: EditResult) => {
-      if (result.ok) edit(result.sketch);
-      setNotice(
-        result.ok ? null : { severity: 'warning', text: t(`${K}.editFailed.${result.reason}`) },
-      );
-    },
-    [edit, t],
-  );
-  const startMode = useCallback((next: SketchMode) => {
-    setMode(next);
-    setPending(null);
-    setNotice(null);
-  }, []);
   const remove = useCallback(
     (id: string | null) => {
       if (!id) return;
-      edit(deleteEntity(draft, id));
+      edit(deleteEntities(draft, selectedEntities(groups, id)));
       setSelected(null);
     },
-    [edit, draft],
+    [edit, draft, groups, setSelected],
   );
 
   useEffect(() => {
@@ -115,7 +86,6 @@ export function SketchStep(props: SketchStepProps) {
     updateSketchSession({ mode, caption, profile: state?.profile ?? null });
   }, [mode, caption, state]);
 
-  const frame = state?.frame ?? section?.frame ?? null;
   const drawing = useMemo(
     () =>
       section
@@ -128,6 +98,16 @@ export function SketchStep(props: SketchStepProps) {
         : null,
     [section],
   );
+  const selectedGroup = groupOf(groups, selected)?.id ?? null;
+  const deviation = useMemo(
+    () =>
+      deviationLabels(
+        draft,
+        fits,
+        [gestures.hoveredGroup, selectedGroup].filter((id) => id !== null),
+      ),
+    [draft, fits, gestures.hoveredGroup, selectedGroup],
+  );
   const highlight = useMemo(() => {
     const points: Vec2[] =
       mode === 'line' && pending
@@ -135,98 +115,37 @@ export function SketchStep(props: SketchStepProps) {
         : mode === 'circle'
           ? [circle.center]
           : [];
-    const gaps = state?.profile.gaps.map(([u, v]): Vec2 => [u, v]) ?? [];
-    return { selected, pending: mode === 'corner' && pending ? [pending] : [], points, gaps };
-  }, [selected, mode, pending, draft, circle.center, state]);
+    return {
+      selected: selectedIds,
+      pending: mode === 'corner' && pending ? [pending] : [],
+      points,
+      gaps: state?.profile.gaps.map(([u, v]): Vec2 => [u, v]) ?? [],
+      outline: gestures.outline,
+      joint: gestures.joint,
+      labels: deviation,
+    };
+  }, [
+    selectedIds,
+    mode,
+    pending,
+    draft,
+    circle.center,
+    state,
+    gestures.outline,
+    gestures.joint,
+    deviation,
+  ]);
 
-  const paint = (points: Vec2[]) => {
-    kernel()
-      .call('sketch.fitEntity', {
-        sketch: draft,
-        points: new Float64Array(points.flat()),
-        kind: 'auto',
-      })
-      .result.then(async (fitted) => {
-        const refitted = await kernel().call('sketch.autoFit', {
-          sketch: fitted.sketch,
-          refit: true,
-        }).result;
-        sketch.accept(refitted);
-        setSelected(fitted.entity);
-        setNotice({
-          severity: 'info',
-          text: t(`${K}.painted`, { value: format.length(fitted.maxDistance) }),
-        });
-      })
-      .catch((error: unknown) => {
-        setNotice({ severity: 'warning', text: describeError(toFailure(error), t) });
-      });
-  };
-
-  const { project } = useSketchViewport({
+  useSketchViewport({
     step: 'sketch',
     section: drawing,
     frame,
     sketch: draft,
-    fits: sketch.fit?.fits ?? [],
+    fits,
     highlight,
     cut: null,
-    handlers: {
-      click: (cursor, atPlane, alt) => {
-        if (!frame || !project) return;
-        if (mode === 'select') {
-          setSelected(pickEntity(draft, frame, project, cursor));
-          return;
-        }
-        if (mode === 'circle') {
-          if (!atPlane) return;
-          const center = alt
-            ? atPlane
-            : snapToTarget(snapTargets(draft), frame, project, cursor, atPlane);
-          setCircle((previous) => ({ ...previous, center }));
-          return;
-        }
-        const hit =
-          mode === 'corner'
-            ? pickEntity(draft, frame, project, cursor)
-            : pickPoint(draft, frame, project, cursor);
-        if (!hit) return;
-        if (!pending) {
-          setPending(hit);
-          return;
-        }
-        apply(
-          mode === 'corner' ? formCorner(draft, pending, hit) : lineBetween(draft, pending, hit),
-        );
-        startMode('select');
-      },
-      paint,
-      abort: () => {
-        if (mode === 'select') return false;
-        startMode('select');
-        return true;
-      },
-    },
+    handlers: gestures.handlers,
   });
-
-  const modeHint =
-    mode === 'corner'
-      ? t(`${K}.mode.${pending ? 'cornerSecond' : 'cornerFirst'}`)
-      : mode === 'line'
-        ? t(`${K}.mode.${pending ? 'lineSecond' : 'lineFirst'}`)
-        : mode === 'circle'
-          ? t(`${K}.mode.circle`)
-          : null;
-  const toggle = (next: SketchMode) => () => startMode(mode === next ? 'select' : next);
-  const setCircleCenter = (index: 0 | 1, value: number) =>
-    setCircle((previous) => ({
-      ...previous,
-      center: index === 0 ? [value, previous.center[1]] : [previous.center[0], value],
-    }));
-  const addTypedCircle = () => {
-    edit(addCircle(draft, circle.center, circle.radius));
-    startMode('select');
-  };
 
   return (
     <>
@@ -244,85 +163,58 @@ export function SketchStep(props: SketchStepProps) {
       </PanelSection>
 
       <PanelSection title={t('common:sections.parameters')}>
-        <div className={styles.toolbar} role="toolbar" aria-label={t(`${K}.draw`)}>
-          <IconButton
-            icon={CornerDownRight}
-            label={t(`${K}.actions.corner`)}
-            shortcut="K"
-            pressed={mode === 'corner'}
-            onClick={toggle('corner')}
-          />
-          <IconButton
-            icon={Slash}
-            label={t(`${K}.actions.line`)}
-            shortcut="L"
-            pressed={mode === 'line'}
-            onClick={toggle('line')}
-          />
-          <IconButton
-            icon={Circle}
-            label={t(`${K}.actions.circle`)}
-            shortcut="C"
-            pressed={mode === 'circle'}
-            onClick={toggle('circle')}
-          />
-          <IconButton
-            icon={Link2}
-            label={t(`${K}.actions.closeGap`)}
-            disabled={!state || state.profile.gaps.length === 0}
-            onClick={() => apply(closeGap(draft))}
-          />
-        </div>
-        {modeHint && <InlineMessage severity="info">{modeHint}</InlineMessage>}
-        {mode === 'circle' && (
-          <>
-            {([0, 1] as const).map((index) => (
-              <PropertyRow
-                key={index}
-                label={t(`${K}.field.${index ? 'centerY' : 'centerX'}`)}
-                htmlFor={`sketch-circle-${index}`}
-              >
-                <NumberField
-                  id={`sketch-circle-${index}`}
-                  value={circle.center[index]}
-                  onCommit={(value) => setCircleCenter(index, value)}
-                />
-              </PropertyRow>
-            ))}
-            <PropertyRow label={t(`${K}.field.radius`)} htmlFor="sketch-circle-radius">
-              <NumberField
-                id="sketch-circle-radius"
-                value={circle.radius}
-                min={0.01}
-                onCommit={(radius) => setCircle((previous) => ({ ...previous, radius }))}
-              />
-            </PropertyRow>
-            <Button onClick={addTypedCircle}>{t(`${K}.actions.addCircle`)}</Button>
-          </>
+        <SketchToolbar
+          mode={mode}
+          onMode={startMode}
+          canCloseGap={!!state && state.profile.gaps.length > 0}
+          onCloseGap={() => apply(closeGap(draft))}
+          circle={circle}
+          onCircle={gestures.setCircle}
+          onAddCircle={() => {
+            edit(addCircle(draft, circle.center, circle.radius));
+            startMode('select');
+          }}
+        />
+        {gestures.notice && (
+          <InlineMessage severity={gestures.notice.severity}>{gestures.notice.text}</InlineMessage>
         )}
-        {notice && <InlineMessage severity={notice.severity}>{notice.text}</InlineMessage>}
 
         <h3 className={styles.subheading}>{t(`${K}.entities`)}</h3>
         <EntityList
           sketch={draft}
           labels={labels}
-          fits={sketch.fit?.fits ?? []}
+          fits={fits}
           selected={selected}
           onSelect={setSelected}
         />
+        {selectedShape && (
+          <>
+            <h3 className={styles.subheading}>{shapeLabel(selectedShape, t)}</h3>
+            {Object.entries(shapeSizes(draft, selectedShape)).map(([name, value]) => (
+              <PropertyValue
+                key={name}
+                label={t(`${K}.size.${name}`)}
+                value={format.length(value)}
+              />
+            ))}
+          </>
+        )}
         {selectedEntity && (
           <>
             <h3 className={styles.subheading}>{labels.get(selectedEntity.id)}</h3>
             {selectedFit?.maxDistance != null && (
-              <p className={styles.hint}>
-                {t(`${K}.deviation`, { value: format.length(selectedFit.maxDistance) })}
-              </p>
+              <PropertyValue
+                label={t(`${K}.result.deviation`)}
+                value={format.length(selectedFit.maxDistance)}
+              />
             )}
             <EntityEditor sketch={draft} entity={selectedEntity} onEdit={edit} />
-            <Button variant="ghost" onClick={() => remove(selectedEntity.id)}>
-              <Trash2 size={16} aria-hidden /> {t(`${K}.actions.delete`)}
-            </Button>
           </>
+        )}
+        {selectedIds.length > 0 && (
+          <Button variant="ghost" onClick={() => remove(selected)}>
+            <Trash2 size={16} aria-hidden /> {t(`${K}.actions.delete`)}
+          </Button>
         )}
       </PanelSection>
 
@@ -338,6 +230,7 @@ export function SketchStep(props: SketchStepProps) {
         state={state}
         current={!!sketch.fit}
         error={sketch.refitError}
+        focus={highlight.selected.length ? highlight.selected : null}
         onEdit={edit}
       />
     </>

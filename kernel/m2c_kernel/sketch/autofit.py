@@ -11,18 +11,15 @@ follows the section's noise (`noise.py`).
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 
 from m2c_kernel.sketch import fit2d, split2d
-from m2c_kernel.sketch.constraints import (
-    ConstraintOptions,
-    infer_constraints,
-    solve,
-    update_points,
-)
+from m2c_kernel.sketch.carriers import direction_angle, update_points
+from m2c_kernel.sketch.constraints import ConstraintOptions, infer_constraints
 from m2c_kernel.sketch.model import (
     Arc,
     Circle,
@@ -37,9 +34,12 @@ from m2c_kernel.sketch.model import (
     line_through,
 )
 from m2c_kernel.sketch.noise import sample_spacing, section_noise, suggested_tolerance
+from m2c_kernel.sketch.outlines import Outline, add_shape, support_near
 from m2c_kernel.sketch.params import SketchDimension, SketchSnap
 from m2c_kernel.sketch.section import Section
+from m2c_kernel.sketch.shape_entities import BuiltShape
 from m2c_kernel.sketch.snaps import find_snaps, fixed_values
+from m2c_kernel.sketch.solver import solve
 from m2c_kernel.snapping import SnapUnits
 
 AXIS_TOUCH = 0.5
@@ -60,14 +60,19 @@ class FitOutcome:
 
 
 class IdSource:
-    """Point ids `p<n>` and entity ids `e<n>`, unique within one sketch."""
+    """Point ids `p<n>`, entity ids `e<n>` and shape ids `s<n>`, unique within one sketch."""
 
     def __init__(self, used: Iterable[str] = ()) -> None:
-        self._next = {"p": 1, "e": 1}
+        self._next = {"p": 1, "e": 1, "s": 1}
         for item in used:
             prefix, number = item[:1], item[1:]
             if prefix in self._next and number.isdigit():
                 self._next[prefix] = max(self._next[prefix], int(number) + 1)
+
+    @staticmethod
+    def of(sketch: WorkSketch) -> IdSource:
+        """Ids that are new in this sketch."""
+        return IdSource([*sketch.points, *sketch.entities, *(s.id for s in sketch.shapes)])
 
     def take(self, prefix: str) -> str:
         value = self._next[prefix]
@@ -84,7 +89,7 @@ def _make_entity(
     return Arc(eid, fit.center.copy(), fit.radius, ccw, start, end)
 
 
-def _add_polyline(
+def add_polyline(
     sketch: WorkSketch, raw: FloatArray, closed: bool, tolerance: float, ids: IdSource
 ) -> list[str]:
     """Lines and arcs (or one circle) through one section polyline; returns the point ids."""
@@ -162,35 +167,74 @@ def fit_section(
     units: SnapUnits,
     rejected_snaps: Sequence[str] = (),
     snap: bool = True,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> FitOutcome:
-    """Fit a new sketch to a section; `snap=False` leaves the measured values."""
+    """Fit a new sketch to a section; `snap=False` leaves the measured values.
+
+    Closed outlines of a planar section that are a simple shape (circle, slot,
+    rounded rectangle, ring arm) become that shape; the rest is split into lines
+    and arcs.
+    """
     noise = section_noise(section)
     tol = tolerance if tolerance is not None else suggested_tolerance(noise)
     sketch = WorkSketch()
     ids = IdSource()
+    built: list[BuiltShape] = []
     for raw in section.loops:
-        _add_polyline(sketch, raw, True, tol, ids)
+        shape = (
+            None if section.rotational else _add_shape(sketch, section, raw, tol, units, ids, snap)
+        )
+        if shape is not None:
+            built.append(shape)
+        else:
+            add_polyline(sketch, raw, True, tol, ids)
+        if check_cancelled is not None:
+            check_cancelled()
     open_chains = [
-        _add_polyline(sketch, raw, False, tol, ids) for raw in section.chains if len(raw) >= 2
+        add_polyline(sketch, raw, False, tol, ids) for raw in section.chains if len(raw) >= 2
     ]
     if section.rotational:
         _close_on_axis(sketch, open_chains, ids)
-    constraints = infer_constraints(sketch, ConstraintOptions.for_tolerance(tol))
-    solve(sketch, constraints)
+    shaped = {e for shape in built for e in shape.shape.entities}
+    inferred = infer_constraints(sketch, ConstraintOptions.for_tolerance(tol), exclude=shaped)
+    shape_constraints = [c for shape in built for c in shape.constraints]
+    constraints = inferred + shape_constraints
+    shape_snaps = [s for shape in built for s in shape.snaps if s.id not in rejected_snaps]
+    held = [f for s in shape_snaps for f in fixed_values(sketch, s)]
+    solve(sketch, constraints, held, check_cancelled=check_cancelled)
     update_points(sketch, constraints)
     # The split leaves the samples around each breakpoint with whichever entity the
     # dynamic programme chose; near a tangent transition that biases radii. Handing
     # every point to its nearest fitted entity and solving again removes the bias.
     reassigned = assign_points(sketch, fit_points(section), max(3.0 * tol, 0.3))
     sketch.samples.update({eid: pts for eid, pts in reassigned.items() if len(pts) >= 5})
-    constraints = supported(sketch, constraints, tol)
+    constraints = shape_constraints + supported(
+        sketch, inferred, shape_constraints, tol, held, check_cancelled
+    )
     if not snap:
         return FitOutcome(sketch, constraints, [], tol, noise)
-    snaps = find_snaps(sketch, constraints, max(noise, 1e-4), units, rejected_snaps)
+    snaps = shape_snaps + find_snaps(sketch, constraints, max(noise, 1e-4), units, rejected_snaps)
     if snaps:
-        solve(sketch, constraints, [f for s in snaps for f in fixed_values(sketch, s)])
+        fixed = [f for s in snaps for f in fixed_values(sketch, s)]
+        solve(sketch, constraints, fixed, check_cancelled=check_cancelled)
         update_points(sketch, constraints)
     return FitOutcome(sketch, constraints, snaps, tol, noise)
+
+
+def _add_shape(
+    sketch: WorkSketch,
+    section: Section,
+    raw: FloatArray,
+    tolerance: float,
+    units: SnapUnits,
+    ids: IdSource,
+    designed: bool,
+) -> BuiltShape | None:
+    samples = fit2d.resample(raw, sample_spacing(raw, True), True)
+    band = max(3.0 * tolerance, 0.3)
+    outline = Outline(raw, samples)
+    support = support_near(section, samples, band)
+    return add_shape(sketch, outline, support, tolerance, units, ids.take, designed=designed)
 
 
 def _fits(sketch: WorkSketch, entity_id: str, tolerance: float) -> bool:
@@ -202,34 +246,43 @@ def _fits(sketch: WorkSketch, entity_id: str, tolerance: float) -> bool:
 
 
 def supported(
-    sketch: WorkSketch, constraints: list[Constraint], tolerance: float
+    sketch: WorkSketch,
+    inferred: list[Constraint],
+    kept: list[Constraint],
+    tolerance: float,
+    held: Sequence[FixedValue] = (),
+    check_cancelled: Callable[[], None] | None = None,
 ) -> list[Constraint]:
     """Solve with the inferred constraints, leaving out those the scan does not support.
 
     An inferred direction, equality or tangency is design intent only while every
     entity it moves still fits its section points: a long side measured 0.4 degrees
-    off vertical ends 0.35 mm away when forced vertical. Constraints on entities
-    pulled out of the tolerance are dropped, directions and equalities first, then
-    tangencies, and the rest is solved again.
+    off vertical ends 0.35 mm away when forced vertical. Inferred constraints on
+    entities pulled out of the tolerance are dropped, directions and equalities
+    first, then tangencies, and the rest is solved again. `kept` (a shape's own
+    constraints) always stay. Returns the inferred constraints that are left.
     """
+
+    def solved(constraints: list[Constraint]) -> None:
+        solve(sketch, constraints + kept, held, check_cancelled=check_cancelled)
+        update_points(sketch, constraints + kept)
+
     for _ in range(SUPPORT_ROUNDS):
-        solve(sketch, constraints)
-        update_points(sketch, constraints)
+        solved(inferred)
         failing = {
             e.id
             for e in sketch.entities.values()
             if e.origin == "fit" and not _fits(sketch, e.id, tolerance)
         }
-        involved = [c for c in constraints if failing.intersection(c.refs)]
+        involved = [c for c in inferred if failing.intersection(c.refs)]
         intent = [c for c in involved if c.kind not in TANGENCY]
         dropped = intent or involved
         if not dropped:
             break
-        constraints = [c for c in constraints if c not in dropped]
+        inferred = [c for c in inferred if c not in dropped]
     else:
-        solve(sketch, constraints)
-        update_points(sketch, constraints)
-    return constraints
+        solved(inferred)
+    return inferred
 
 
 def dimension_values(sketch: WorkSketch, dimensions: Sequence[SketchDimension]) -> list[FixedValue]:
@@ -262,14 +315,30 @@ def refit(
     dimensions: Sequence[SketchDimension],
     section: Section,
     tolerance: float,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> None:
     """Move the fitted carriers of an edited sketch to the section, keeping all fixed values."""
     assigned = assign_points(sketch, fit_points(section), max(3.0 * tolerance, 0.3))
     sketch.samples = {eid: pts for eid, pts in assigned.items() if len(pts) >= 3}
     fixed = [f for s in snaps for f in fixed_values(sketch, s)]
     fixed += dimension_values(sketch, dimensions)
-    solve(sketch, constraints, fixed)
+    solve(sketch, constraints, fixed, check_cancelled=check_cancelled)
     update_points(sketch, constraints)
+
+
+PAINT_AXIS_DEG = 0.5
+"""A painted line this close to an axis direction becomes horizontal or vertical."""
+
+
+def axis_of_painted(entity: Entity) -> Literal["horizontal", "vertical"] | None:
+    if not isinstance(entity, Line):
+        return None
+    direction = math.degrees(direction_angle(entity))
+    if min(direction, 180.0 - direction) <= PAINT_AXIS_DEG:
+        return "horizontal"
+    if abs(direction - 90.0) <= PAINT_AXIS_DEG:
+        return "vertical"
+    return None
 
 
 def fit_single(
