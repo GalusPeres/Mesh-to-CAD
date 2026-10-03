@@ -7,6 +7,7 @@ import type { AutomationAction } from '@shared/automation';
 
 import { allCommands, commandById, runCommand } from '../app/commands/registry';
 import { i18n } from '../i18n';
+import { objectVisibilityStore } from '../panels/objectVisibility';
 import { deviationStore, isDeviationShown } from '../inspection/deviationStore';
 import { replaceSelection } from '../selection/api';
 import { selectionStore } from '../selection/selectionStore';
@@ -37,6 +38,8 @@ async function handle(action: AutomationAction): Promise<unknown> {
         selectedFaces: selectionStore.getState().count,
         visibility: view.visibility,
         displayMode: view.displayMode,
+        // What the tree hides: body ids, and the owner features of other items.
+        hidden: objectVisibilityStore.getState(),
         // The heatmap is finished when its revision is the document's.
         deviation: deviationState(),
       };

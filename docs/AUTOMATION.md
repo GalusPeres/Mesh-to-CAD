@@ -131,7 +131,7 @@ Formen erkennen: the `groups` with `rounding` and `rounded` (switched on). In th
 allows OK.
 
 The `state` UI action also tells what the view shows: `visibility` (`both`, `scan`,
-`bodies`), `displayMode` and `deviation` (`shown`, and the `revision` the heatmap was
+`bodies`), `displayMode`, `hidden` (what the tree hides: `bodies`, and the `owners` of other items) and `deviation` (`shown`, and the `revision` the heatmap was
 computed for; it has finished when that is the document's revision).
 
 `automation.scanVertices` returns every n-th scan vertex with its normal in part
