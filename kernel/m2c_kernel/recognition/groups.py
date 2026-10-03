@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from m2c_kernel.recognition.api import Feature
 
 SIZE_DECIMALS = 3
+DECIMALS = 6
 
 
 def feature_groups(features: Sequence[Feature]) -> tuple[int, ...]:
@@ -63,4 +64,5 @@ def shared_radius(measured: Sequence[EdgeRadius], units: SnapUnits = "metric") -
     within = float(np.median([rounding.uncertainty for rounding in measured]))
     uncertainty = max(spread / np.sqrt(len(radii)), within)
     snap = snap_length(median, uncertainty, units=units)
-    return snap.value if snap is not None and snap.value > 0.0 else median
+    # Multiples of a step carry float noise (12 x 0.05); design values are short.
+    return round(snap.value, DECIMALS) if snap is not None and snap.value > 0.0 else median

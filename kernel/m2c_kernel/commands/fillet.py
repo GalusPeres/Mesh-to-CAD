@@ -74,7 +74,9 @@ def fillet_scan_radius(ctx: JobContext, params: ScanRadiusParams) -> ScanRadiusR
         raise KernelError(ErrorCode.NO_SCAN_AT_EDGES, {"count": len(params.edges)})
     snap = snap_length(measured.radius, measured.uncertainty, units=document.settings.snap_units)
     return ScanRadiusResult(
-        radius=snap.value if snap is not None and measured.radius > 0.0 else measured.radius,
+        radius=round(snap.value, 6)
+        if snap is not None and measured.radius > 0.0
+        else measured.radius,
         measured=measured.radius,
         rms=measured.rms,
         samples=measured.samples,
