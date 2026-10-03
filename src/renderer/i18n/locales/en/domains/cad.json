@@ -22,6 +22,7 @@
     "chamferFailed": "Chamfer failed: distance {{size, length}} is too large for the selected edges.",
     "edgeNotFound": "Edge {{index}} no longer exists. Choose the edges again.",
     "noEdges": "Choose at least one edge.",
+    "noScanAtEdges": "Radius from scan not possible: the scan shows no rounding at the edges.",
     "targetRequired": "Choose a target body.",
     "toolsRequired": "Choose at least one tool body.",
     "toolIsTarget": "The target body cannot also be a tool.",

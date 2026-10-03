@@ -8,7 +8,6 @@ import {
   edgeSegments,
   nearestEdge,
   pickTolerance,
-  samplePoints,
   touchesFeature,
 } from './edges';
 
@@ -77,13 +76,8 @@ describe('resolving a stored reference', () => {
 });
 
 describe('edge geometry', () => {
-  it('collects segments and samples points along them', () => {
-    const segments = edgeSegments(payload, new Set([2]));
-    expect(segments).toHaveLength(12);
-    expect(samplePoints(segments, 2)).toEqual([
-      [30, 5, 10],
-      [30, 15, 10],
-    ]);
+  it('collects the segments of the given edges', () => {
+    expect(edgeSegments(payload, new Set([2]))).toHaveLength(12);
   });
 
   it('scales the pick tolerance with the body', () => {

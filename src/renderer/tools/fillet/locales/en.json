@@ -1,6 +1,6 @@
 {
   "label": "Fillet",
-  "help": "Click edges of a body in the viewport; clicking again removes an edge. Choose the type and size. Radius from scan fits a cylinder to the scan triangles along the edges and takes the snapped radius. The edges are kept when earlier steps change.",
+  "help": "Click edges of a body in the viewport; clicking again removes an edge. Choose the type and size. Radius from scan measures the rounding in cross-sections along the edges and takes the snapped radius. The edges are kept when earlier steps change.",
   "body": "Body",
   "noBodyYet": "No edge chosen yet",
   "edges": "Edges",
@@ -23,6 +23,6 @@
   "distance": "Distance",
   "fromScan": "Radius from scan",
   "measuring": "Measuring the radius on the scan …",
-  "measured": "From the scan: {{value, length}} (measured {{measured, length}})",
-  "tooFewFaces": "Radius from scan not possible: too few scan triangles at the edges ({{count}}, at least {{min}}). Zoom closer to the edges."
+  "measured": "From the scan: R {{value, length}} (measured {{measured, length}}, RMS {{rms, length}})",
+  "sharp": "The scan shows no rounding at these edges (sharp)."
 }

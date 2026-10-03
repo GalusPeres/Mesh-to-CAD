@@ -28,10 +28,12 @@
   "depth": "Tiefe {{value}}",
   "through": "durchgehend",
   "domed": "gewölbt",
+  "inclined": "geneigt {{angle}}°",
   "nested": "in Tasche",
   "target": "Ziel",
   "targetBody": "Körper",
   "newBodies": "Neue Körper",
   "needsBody": "Taschen und Bohrungen werden aus einem Körper geschnitten. Erst den Grundkörper erstellen und hier wählen; ohne Körper werden nur die Erhebungen gebaut.",
-  "help": "Die Erkennung liest den ausgerichteten Scan wie ein Konstrukteur: ebene Flächen und darauf Erhebungen, Taschen und Bohrungen. Jeder Umriss besteht aus Linien und Bögen; passt eine Grundform (Kreis, angeschnittener Kreis, Langloch, Rechteck, Ringsegment), trägt er ihren Namen, sonst ist er eine freie Kontur. Gleiche Formen werden gleich groß gemacht, Maße auf 0,05 mm gerundet. Im Bild zeigen Umrisse Fuß und Kopf jeder Form; ein Klick auf die Beschriftung oder den Haken wählt sie ab. OK baut je Fläche eine Ebene, je Höhe eine Skizze und je Gruppe eine Extrusion – alles danach im Projektbaum änderbar."
+  "help": "Die Erkennung liest den ausgerichteten Scan wie ein Konstrukteur: ebene Flächen und darauf Erhebungen, Taschen und Bohrungen. Jeder Umriss besteht aus Linien und Bögen; passt eine Grundform (Kreis, angeschnittener Kreis, Langloch, Rechteck, Ringsegment), trägt er ihren Namen, sonst ist er eine freie Kontur. Gleiche Formen werden gleich groß gemacht, Maße auf 0,05 mm gerundet. Im Bild zeigen Umrisse Fuß und Kopf jeder Form; ein Klick auf die Beschriftung oder den Haken wählt sie ab. OK baut je Fläche eine Ebene, je Höhe eine Skizze und je Gruppe eine Extrusion – alles danach im Projektbaum änderbar. Zeigt der Scan eine Rundung der Deckkante, steht ihr Radius hinter der Form (R); OK verrundet jede Gruppe mit einem gemeinsamen Radius, ein Klick auf R lässt die Kanten scharf. Geneigte Deckflächen werden bis zu einer eingepassten Ebene extrudiert.",
+  "roundTooltip": "Deckkante mit dem Radius aus dem Scan verrunden (Klick: an/aus)"
 }

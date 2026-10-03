@@ -4,7 +4,9 @@
 each (`relief.py`), restores design intent per face (`intent.py`) and merges what was
 seen from two faces: a through hole appears on both sides of a plate, a bore in a
 hub on the hub's top and on the flange it stands on. Of such a pair the deeper
-reading is kept (it spans the whole feature).
+reading is kept (it spans the whole feature). Last, it measures the rounding of every
+feature's top edge (`rounding.py`) and gives each group of equal features one radius
+(`groups.py`).
 """
 
 from __future__ import annotations
@@ -14,15 +16,20 @@ from dataclasses import dataclass, replace
 
 import numpy as np
 import numpy.typing as npt
+from scipy.spatial import cKDTree
 
+from m2c_kernel.fitting.corner import EdgeRadius
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.chain import chain_points
 from m2c_kernel.recognition.contours import inside_contour, signed_area
+from m2c_kernel.recognition.groups import feature_groups, group_radii
 from m2c_kernel.recognition.intent import beautify
 from m2c_kernel.recognition.meshdata import mesh_data
 from m2c_kernel.recognition.outline import Outline
 from m2c_kernel.recognition.planes import BasePlane, base_planes
 from m2c_kernel.recognition.relief import Relief, find_reliefs
+from m2c_kernel.recognition.rounding import top_rounding
+from m2c_kernel.snapping import SnapUnits
 
 type IntArray = npt.NDArray[np.int64]
 
@@ -56,6 +63,12 @@ class Recognition:
 
     planes: tuple[BasePlane, ...]
     features: tuple[Feature, ...]
+    roundings: tuple[EdgeRadius | None, ...] = ()
+    """Per feature, the measured rounding of its top edge (a pocket's mouth)."""
+    groups: tuple[int, ...] = ()
+    """Per feature, its group of equal features (`groups.py`)."""
+    radii: tuple[float | None, ...] = ()
+    """Per group, the radius its top edges share: 0 sharp, None not measured."""
 
     def outline_3d(self, feature: Feature, at: float) -> FloatArray:
         """The fitted outline (its lines and arcs) in part coordinates, `at` mm above its plane."""
@@ -70,6 +83,7 @@ def recognize(
     faces: IntArray,
     noise: float,
     check_cancelled: Callable[[], None] = lambda: None,
+    units: SnapUnits = "metric",
 ) -> Recognition:
     """Base planes and their features, with design intent, without duplicates."""
     planes = base_planes(vertices, faces, noise, min_share=PLANE_SHARE)
@@ -83,7 +97,18 @@ def recognize(
         for relief in reliefs:
             parent = None if relief.parent is None else relief.parent + offset
             features.append(Feature(index, _with_parent(relief, parent)))
-    return Recognition(tuple(planes), tuple(_without_duplicates(planes, features)))
+    kept = tuple(_without_duplicates(planes, features))
+    check_cancelled()
+    tree = cKDTree(vertices[np.unique(faces)])
+    points = np.asarray(tree.data)
+    roundings = tuple(
+        top_rounding(points, tree, planes[feature.plane], feature.relief, tolerance)
+        for feature in kept
+    )
+    groups = feature_groups(kept)
+    return Recognition(
+        tuple(planes), kept, roundings, groups, group_radii(groups, roundings, units)
+    )
 
 
 def design_noise(planes: Sequence[BasePlane], noise: float) -> float:

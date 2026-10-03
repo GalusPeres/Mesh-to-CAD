@@ -13,7 +13,7 @@ export const PART = {
 };
 
 /** A grid of `nu` x `nv` quads over the parallelogram origin + s*u + t*v (outward u x v). */
-function grid(triangles, origin, u, v, nu, nv) {
+export function grid(triangles, origin, u, v, nu, nv) {
   const at = (i, j) => origin.map((o, k) => o + (u[k] * i) / nu + (v[k] * j) / nv);
   for (let i = 0; i < nu; i += 1) {
     for (let j = 0; j < nv; j += 1) {
@@ -51,10 +51,11 @@ function boss(triangles, segments = 64, rows = 10, rings = 10) {
   }
 }
 
-/** The six sides of the plate (from the origin, outward normals). */
-function plate(triangles) {
+/** The sides of the plate (from the origin, outward normals); `top: false` leaves the
+ * top to the caller. */
+export function plate(triangles, { top = true } = {}) {
   const [x, y, z] = PART.plate;
-  grid(triangles, [0, 0, z], [x, 0, 0], [0, y, 0], x, y);
+  if (top) grid(triangles, [0, 0, z], [x, 0, 0], [0, y, 0], x, y);
   grid(triangles, [0, 0, 0], [0, y, 0], [x, 0, 0], y, x);
   grid(triangles, [0, 0, 0], [x, 0, 0], [0, 0, z], x, z);
   grid(triangles, [0, y, 0], [0, 0, z], [x, 0, 0], z, x);
@@ -62,7 +63,6 @@ function plate(triangles) {
   grid(triangles, [x, 0, 0], [0, y, 0], [0, 0, z], y, z);
 }
 
-/** Write the part to `file`; returns the number of triangles. */
 export function writeTestPart(file) {
   const triangles = [];
   plate(triangles);

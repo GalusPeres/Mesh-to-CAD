@@ -155,6 +155,7 @@ export function createDriver(client, out) {
     shot,
     check,
     kernel: client.kernel,
+    ui,
     failures,
   };
 }

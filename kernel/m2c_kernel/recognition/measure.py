@@ -17,11 +17,21 @@ from m2c_kernel.recognition.contours import (
     signed_area,
 )
 from m2c_kernel.recognition.planes import BasePlane
+from m2c_kernel.recognition.top_surface import TopSurface, fit_top, rms
 
 type IntArray = npt.NDArray[np.int64]
 type BoolArray = npt.NDArray[np.bool_]
 
 UP_FACING = 0.9
+INCLINED_SHARE = 0.6
+"""The top's triangles rise above this share of the height (an inclined top's low end
+lies well below its high end)."""
+MIN_TILT_DEG = 2.0
+MIN_ON_PLANE = 0.7
+"""A flat, inclined or smoothly domed top has at least this share of its area on one
+plane or quadric."""
+CURVED_GAIN = 0.6
+"""An inclined top is curved when a quadric follows it this much closer than a plane."""
 TOP_SHARE = 0.1
 """Less upward area near the top than this share of the outline: no top face (a dome,
 or a pocket without a floor: a through hole)."""
@@ -53,14 +63,32 @@ class PlaneContext:
     normals: FloatArray
 
 
+type TopKind = Literal["flat", "inclined", "domed", "through"]
+
+
+@dataclass(frozen=True)
+class Top:
+    """The top of a boss or the floor of a pocket.
+
+    `surface` holds the heights of a flat, inclined or smoothly domed top (a plane or a
+    quadric, `top_surface.py`); None for an irregular top and a through hole.
+    """
+
+    kind: TopKind
+    surface: TopSurface | None = None
+
+
 def top_of(
     context: PlaneContext, part: IntArray, sign: float, level: float, height: float, area: float
-) -> tuple[Literal["flat", "domed", "through"], float | None]:
-    """The top of a boss or the floor of a pocket, and the height of a flat one.
+) -> Top:
+    """The top of a boss or the floor of a pocket, and the surface it lies on.
 
     The top is made of the triangles near it that face up (out of the material,
-    along the plane normal, for both). It is flat when their corners lie on a plane
-    parallel to the base; their mean height is then the feature's height.
+    along the plane normal, for both). It is flat when they lie on a plane parallel to
+    the base, inclined when the plane is tilted by more than `MIN_TILT_DEG` and rises
+    across the top by more than the flatness tolerance, domed otherwise. An inclined top
+    is a quadric when one follows it `CURVED_GAIN` closer than the plane (a direction
+    pad's arm, part of a cone); so is a smoothly domed top.
     """
     member = np.zeros(len(context.uvh), dtype=bool)
     member[part] = True
@@ -70,13 +98,53 @@ def top_of(
     double_area = np.linalg.norm(normal, axis=1)
     facing = normal[:, 2] / np.maximum(double_area, 1e-300)
     rise = sign * (corners[:, :, 2].mean(axis=1) - level)
-    up = (facing > UP_FACING) & (rise > 0.8 * height)
+    up = (facing > UP_FACING) & (rise > INCLINED_SHARE * height)
     if 0.5 * float(double_area[up].sum()) < TOP_SHARE * area:
-        return ("through" if sign < 0 else "domed"), None
-    heights = context.uvh[np.unique(faces[up]), 2]
-    if float(np.std(heights)) >= max(FLAT_TOP_FACTOR * context.noise, 0.05):
-        return "domed", None
-    return "flat", sign * (float(np.mean(heights)) - level)
+        return Top("through" if sign < 0 else "domed")
+    # Triangle centres weighted by area: a rounded edge is many thin triangles. A top
+    # lies on a surface when most of its area is within the tolerance of it; the surface
+    # is fitted again without the rest (the rim, where the top rounds off).
+    points = corners[up].mean(axis=1)
+    weights = double_area[up] / double_area[up].sum()
+    tolerance = max(FLAT_TOP_FACTOR * context.noise, 0.05)
+    plane = _on_surface(points, weights, tolerance, quadric=False)
+    if plane is None:
+        quadric = _on_surface(points, weights, tolerance, quadric=True)
+        if quadric is None:
+            return Top("domed")
+        # A quadric that slopes at its centre is inclined (a direction pad's arm).
+        sloped = np.degrees(quadric[0].tilt()) > MIN_TILT_DEG
+        return Top("inclined" if sloped else "domed", quadric[0])
+    surface, inliers, inlier_weights = plane
+    tilted = np.degrees(surface.tilt()) > MIN_TILT_DEG
+    if tilted and float(np.ptp(surface.height(inliers[:, :2]))) >= tolerance:
+        curved = fit_top(inliers, inlier_weights, quadric=True)
+        flat_rms = rms(surface, inliers, inlier_weights)
+        if rms(curved, inliers, inlier_weights) < CURVED_GAIN * flat_rms:
+            return Top("inclined", curved)
+        return Top("inclined", surface)
+    mean = float(inlier_weights @ inliers[:, 2])
+    level_share = float(inlier_weights[np.abs(inliers[:, 2] - mean) < tolerance].sum())
+    if level_share < MIN_ON_PLANE:
+        quadric = _on_surface(points, weights, tolerance, quadric=True)
+        return Top("domed", quadric[0] if quadric else None)
+    return Top("flat", TopSurface(surface.centre, (mean, 0.0, 0.0, 0.0, 0.0, 0.0)))
+
+
+def _on_surface(
+    points: FloatArray, weights: FloatArray, tolerance: float, *, quadric: bool
+) -> tuple[TopSurface, FloatArray, FloatArray] | None:
+    """The plane or quadric most of the top lies on, fitted again to its inliers.
+
+    Returns the surface, the inlier points and their weights; None when less than
+    `MIN_ON_PLANE` of the area lies within the tolerance of it.
+    """
+    first = fit_top(points, weights, quadric=quadric)
+    on = np.abs(points[:, 2] - first.height(points[:, :2])) < tolerance
+    if float(weights[on].sum()) < MIN_ON_PLANE:
+        return None
+    inliers, inlier_weights = points[on], weights[on] / weights[on].sum()
+    return fit_top(inliers, inlier_weights, quadric=quadric), inliers, inlier_weights
 
 
 def section_contour(context: PlaneContext, part: IntArray, at: float) -> FloatArray | None:
