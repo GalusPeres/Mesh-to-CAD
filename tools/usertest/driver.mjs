@@ -72,6 +72,9 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
+  /** The app's view: revision, open tool, what is visible, the deviation map. */
+  const state = () => ui({ type: 'state' });
+
   /** Wait until the open tool has no job running (fit, deviation, build). */
   async function settle(timeoutMs = 120_000) {
     const end = Date.now() + timeoutMs;
@@ -120,11 +123,13 @@ export function createDriver(client, out) {
     press,
     command,
     toolInfo,
+    state,
     settle,
     until,
     shot,
     check,
     kernel: client.kernel,
+    ui,
     failures,
   };
 }

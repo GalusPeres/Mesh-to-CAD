@@ -43,6 +43,8 @@ MAX_OFFSET_MM = 0.3
 OFFSET_STEPS = 49
 OFFSET_ROUNDS = 2
 MAX_FIRST_POINTS = 600
+RELATIVE_UNCERTAINTY = 0.02
+"""A measured radius is not known better than this share of it (nor than the noise)."""
 SHARP_MM = 0.05
 """Radii below this are a sharp edge (0)."""
 
@@ -127,7 +129,8 @@ def edge_radius(
     p10, p90 = (float(value) for value in np.percentile(radii, [10.0, 90.0]))
     return EdgeRadius(
         radius=median if median >= SHARP_MM else 0.0,
-        uncertainty=1.2533 * mad / np.sqrt(len(fits)),
+        # The scatter of the sections understates it: a scan's arc is a polygon, smoothed.
+        uncertainty=max(1.2533 * mad / np.sqrt(len(fits)), RELATIVE_UNCERTAINTY * median, noise),
         rms=float(np.sqrt(squares / max(count, 1))),
         samples=len(fits),
         spread=(p10, p90),

@@ -8,6 +8,7 @@ import {
   type FilletParamsInput,
 } from '@shared/protocol/generated/feature-fillet';
 
+import { setToolInfoProvider } from '../../automation/toolInfo';
 import { featureNames } from '../../features/registry';
 import { describeError } from '../../kernel/describeError';
 import { kernel } from '../../kernel/kernel';
@@ -178,6 +179,19 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
     close,
   );
 
+  useEffect(
+    () =>
+      setToolInfoProvider(() => ({
+        state: { job: measurement?.status === 'running' },
+        body: draft.body,
+        edges: draft.edges.length,
+        mode,
+        size,
+        measurement,
+      })),
+    [draft.body, draft.edges, mode, size, measurement],
+  );
+
   const body = bodies.find((item) => item.id === draft.body);
   return (
     <ToolPanel
@@ -233,6 +247,7 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
           <>
             <Button
               disabled={draft.edges.length === 0 || measurement?.status === 'running'}
+              data-testid="fillet-from-scan"
               onClick={measure}
             >
               {t('tools:fillet.fromScan')}

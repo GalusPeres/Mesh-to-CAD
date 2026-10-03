@@ -18,13 +18,21 @@ import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
+import { writeRoundedPart } from './roundedPart.mjs';
+import { roundingTest } from './rounding.mjs';
 import { sketchTest } from './sketch.mjs';
 
 /** Every user test by name; add one per tool. */
-const TESTS = { net: netTest, loft: loftTest, recognize: recognizeTest, sketch: sketchTest };
+const TESTS = {
+  net: netTest,
+  loft: loftTest,
+  recognize: recognizeTest,
+  sketch: sketchTest,
+  rounding: roundingTest,
+};
 
 /** The part a test runs on, when it is not the plate with the boss. */
-const PARTS = { recognize: writeButtonsPart };
+const PARTS = { recognize: writeButtonsPart, rounding: writeRoundedPart };
 
 /** A new project with a synthetic part as its scan, no tool open. */
 async function startOver(client, d, writePart) {
