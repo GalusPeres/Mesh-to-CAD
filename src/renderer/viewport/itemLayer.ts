@@ -17,6 +17,11 @@ import { SCENE_COLORS } from './palette';
 
 export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
 export type HighlightTarget = { bodyId: string; edge?: number } | { owner: string } | null;
+/** Items left out of the view: body items by body id, all others by owner feature. */
+export interface HiddenItems {
+  bodies: readonly string[];
+  owners: readonly string[];
+}
 
 /** A line or point of an item close to the pointer. */
 export interface LineCandidate {
@@ -42,6 +47,7 @@ export class ItemLayer {
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
   private bodyEdgesVisible = true;
   private hiddenOwner: string | null = null;
+  private hidden = { bodies: new Set<string>(), owners: new Set<string>() };
 
   constructor(
     private readonly context: () => DisplayContext,
@@ -93,10 +99,24 @@ export class ItemLayer {
     this.invalidate();
   }
 
+  /** Hide the items the project tree lists as hidden (by body, or by owner feature). */
+  setHiddenItems(hidden: HiddenItems): void {
+    this.hidden = { bodies: new Set(hidden.bodies), owners: new Set(hidden.owners) };
+    this.applyEdgeVisibility();
+    this.invalidate();
+  }
+
+  private shown(item: SceneItem): boolean {
+    if (item.owner === this.hiddenOwner) return false;
+    return item.bodyId !== null
+      ? !this.hidden.bodies.has(item.bodyId)
+      : !this.hidden.owners.has(item.owner);
+  }
+
   private applyEdgeVisibility(): void {
     for (const object of this.items.values()) {
       const edges = object.item.style !== 'bodyEdges' || this.bodyEdgesVisible;
-      object.object.visible = edges && object.item.owner !== this.hiddenOwner;
+      object.object.visible = edges && this.shown(object.item);
     }
     for (const object of [...this.previews.values()].flatMap((preview) => preview.objects)) {
       if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;

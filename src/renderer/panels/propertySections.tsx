@@ -3,7 +3,7 @@ import { Ban, Check, CircleAlert, TriangleAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import type { Feature, Region, Scan } from '@shared/protocol/generated/document-model';
-import type { BodyInfo, FeatureStatus } from '@shared/protocol/generated/document-results';
+import type { BodyInfo, FeatureStatus, Issue } from '@shared/protocol/generated/document-results';
 import type { DocumentSnapshot } from '@shared/protocol/generated/document-snapshot';
 
 import { featureNames, featureView } from '../features/registry';
@@ -11,8 +11,10 @@ import { useFormatter } from '../i18n/useFormatter';
 import { InlineMessage } from '../ui/InlineMessage/InlineMessage';
 import { PanelSection } from '../ui/PanelSection/PanelSection';
 import { PropertyValue } from '../ui/PropertyRow/PropertyRow';
+import { shownStatus } from './featureState';
 import styles from './ObjectProperties.module.css';
 import { operationLabel } from './treeModel';
+import { usedFeatures } from './usedConstruction';
 
 export function ScanProperties({ scan, tolerance }: { scan: Scan; tolerance: number }) {
   const { t } = useTranslation('panels');
@@ -69,9 +71,16 @@ function StateValue({ state, t }: { state: keyof typeof STATE_ICONS; t: TFunctio
 }
 
 /** Error, warnings and the reason a feature was not evaluated. */
-function StatusMessages({ status, state }: { status?: FeatureStatus; state: string }) {
+function StatusMessages({
+  error,
+  issues,
+  state,
+}: {
+  error?: FeatureStatus['error'];
+  issues: Issue[];
+  state: string;
+}) {
   const { t } = useTranslation(['panels', 'errors', 'issues']);
-  const error = status?.error;
   return (
     <>
       {error && (
@@ -82,7 +91,7 @@ function StatusMessages({ status, state }: { status?: FeatureStatus; state: stri
           })}
         </InlineMessage>
       )}
-      {status?.issues.map((issue) => (
+      {issues.map((issue) => (
         <InlineMessage key={`${issue.code}:${JSON.stringify(issue.params)}`} severity="warning">
           {t(`issues:${issue.code}`, { ...issue.params, defaultValue: issue.code })}
         </InlineMessage>
@@ -107,8 +116,12 @@ export function FeatureProperties({
   const { t } = useTranslation(['panels', 'features']);
   const format = useFormatter();
   const view = featureView(feature.type);
-  const status = snapshot.status.features[feature.id];
-  const state = feature.suppressed ? 'suppressed' : (status?.state ?? 'ok');
+  const { state, issues } = shownStatus(
+    feature,
+    snapshot.status.features[feature.id],
+    usedFeatures(snapshot),
+  );
+  const error = snapshot.status.features[feature.id]?.error;
   const summary = view?.summary?.(feature.params as never, format, t);
   const Properties = view?.Properties;
   return (
@@ -117,7 +130,7 @@ export function FeatureProperties({
         <PropertyValue label={t('properties.type')} value={t(`features:${feature.type}.name`)} />
         {summary && <PropertyValue label={t('properties.summary')} value={summary} />}
         <PropertyValue label={t('properties.status')} value={<StateValue state={state} t={t} />} />
-        <StatusMessages status={status} state={state} />
+        <StatusMessages error={error} issues={issues} state={state} />
       </PanelSection>
       {Properties && (
         <PanelSection title={t('common:sections.parameters')}>

@@ -2,9 +2,9 @@
 //
 // The scan is shown or hidden through viewStore.visibility, the same switch that
 // Space cycles, so both stay consistent. Single bodies and feature items (fitted
-// shapes, sketches) are hidden through `Viewport.setHiddenObjects`; that member is
-// an open interface request (.work/interface-requests/T9.md), so the tree only offers
-// hiding them when the mounted viewport provides it.
+// shapes, sketches) are hidden through `setHiddenObjects` of the scene controller.
+// It is not part of the `Viewport` contract yet, so the tree only offers hiding them
+// when the mounted viewport provides it.
 
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';

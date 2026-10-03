@@ -22,7 +22,12 @@ import { createDepthBias } from './depthBias';
 import { CornerWidgets } from './cornerWidgets';
 import type { ThemeColors } from './displayItems';
 import { type InternalHandleFactory, createHandleFactory } from './handles';
-import { type HighlightTarget, ItemLayer, type PayloadFetcher } from './itemLayer';
+import {
+  type HiddenItems,
+  type HighlightTarget,
+  ItemLayer,
+  type PayloadFetcher,
+} from './itemLayer';
 import { createOverlayGroup } from './overlays';
 import { SCENE_COLORS } from './palette';
 import { PointerRouter } from './PointerRouter';
@@ -281,6 +286,11 @@ export class SceneController implements Viewport {
 
   setOwnerHidden(owner: string | null): void {
     this.items.setHiddenOwner(owner);
+  }
+
+  /** The tree's hidden objects (`supportsObjectHiding` in panels/objectVisibility.ts). */
+  setHiddenObjects(hidden: HiddenItems): void {
+    this.items.setHiddenItems(hidden);
   }
 
   setPreviewItems(owner: string, items: readonly SceneItem[]): void {
