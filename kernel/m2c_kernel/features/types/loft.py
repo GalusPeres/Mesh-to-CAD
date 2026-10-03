@@ -1,7 +1,7 @@
 """Loft: a solid through sections of the scan along an axis.
 
 An end may name a plane (a plane feature or an origin plane), like Extrude's
-"Bis Ebene": the walls continue straight up to it and the end is cut flat there.
+"Bis Ebene": the walls continue straight up to it and the end lies in it.
 
 Face tags: the lateral faces are `<id>:loft:<n>` (one per edge of the section wires,
 normally a single face) and the caps `<id>:cap:start` and `<id>:cap:end`.
@@ -15,11 +15,9 @@ from typing import TYPE_CHECKING, Annotated
 
 import numpy as np
 
-from m2c_kernel.cad.booleans import boolean
 from m2c_kernel.cad.operations import solid_output
 from m2c_kernel.cad.references import reference_plane
 from m2c_kernel.cad.tags import TagCollector
-from m2c_kernel.cad.trim import half_space
 from m2c_kernel.codes.freeform import ErrorCode, ProgressStage
 from m2c_kernel.document.results import Body, Construction, DisplaySource, FeatureOutput
 from m2c_kernel.features.common import BodyOperation, StandardAxis, feature_refs
@@ -54,7 +52,7 @@ class LoftParams:
     target_body: str | None = None
     start_plane: str | None = None
     end_plane: str | None = None
-    """Planes (a plane feature or `XY`, `YZ`, `XZ`) the ends reach and are cut flat at."""
+    """Planes (a plane feature or `XY`, `YZ`, `XZ`) the ends reach and lie in."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -162,12 +160,6 @@ class Loft:
                 end_plane=ends["end"],
             )
             body = tagged_body(loft, ctx.feature_id)
-            for role, plane in ends.items():
-                if plane is not None:
-                    keep = half_space(
-                        plane.origin, plane.kept_side(loft.inside), f"{ctx.feature_id}:cap:{role}"
-                    )
-                    body = boolean("intersect", body, [keep]).body
         output = solid_output(ctx.feature_id, params.operation, params.target_body, body, ctx.body)
         stats: dict[str, float | None] = {
             "freeform.stats.sections": float(len(loft.sections)),

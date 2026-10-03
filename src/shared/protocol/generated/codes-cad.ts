@@ -34,6 +34,7 @@ export type CadErrorCode = (typeof CAD_ERROR_CODES)[number];
 export const CAD_ISSUE_CODES = [
   'cad.highTolerance',
   'cad.splitFacesKept',
+  'cad.filletNarrowed',
 ] as const;
 export type CadIssueCode = (typeof CAD_ISSUE_CODES)[number];
 

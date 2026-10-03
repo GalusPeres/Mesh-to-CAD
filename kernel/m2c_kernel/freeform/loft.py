@@ -23,9 +23,10 @@ import numpy as np
 import numpy.typing as npt
 
 from m2c_kernel.codes.freeform import ErrorCode
-from m2c_kernel.freeform.ends import PlaneEnd, past_plane
+from m2c_kernel.freeform.ends import PlaneEnd, reach_plane
 from m2c_kernel.freeform.occ import LoftShape, section_wire, thru_sections
 from m2c_kernel.freeform.sections import (
+    SECTION_POINTS,
     largest_loop,
     loop_area,
     normalise_section,
@@ -49,6 +50,11 @@ _HOLE_NUDGES_MM = (0.05, -0.05, 0.15, -0.15, 0.3, -0.3)
 this far and tries again; the loop keeps its real height, so the loft stays exact."""
 RANGE_SAMPLES = 40
 """Sections that `body_range` looks at between the ends of the scan."""
+SECTION_SPACING_MM = 0.5
+"""Spacing of the points of a normalised section. Coarser sections cut the corners of
+the outline: with 96 points around a remote control (3.4 mm apart) the sections were
+0.09 mm off on average and 1.1 mm at the corners, with 768 points 0.004 and 0.13 mm."""
+MAX_SECTION_POINTS = SECTION_POINTS * 16
 
 type IntArray = npt.NDArray[np.int64]
 
@@ -68,8 +74,6 @@ class ScanLoft:
     section_rms: float
     section_max: float
     """Distance of the raw section points to the normalised sections."""
-    inside: FloatArray
-    """A point inside the loft (the middle section's centre)."""
 
 
 def scan_extent(vertices: FloatArray, axis: LoftAxis) -> tuple[float, float]:
@@ -160,6 +164,24 @@ def body_range(
     return float(heights[first] + step / 2), float(heights[last] - step / 2)
 
 
+def section_points(vertices: FloatArray, faces: IntArray, direction: FloatArray) -> int:
+    """Points per normalised section: SECTION_SPACING_MM around the scan's outline.
+
+    The outline is estimated from the scan's extent across the axis, not from the
+    sections, so every loft along the same axis gets the same count: a loft that
+    continues another one through the same section then meets it in the same wire
+    (with different counts the two caps differ slightly and their union fails). The
+    count is 96 times a power of two.
+    """
+    used = vertices[np.unique(faces)]
+    across, other = frame_from_axis(direction)
+    width, height = np.ptp(used @ across), np.ptp(used @ other)
+    count = SECTION_POINTS
+    while count < MAX_SECTION_POINTS and count * SECTION_SPACING_MM < 2.0 * (width + height):
+        count *= 2
+    return count
+
+
 def loft_scan(
     vertices: FloatArray,
     faces: IntArray,
@@ -173,15 +195,14 @@ def loft_scan(
 ) -> ScanLoft:
     """Loft through `count` sections between `start` and `end` (mm along the axis).
 
-    An end with a plane continues past it; the caller cuts the solid there.
+    An end with a plane continues straight up to it and ends in it (`ends.py`).
     """
     if end - start < MIN_LENGTH_MM:
         raise KernelError(ErrorCode.INVALID_RANGE, {"start": start, "end": end})
     direction = unit(axis.direction)
     reference, _ = frame_from_axis(direction)
     heights = np.linspace(start, end, count)
-    sections: list[FloatArray] = []
-    deviations: list[FloatArray] = []
+    loops: list[FloatArray] = []
     previous: _Section | None = None
     for height in heights:
         if check_cancelled is not None:
@@ -193,25 +214,29 @@ def loft_scan(
         if previous is not None and not _continues(previous, section, heights[1] - heights[0]):
             raise KernelError(ErrorCode.SECTION_JUMP, {"position": round(float(height), 3)})
         previous = section
-        points = normalise_section(loop, direction, reference)
-        sections.append(points)
-        sample = loop[:: max(1, len(loop) // _DEVIATION_SAMPLES)]
-        deviations.append(polyline_distance(sample, points))
-    inside = sections[len(sections) // 2].mean(axis=0)
-    lofted = list(sections)
-    if start_plane is not None:
-        before = past_plane(sections[0], sections[1], start_plane, inside)
-        lofted = lofted if before is None else [before, *lofted]
+        loops.append(loop)
+    count = section_points(vertices, faces, direction)
+    sections = [normalise_section(loop, direction, reference, count) for loop in loops]
+    deviations = [
+        polyline_distance(loop[:: max(1, len(loop) // _DEVIATION_SAMPLES)], points)
+        for loop, points in zip(loops, sections, strict=True)
+    ]
+    first, last = 0, len(sections)
+    before: tuple[FloatArray, ...] = ()
+    after: tuple[FloatArray, ...] = ()
     if end_plane is not None:
-        after = past_plane(sections[-1], sections[-2], end_plane, inside)
-        lofted = lofted if after is None else [*lofted, after]
-    solid = thru_sections([section_wire(points) for points in lofted])
+        reach = reach_plane(sections, end_plane, direction)
+        last, after = reach.kept, reach.extension
+    if start_plane is not None:
+        reach = reach_plane(sections[last - 1 :: -1], start_plane, -direction)
+        first, before = last - reach.kept, reach.extension[::-1]
+    sections, deviations = sections[first:last], deviations[first:last]
+    solid = thru_sections([section_wire(points) for points in (*before, *sections, *after)])
     distances = np.concatenate(deviations)
     return ScanLoft(
         solid=solid,
-        heights=heights,
+        heights=heights[first:last],
         sections=tuple(sections),
         section_rms=float(np.sqrt(np.mean(distances**2))),
         section_max=float(distances.max()),
-        inside=inside,
     )

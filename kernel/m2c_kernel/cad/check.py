@@ -12,8 +12,6 @@ from dataclasses import dataclass
 from m2c_kernel.cad.occ_compat import (
     BRep_Tool,
     BRepCheck_Analyzer,
-    BRepGProp,
-    GProp_GProps,
     TopAbs_EDGE,
     TopAbs_SOLID,
     TopAbs_VERTEX,
@@ -21,6 +19,7 @@ from m2c_kernel.cad.occ_compat import (
     TopoDS_Shape,
     indexed_map,
 )
+from m2c_kernel.cad.properties import area, volume
 
 HIGH_TOLERANCE_MM = 1e-4
 
@@ -41,18 +40,6 @@ class SolidCheck:
     @property
     def high_tolerance(self) -> bool:
         return self.max_tolerance > HIGH_TOLERANCE_MM
-
-
-def volume(shape: TopoDS_Shape) -> float:
-    props = GProp_GProps()
-    BRepGProp.VolumeProperties_s(shape, props)
-    return float(props.Mass())
-
-
-def area(shape: TopoDS_Shape) -> float:
-    props = GProp_GProps()
-    BRepGProp.SurfaceProperties_s(shape, props)
-    return float(props.Mass())
 
 
 def max_tolerance(shape: TopoDS_Shape) -> float:

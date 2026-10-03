@@ -30,7 +30,8 @@
   },
   "issues": {
     "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm).",
-    "splitFacesKept": "The result contains split faces that could not be merged."
+    "splitFacesKept": "The result contains split faces that could not be merged.",
+    "filletNarrowed": "Fillet narrower at bends tighter than its radius (down to {{smallest, length}})."
   },
   "progress": {
     "tessellating": "Preparing the display",

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from OCP.Bnd import Bnd_Box
 from OCP.BRep import BRep_Tool
-from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Curve2d, BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import (
     BRepAlgoAPI_Common,
     BRepAlgoAPI_Cut,
@@ -58,13 +58,14 @@ from OCP.BRepPrimAPI import (
     BRepPrimAPI_MakeTorus,
 )
 from OCP.BRepTools import BRepTools
+from OCP.collections import Array1_gp_Pnt2d, List_TopoDS_Shape
 from OCP.collections import (
     IndexedDataMap_TopoDS_Shape_List_TopoDS_Shape_TopTools_ShapeMapHasher as EdgeFaceMap,
 )
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as ShapeMap
-from OCP.collections import List_TopoDS_Shape
 from OCP.GC import GC_MakeArcOfCircle, GC_MakeSegment
-from OCP.GeomAbs import GeomAbs_Plane
+from OCP.GCPnts import GCPnts_AbscissaPoint
+from OCP.GeomAbs import GeomAbs_BSplineCurve, GeomAbs_BSplineSurface, GeomAbs_Plane
 from OCP.GeomAPI import GeomAPI_ProjectPointOnSurf
 from OCP.gp import (
     gp_Ax1,
@@ -97,7 +98,9 @@ from OCP.TopLoc import TopLoc_Location
 from OCP.TopoDS import TopoDS, TopoDS_Face, TopoDS_Shape
 
 __all__ = [
+    "Array1_gp_Pnt2d",
     "BRepAdaptor_Curve",
+    "BRepAdaptor_Curve2d",
     "BRepAdaptor_Surface",
     "BRepAlgoAPI_Common",
     "BRepAlgoAPI_Cut",
@@ -129,10 +132,13 @@ __all__ = [
     "BRep_Tool",
     "Bnd_Box",
     "EdgeFaceMap",
+    "GCPnts_AbscissaPoint",
     "GC_MakeArcOfCircle",
     "GC_MakeSegment",
     "GProp_GProps",
     "GeomAPI_ProjectPointOnSurf",
+    "GeomAbs_BSplineCurve",
+    "GeomAbs_BSplineSurface",
     "GeomAbs_Plane",
     "List_TopoDS_Shape",
     "ShapeFix_Shape",
