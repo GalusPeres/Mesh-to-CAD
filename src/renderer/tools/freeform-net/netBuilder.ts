@@ -1,7 +1,7 @@
 // Building the net by hand, as in QuickSurface: a face from four clicked corners or a
 // rectangle from two, chosen edges (a double click takes a whole chain), and new rows
-// duplicated out of border edges by drag and drop: from the "D" grip that appears at
-// a hovered border edge, or with Alt (RowDrag drops them onto the scan, or onto border
+// duplicated out of border edges by drag and drop: from the "D" grip shown beside every
+// open border edge, or with Alt (RowDrag drops them onto the scan, or onto border
 // points of the net to join pieces). Where a dropped point joins or welds onto
 // another one, both are marked and linked. One-step edits (split, bridge, ...) are
 // NetEdits'.
@@ -140,13 +140,36 @@ export class NetBuilder {
     this.draw();
   }
 
-  /** The hovered border edge if the pointer is on its "D" grip, else null. */
+  /** The border edge whose "D" grip is under the pointer (it becomes the hovered one). */
   handleAt(at: ScreenPoint): Edge | null {
-    const edge = this.hoverEdge;
-    const grip = edge ? this.handleOf(edge) : null;
-    const screen = grip ? this.host.viewport.worldToScreen(grip) : null;
-    if (!edge || !screen) return null;
-    return Math.hypot(screen.x - at.x, screen.y - at.y) <= HANDLE_PICK_PX ? edge : null;
+    let best: Edge | null = null;
+    let bestDistance = HANDLE_PICK_PX;
+    for (const { edge, grip } of this.grips()) {
+      const screen = this.host.viewport.worldToScreen(grip);
+      const distance = screen ? Math.hypot(screen.x - at.x, screen.y - at.y) : Infinity;
+      if (distance <= bestDistance) {
+        best = edge;
+        bestDistance = distance;
+      }
+    }
+    if (best) this.setHoverEdge(best);
+    return best;
+  }
+
+  /** The grips of the visible open border edges, while the net is being edited. */
+  private grips(): { edge: Edge; grip: Vec3 }[] {
+    const net = this.host.net();
+    if (!net || this.face.active || this.rows.active) return [];
+    const count = net.vertices.length / 3;
+    const grips: { edge: Edge; grip: Vec3 }[] = [];
+    const quadsOf = edgeQuads(net);
+    for (const edge of borderEdges(net)) {
+      if (edge.a >= count || edge.b >= count) continue;
+      if (!this.host.screenOf(edge.a) || !this.host.screenOf(edge.b)) continue;
+      const grip = this.handleOf(edge, quadsOf);
+      if (grip) grips.push({ edge, grip });
+    }
+    return grips;
   }
 
   isChosen(edge: Edge): boolean {
@@ -270,9 +293,10 @@ export class NetBuilder {
   }
 
   /** Where the "D" grip of a border edge sits: a little outside it, away from its quad. */
-  private handleOf(edge: Edge): Vec3 | null {
+  private handleOf(edge: Edge, quadsOf?: ReturnType<typeof edgeQuads>): Vec3 | null {
     const net = this.host.net();
-    const users = net ? edgeQuads(net).get(edgeKey(edge.a, edge.b)) : undefined;
+    const map = quadsOf ?? (net ? edgeQuads(net) : undefined);
+    const users = map?.get(edgeKey(edge.a, edge.b));
     const quad = users?.length === 1 ? users[0]?.quad : undefined;
     if (!net || quad === undefined) return null;
     const corners = [0, 1, 2, 3].map((k) => this.host.limitPoint(net.quads[quad * 4 + k] ?? 0));
@@ -308,8 +332,8 @@ export class NetBuilder {
     const chosen: number[] = [];
     for (const edge of this.chosen.values())
       if (known(edge)) chosen.push(...point(edge.a), ...point(edge.b));
-    const grip = hover && !this.rows.active ? this.handleOf(hover) : null;
-    this.guides.show({ segments, points, chosen, handles: grip ? [...grip] : [], joins });
+    const handles = this.grips().flatMap(({ grip }) => grip);
+    this.guides.show({ segments, points, chosen, handles, joins });
     this.host.viewport.invalidate();
   }
 }
