@@ -66,4 +66,10 @@ export interface ToolDefinition {
   edits?: readonly FeatureTypeId[];
   /** Ask before discarding a changed draft (sketches, fillet edge picks). */
   confirmDiscard?: boolean;
+  /**
+   * Switching to another tool commits the draft (through the keeper the panel
+   * registers with `setDraftKeeper`) instead of asking to discard it: work built by
+   * hand is never lost by a change of tool. Cancel still discards.
+   */
+  keepDraftOnLeave?: boolean;
 }

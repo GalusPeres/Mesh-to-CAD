@@ -1266,6 +1266,7 @@ export interface ToolDefinition {
   run?(): void | Promise<void>; // action tools
   edits?: readonly FeatureTypeId[]; // double-click in the tree opens this tool
   confirmDiscard?: boolean; // ask before discarding a changed draft
+  keepDraftOnLeave?: boolean; // opening another tool commits the draft instead
 }
 ```
 
@@ -1280,7 +1281,9 @@ export interface ToolDefinition {
 - `ToolHost` owns the life cycle (DESIGN.md 5.1): `Enter` commits, `Shift+Enter` applies and
   keeps the tool, `Esc` aborts the current gesture first and cancels the tool second; `Esc` never
   commits. Opening another panel tool while the draft of a `confirmDiscard` tool has changed asks
-  first (`DiscardDialog`).
+  first (`DiscardDialog`); a `keepDraftOnLeave` tool (the freeform net) commits its draft
+  instead, through the keeper its panel registers with `setDraftKeeper`, so work built by hand
+  survives a change of tool.
 - Hooks for panels (`tools/framework/hooks.ts`):
   - `usePreview(method, params, { enabled, lane })`: 150 ms debounce, lane per tool, stale results
     dropped, returns `{ status: 'idle' | 'computing' | 'ok' | 'error', result, error }`.
@@ -1289,7 +1292,8 @@ export interface ToolDefinition {
     undo; a scene overlay disposed on close.
 - Pointer handling goes through `viewport.addInteraction(interaction)`. Handlers return `true` to
   consume an event (then no navigation happens). Interactions added later are asked first, so a
-  panel tool's handle drag wins over the active selection mode.
+  panel tool's handle drag wins over the active selection mode. A right click that did not
+  orbit the camera reaches them as `onContextMenu` (the freeform net opens its menu there).
 
 ### 5.6 Tool catalogue
 

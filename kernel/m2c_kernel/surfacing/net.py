@@ -257,7 +257,8 @@ class NetShape:
     """The B-Rep of a net and dense samples of its faces.
 
     Attributes:
-        shape: A solid when the net is closed, otherwise an open shell.
+        shape: A solid when the net is closed, otherwise an open shell (a compound of
+            shells when the net has separate pieces).
         closed: Whether the net is closed.
         faces: The B-Rep faces, in layout block order (or quad order when unpacked).
         samples: (k, 3) points on the faces, for deviation measurements.
@@ -275,6 +276,21 @@ class NetShape:
     packed: bool
 
 
+def net_pieces(quads: IntArray, n_vertices: int) -> list[IntArray]:
+    """Quad indices of the net's connected pieces (quads sharing a point belong together)."""
+    from scipy.sparse.csgraph import connected_components
+
+    count = len(quads)
+    rows = np.repeat(np.arange(count), 4)
+    incidence = sp.coo_matrix(
+        (np.ones(rows.size), (rows, count + quads.ravel())),
+        shape=(count + n_vertices, count + n_vertices),
+    )
+    _, labels = connected_components(incidence, directed=False)
+    quad_labels = labels[:count]
+    return [np.flatnonzero(quad_labels == label) for label in np.unique(quad_labels)]
+
+
 def net_shape(
     cage: FloatArray,
     quads: IntArray,
@@ -282,7 +298,52 @@ def net_shape(
     *,
     packed: bool = True,
 ) -> NetShape:
-    """The CAD shape of a net: few large faces where the layout allows it."""
+    """The CAD shape of a net: few large faces where the layout allows it.
+
+    A net still being built often has several separate pieces; each becomes its own
+    shape and they are kept together as one open compound (never one shell, which
+    must be connected).
+    """
+    checked_topology(quads, len(cage))
+    pieces = net_pieces(quads, len(cage))
+    if len(pieces) == 1:
+        return _piece_shape(cage, quads, check_cancelled, packed=packed)
+    shapes = []
+    for piece in pieces:
+        used, local = np.unique(quads[piece], return_inverse=True)
+        sub = _piece_shape(cage[used], local.reshape(-1, 4), check_cancelled, packed=packed)
+        shapes.append(sub)
+    return _joined(shapes)
+
+
+def _joined(shapes: list[NetShape]) -> NetShape:
+    """Separate pieces as one open compound."""
+    from m2c_kernel.surfacing.occ import BRep_Builder, TopoDS_Compound
+
+    builder = BRep_Builder()
+    compound = TopoDS_Compound()
+    builder.MakeCompound(compound)
+    for shape in shapes:
+        builder.Add(compound, shape.shape)
+    return NetShape(
+        compound,
+        False,
+        tuple(face for shape in shapes for face in shape.faces),
+        np.concatenate([shape.samples for shape in shapes]),
+        np.concatenate([shape.normals for shape in shapes]),
+        np.concatenate([shape.on_border for shape in shapes]),
+        all(shape.packed for shape in shapes),
+    )
+
+
+def _piece_shape(
+    cage: FloatArray,
+    quads: IntArray,
+    check_cancelled: Callable[[], None],
+    *,
+    packed: bool,
+) -> NetShape:
+    """The CAD shape of one connected piece of a net."""
     topology = checked_topology(quads, len(cage))
     hierarchy = patch_hierarchy(quads, len(cage), PATCH_LEVEL)
     limit = hierarchy.limit_points(cage)

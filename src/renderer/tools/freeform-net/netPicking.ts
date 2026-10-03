@@ -28,7 +28,11 @@ export interface NetPicking {
   scanAt(at: ScreenPoint): { point: Vec3; normal: Vec3 } | null;
   /** Visible control points inside a screen rectangle. */
   pointsInBox(from: ScreenPoint, to: ScreenPoint): number[];
-  /** The four corners of a screen rectangle on the scan, or null if one misses it. */
+  /**
+   * A rectangle on the scan from its first corner (at `from`) to the pointer: laid in the
+   * tangent plane at the first corner, its sides along the screen's axes, the corners
+   * then projected onto the scan. Null if a corner misses the scan.
+   */
   rectangleOnScan(from: ScreenPoint, to: ScreenPoint): ScanCorner[] | null;
   /** The view plane through a point. */
   viewPlane(origin: Vec3): DragPlane;
@@ -40,6 +44,21 @@ export interface NetPicking {
 }
 
 const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const add = (a: Vec3, b: Vec3, scale = 1): Vec3 => [
+  a[0] + b[0] * scale,
+  a[1] + b[1] * scale,
+  a[2] + b[2] * scale,
+];
+const cross = (a: Vec3, b: Vec3): Vec3 => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+];
+const unit = (v: Vec3): Vec3 => {
+  const length = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / length, v[1] / length, v[2] / length];
+};
 
 /** Distance of a point to the segment a-b on screen. */
 function segmentDistance(at: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
@@ -116,10 +135,34 @@ export function createNetPicking(editor: NetEditor, viewport: Viewport): NetPick
     },
 
     rectangleOnScan(from, to) {
-      const corners = [from, { x: to.x, y: from.y }, to, { x: from.x, y: to.y }].map((at) =>
-        this.scanAt(at),
-      );
-      const onScan = corners.filter((corner): corner is ScanCorner => corner !== null);
+      const first = this.scanAt(from);
+      if (!first) return null;
+      const plane = { origin: first.point, normal: first.normal };
+      const onPlane = (at: ScreenPoint): Vec3 | null => {
+        const offset = this.dragOffset(at, plane, null);
+        return offset && add(first.point, offset);
+      };
+      const end = onPlane(to);
+      const aside = onPlane({ x: from.x + 10, y: from.y });
+      if (!end || !aside) return null;
+      // Screen x in the plane, and the plane's direction across it.
+      const n = first.normal;
+      const along = sub(aside, first.point);
+      const right = unit(add(along, n, -dot(along, n)));
+      const up = cross(n, right);
+      const span = sub(end, first.point);
+      const [width, height] = [dot(span, right), dot(span, up)];
+      if (Math.abs(width) < 1e-6 || Math.abs(height) < 1e-6) return null;
+      const corners = [
+        first.point,
+        add(first.point, right, width),
+        add(add(first.point, right, width), up, height),
+        add(first.point, up, height),
+      ].map((corner) => {
+        const screen = viewport.worldToScreen(corner);
+        return screen && this.scanAt(screen);
+      });
+      const onScan = corners.filter((corner): corner is ScanCorner => !!corner);
       return onScan.length === 4 ? onScan : null;
     },
 

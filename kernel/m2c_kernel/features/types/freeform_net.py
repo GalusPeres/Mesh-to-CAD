@@ -4,8 +4,9 @@ The net (control points and quads) is the stored, editable source of the feature
 B-spline faces are derived from it on every rebuild (`surfacing/net.py`): one face per
 rectangle of the net's patch layout. A closed net gives a solid body whose faces are
 tagged `<id>:patch:<i>` (rectangle i of the layout).
-A net with open borders gives an open shell, kept as construction geometry with the
-issue `surfacing.openNet`, because bodies must be solids.
+A net with open borders (or in separate pieces, as while it is built by hand) gives
+open faces, kept as construction geometry with the issue `surfacing.openNet`, because
+bodies must be solids.
 
 `faces` remembers the scan triangles the net was generated for. It is not needed to
 build the shape; the tool uses it to fit the net again to the same part of the scan.
@@ -129,7 +130,7 @@ class FreeformNet:
         except NetError as error:
             raise KernelError(ErrorCode.NET_INVALID, details=str(error)) from error
         if not BRepCheck_Analyzer(shape.shape).IsValid():
-            raise KernelError(ErrorCode.SHAPE_INVALID)
+            raise KernelError(ErrorCode.NET_SHAPE_INVALID)
 
         mesh = ctx.mesh
         measured = ~mesh.synthetic

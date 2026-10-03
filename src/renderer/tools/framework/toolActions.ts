@@ -36,17 +36,34 @@ function askToDiscard(toolId: string): Promise<boolean> {
   });
 }
 
+/** Commits the open panel's draft; true if it did (and closed the panel). */
+type DraftKeeper = () => Promise<boolean>;
+let draftKeeper: DraftKeeper | null = null;
+
+/** The open panel's way to keep its draft when another tool opens (`keepDraftOnLeave`). */
+export function setDraftKeeper(keeper: DraftKeeper | null): void {
+  draftKeeper = keeper;
+}
+
 export function toolAvailability(tool: ToolDefinition): Availability {
   if (tool.status === 'planned') return { enabled: false, reasonKey: 'common:tool.notImplemented' };
   if (exclusiveJobRunning()) return { enabled: false, reasonKey: 'common:status.computing' };
   return tool.availability?.({ snapshot: documentStore.getState().snapshot }) ?? { enabled: true };
 }
 
-/** Close the open panel tool; asks first when its draft changed and the tool requires it. */
+/**
+ * Close the open panel tool. A changed draft is committed first when the tool keeps its
+ * drafts, otherwise the user is asked when the tool requires it.
+ */
 export async function closeTool(options: { force?: boolean } = {}): Promise<boolean> {
   const { activeToolId, draftDirty } = toolStore.getState();
   if (!activeToolId) return true;
   const tool = toolById(activeToolId);
+  const keeper = draftKeeper;
+  if (!options.force && draftDirty && tool?.keepDraftOnLeave && keeper) {
+    draftKeeper = null;
+    if (await keeper()) return true;
+  }
   if (!options.force && draftDirty && tool?.confirmDiscard && !(await askToDiscard(activeToolId))) {
     return false;
   }

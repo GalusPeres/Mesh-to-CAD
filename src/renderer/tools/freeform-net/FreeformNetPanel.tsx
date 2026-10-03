@@ -11,6 +11,7 @@ import { selectedFaces } from '../../selection/api';
 import { useSelectionState } from '../../selection/selectionStore';
 import { currentRevision, useDocument } from '../../state/documentStore';
 import { setDraftDirty } from '../../state/toolStore';
+import { setDraftKeeper } from '../framework/toolActions';
 import { InlineMessage } from '../../ui/InlineMessage/InlineMessage';
 import { SCENE_COLORS } from '../../viewport/palette';
 import { ToolPanel } from '../framework/ToolPanel';
@@ -89,6 +90,12 @@ export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
 
   const names = useMemo(() => featureNames(features ?? [], t), [features, t]);
   const canCommit = !!state?.hasNet && state.job === null && !editor?.dragging;
+  // Opening another tool keeps the net (commits it) instead of throwing it away.
+  const keep = commit.commit;
+  useEffect(() => {
+    setDraftKeeper(canCommit ? keep : null);
+    return () => setDraftKeeper(null);
+  }, [canCommit, keep]);
 
   return (
     <ToolPanel

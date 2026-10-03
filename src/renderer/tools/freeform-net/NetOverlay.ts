@@ -1,4 +1,5 @@
-// The net in the viewport: its limit surface (heatmap or plain colour), the net lines
+// The net in the viewport: its limit surface (heatmap or plain colour, and faintly
+// where the scan covers it), the net lines
 // drawn on the surface, the outlines of the CAD faces it becomes (patch layout and
 // open border, in white), and the control points at their limit positions. All four
 // share the dense position buffer of the LimitSurface, so a drag updates one array.
@@ -10,6 +11,8 @@ import { NET_COLORS, SCENE_COLORS } from '../../viewport/palette';
 import type { LimitSurface } from './limitSurface';
 
 const POINT_SIZE_PX = 7;
+/** Opacity of the surface where the scan covers it (a row over a rounding runs inside). */
+const GHOST_OPACITY = 0.35;
 /** Depth bias of the surface in units of the scene bias (bodies use 1). */
 const SURFACE_BIAS = 4;
 
@@ -71,7 +74,22 @@ export class NetOverlay {
     // Drawn in front of the scan wherever it lies within a few tolerances of it, also
     // where it runs slightly inside the scan's ridges (else the scan shows through).
     overlay.applyDepthBias(surfaceMaterial, SURFACE_BIAS);
-    this.add(new THREE.Mesh(this.surfaceGeometry, surfaceMaterial), surfaceMaterial);
+    // Where the surface runs inside the scan it still shows, faintly, in its heatmap
+    // colours: drawn first without depth test, then covered by the surface where visible.
+    const ghostMaterial = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: GHOST_OPACITY,
+      depthTest: false,
+      depthWrite: false,
+      side: THREE.FrontSide,
+    });
+    const ghost = new THREE.Mesh(this.surfaceGeometry, ghostMaterial);
+    ghost.renderOrder = 20;
+    this.add(ghost, ghostMaterial);
+    const shaded = new THREE.Mesh(this.surfaceGeometry, surfaceMaterial);
+    shaded.renderOrder = 21;
+    this.add(shaded, surfaceMaterial);
 
     const inner: number[] = [];
     const border: number[] = [];

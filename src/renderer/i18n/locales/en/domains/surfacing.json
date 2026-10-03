@@ -6,6 +6,7 @@
     "notAutoSurface": "The element is not an auto surface.",
     "netFailed": "The scan gives no clean quad net. Repair the scan (fill holes, remove small parts) or choose another net density.",
     "netInvalid": "The freeform net is damaged: its quads do not form one consistently oriented surface. Undo the last change.",
+    "netShapeInvalid": "The net gives no valid CAD faces (folded or crossing quads). Undo the last change or snap the net to the scan.",
     "notFreeformNet": "The element is not a freeform net."
   },
   "issues": {

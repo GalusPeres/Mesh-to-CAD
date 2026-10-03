@@ -6,6 +6,7 @@
     "notAutoSurface": "Das Element ist keine Auto-Fläche.",
     "netFailed": "Aus dem Scan entsteht kein sauberes Vierecksnetz. Scan reparieren (Löcher füllen, kleine Teile entfernen) oder eine andere Netzdichte wählen.",
     "netInvalid": "Das Freiform-Netz ist beschädigt: Seine Vierecke bilden keine zusammenhängende, einheitlich ausgerichtete Fläche. Letzte Änderung rückgängig machen.",
+    "netShapeInvalid": "Aus dem Netz entstehen keine gültigen CAD-Flächen (gefaltete oder sich kreuzende Vierecke). Letzte Änderung rückgängig machen oder das Netz anschmiegen.",
     "notFreeformNet": "Das Element ist kein Freiform-Netz."
   },
   "issues": {

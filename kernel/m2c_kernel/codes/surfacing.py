@@ -16,6 +16,8 @@ class ErrorCode(StrEnum):
     """Remeshing gave no usable quad net (the scan needs repair, or another density)."""
     NET_INVALID = "surfacing.netInvalid"
     """The quads of a freeform net do not form an oriented 2-manifold."""
+    NET_SHAPE_INVALID = "surfacing.netShapeInvalid"
+    """The faces of a freeform net are not valid CAD faces (folded or crossing quads)."""
     NOT_FREEFORM_NET = "surfacing.notFreeformNet"
     """`net.featureNet` was called for another feature type."""
 

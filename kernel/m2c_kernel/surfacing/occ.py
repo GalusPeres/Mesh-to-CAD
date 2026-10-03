@@ -15,7 +15,14 @@ from OCP.Geom import Geom_BSplineCurve, Geom_BSplineSurface
 from OCP.Geom2d import Geom2d_Line
 from OCP.gp import gp_Dir2d, gp_Pnt2d
 from OCP.TopAbs import TopAbs_FORWARD, TopAbs_REVERSED
-from OCP.TopoDS import TopoDS_Face, TopoDS_Shell, TopoDS_Solid, TopoDS_Vertex, TopoDS_Wire
+from OCP.TopoDS import (
+    TopoDS_Compound,
+    TopoDS_Face,
+    TopoDS_Shell,
+    TopoDS_Solid,
+    TopoDS_Vertex,
+    TopoDS_Wire,
+)
 
 __all__ = [
     "Array1_double",
@@ -30,6 +37,7 @@ __all__ = [
     "Geom_BSplineSurface",
     "TopAbs_FORWARD",
     "TopAbs_REVERSED",
+    "TopoDS_Compound",
     "TopoDS_Face",
     "TopoDS_Shell",
     "TopoDS_Solid",

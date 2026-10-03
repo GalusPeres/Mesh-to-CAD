@@ -7,6 +7,7 @@ export const SURFACING_ERROR_CODES = [
   'surfacing.notAutoSurface',
   'surfacing.netFailed',
   'surfacing.netInvalid',
+  'surfacing.netShapeInvalid',
   'surfacing.notFreeformNet',
 ] as const;
 export type SurfacingErrorCode = (typeof SURFACING_ERROR_CODES)[number];

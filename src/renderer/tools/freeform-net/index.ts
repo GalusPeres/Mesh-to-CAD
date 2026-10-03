@@ -16,5 +16,6 @@ export const tool: ToolDefinition = {
   edits: ['freeformNet'],
   availability: scanRequired,
   confirmDiscard: true,
+  keepDraftOnLeave: true,
   Panel: FreeformNetPanel,
 };

@@ -20,6 +20,7 @@ from m2c_kernel.surfacing.net import (
     generate_net,
     limit_map,
     net_deviation,
+    net_pieces,
     net_shape,
 )
 from m2c_kernel.surfacing.quadmesh import QuadNet, clean_quad_net, quad_net, remesh_in_process
@@ -222,6 +223,41 @@ def test_open_net_feature_is_a_construction_surface(session: Session, job: JobCo
     assert not output.bodies.changed
     rms = status.stats["deviationRms"]
     assert rms is not None and rms < 3.0 * scan.sigma
+
+
+def test_a_net_in_pieces_is_a_valid_open_surface(session: Session, job: JobContext) -> None:
+    # A net built by hand: two quads sharing an edge, and a third one apart from them.
+    vertices = np.array(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+            [0, 1, 0],
+            [2, 0, 0],
+            [2, 1, 0],
+            [4, 0, 0],
+            [5, 0, 0],
+            [5, 1, 0],
+            [4, 1, 0],
+        ],
+        dtype=np.float64,
+    )
+    quads = np.array([[0, 1, 2, 3], [1, 4, 5, 2], [6, 7, 8, 9]], dtype=np.int64)
+    assert [piece.tolist() for piece in net_pieces(quads, len(vertices))] == [[0, 1], [2]]
+    shape = net_shape(vertices, quads)
+    assert not shape.closed
+    assert BRepCheck_Analyzer(shape.shape).IsValid()
+
+    scan = shapes.sphere()
+    document = with_feature(
+        scan_document(session, scan.vertices, scan.faces, scan.sigma),
+        "f1",
+        "freeformNet",
+        _net_params(session, QuadNet(vertices, quads)),  # type: ignore[arg-type]
+    )
+    status = rebuild(document, session.environment(), job).statuses["f1"]
+    assert status.state == "warning"
+    assert [issue.code for issue in status.issues] == ["surfacing.openNet"]
 
 
 def test_broken_net_feature_fails_with_a_code(session: Session, job: JobContext) -> None:
