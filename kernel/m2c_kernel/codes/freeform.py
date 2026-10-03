@@ -11,6 +11,7 @@ class ErrorCode(StrEnum):
     INVALID_RANGE = "freeform.invalidRange"
     NOT_AN_AXIS = "freeform.notAnAxis"
     NO_SECTION = "freeform.noSection"
+    SECTION_JUMP = "freeform.sectionJump"
     LOFT_FAILED = "freeform.loftFailed"
     NOT_A_FREEFORM_FEATURE = "freeform.notAFreeformFeature"
 

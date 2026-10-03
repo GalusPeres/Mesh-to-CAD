@@ -32,7 +32,6 @@ import {
   SECTION_RANGE,
   axisOptions,
   clampSections,
-  defaultRange,
   rangeProblem,
   round3,
 } from './loftDraft';
@@ -104,9 +103,10 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
 
   const axisState = useLoftAxis(path, faces, snapshot?.revision ?? null);
   const axis = axisState.status === 'ok' ? axisState.axis : null;
-  // Until start or end are set, they follow the scan's extent along the chosen axis.
+  // Until start or end are set, they follow the stretch of the scan the kernel found
+  // loftable along the chosen axis (its walls, not the buttons or a flat slope).
   const shown = useMemo(
-    () => range ?? (axis ? defaultRange(axis.low, axis.high) : null),
+    () => range ?? (axis ? ([round3(axis.start), round3(axis.end)] as [number, number]) : null),
     [range, axis],
   );
   const [start, end] = shown ?? [0, 0];

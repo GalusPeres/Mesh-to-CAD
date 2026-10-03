@@ -20,7 +20,7 @@ from m2c_kernel.document.results import Construction
 from m2c_kernel.features.common import StandardAxis
 from m2c_kernel.features.types.freeform_patch import SpanCount, patch_display
 from m2c_kernel.features.types.loft import loft_axis
-from m2c_kernel.freeform.api import PASS_SHARE, fit_scan_patch, scan_extent
+from m2c_kernel.freeform.api import PASS_SHARE, body_range, fit_scan_patch, scan_extent
 from m2c_kernel.geometry import Vec3, vec3
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
@@ -140,11 +140,17 @@ class LoftAxisResult:
     low: float
     high: float
     """Extent of the scan (or of `faces`) along the axis, in mm from `point`."""
+    start: float
+    end: float
+    """Where the sections form one body to loft through (`body_range`): the default range."""
 
 
 @command("freeform.loftAxis")
 def freeform_loft_axis(ctx: JobContext, params: LoftAxisParams) -> LoftAxisResult:
-    """The loft axis in part coordinates and how far the scan reaches along it."""
+    """The loft axis in part coordinates and the scan along it.
+
+    `low` and `high` are how far the scan reaches; `start` and `end` where a loft fits.
+    """
     built = ctx.session.built(ctx)
     mesh = built.result.mesh
     if mesh is None:
@@ -157,14 +163,20 @@ def freeform_loft_axis(ctx: JobContext, params: LoftAxisParams) -> LoftAxisResul
         return output.construction
 
     axis = loft_axis(params.path, construction)
-    vertices = mesh.vertices
+    faces = mesh.faces
     if params.faces is not None:
-        faces = np.asarray(params.faces, dtype=np.int64)
-        faces = faces[(faces >= 0) & (faces < len(mesh.faces))]
-        if len(faces) == 0:
+        chosen = np.asarray(params.faces, dtype=np.int64)
+        chosen = chosen[(chosen >= 0) & (chosen < len(mesh.faces))]
+        if len(chosen) == 0:
             raise KernelError(ErrorCode.NO_SECTION, {"position": 0.0})
-        vertices = mesh.vertices[np.unique(mesh.faces[faces])]
-    low, high = scan_extent(vertices, axis)
+        faces = mesh.faces[chosen]
+    low, high = scan_extent(mesh.vertices[np.unique(faces)], axis)
+    start, end = body_range(mesh.vertices, faces, axis, low, high)
     return LoftAxisResult(
-        point=vec3(axis.point), direction=vec3(axis.direction), low=low, high=high
+        point=vec3(axis.point),
+        direction=vec3(axis.direction),
+        low=low,
+        high=high,
+        start=start,
+        end=end,
     )
