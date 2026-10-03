@@ -12,7 +12,13 @@ from typing import Any
 
 import numpy as np
 from OCP.BRepOffsetAPI import BRepOffsetAPI_ThruSections
-from OCP.collections import Array1_double, Array1_int, Array2_gp_Pnt, HArray1_gp_Pnt
+from OCP.collections import (
+    Array1_double,
+    Array1_int,
+    Array2_gp_Pnt,
+    HArray1_double,
+    HArray1_gp_Pnt,
+)
 from OCP.Geom import Geom_BSplineSurface
 from OCP.GeomAPI import GeomAPI_Interpolate
 
@@ -72,12 +78,23 @@ def patch_face(surface: HeightField) -> TopoDS_Shape:
 
 
 def section_wire(points: FloatArray) -> TopoDS_Shape:
-    """A closed wire of one periodic B-spline through the section points."""
-    array = HArray1_gp_Pnt(1, len(points))
+    """A closed wire of one periodic B-spline through the section points.
+
+    The points are evenly spaced along the section (`normalise_section`), so they get
+    evenly spaced parameters. With chord-length parameters instead, every section of a
+    scan gets knots of its own, the loft through them carries all of them (on a remote
+    control: 1,522 knots around the wall), and no fillet runs along its end edge.
+    """
+    count = len(points)
+    array = HArray1_gp_Pnt(1, count)
     for index, point in enumerate(points, start=1):
         array.SetValue(index, gp_Pnt(*(float(value) for value in point)))
+    # A periodic interpolation takes one parameter more than points: the closing one.
+    parameters = HArray1_double(1, count + 1)
+    for index in range(count + 1):
+        parameters.SetValue(index + 1, index / count)
     try:
-        interpolation = GeomAPI_Interpolate(array, True, INTERPOLATION_TOLERANCE_MM)
+        interpolation = GeomAPI_Interpolate(array, parameters, True, INTERPOLATION_TOLERANCE_MM)
         interpolation.Perform()
         done = interpolation.IsDone()
     except Standard_Failure as failure:
