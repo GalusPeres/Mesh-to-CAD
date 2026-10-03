@@ -47,6 +47,8 @@ export const NET_COLORS = {
   point: '#1C2B33',
   pointRing: '#F4F6F7',
   hover: '#E6CF4F',
+  /** Pinned points: dragging, snapping and smoothing leave them where they are. */
+  pinned: '#E0559B',
   /** Irregular points (valence other than 4): patch borders start there. */
   irregular: '#D24B35',
 } as const;

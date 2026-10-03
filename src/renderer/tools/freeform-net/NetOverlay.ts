@@ -34,6 +34,15 @@ function circleTexture(): THREE.Texture {
   return texture;
 }
 
+/** Which control points are marked, and which others are drawn (near the pointer). */
+export interface PointMarks {
+  chosen: ReadonlySet<number>;
+  pinned: ReadonlySet<number>;
+  hover: number | null;
+  shown: (control: number) => boolean;
+  irregular: ReadonlySet<number>;
+}
+
 function rgb(hex: string): [number, number, number] {
   const color = new THREE.Color(hex);
   return [color.r, color.g, color.b];
@@ -132,7 +141,14 @@ export class NetOverlay {
     this.add(this.points, pointMaterial);
 
     this.setSurfaceColors(null);
-    this.paintPoints(new Set(), null, () => false);
+    const none = new Set<number>();
+    this.paintPoints({
+      chosen: none,
+      pinned: none,
+      hover: null,
+      shown: () => false,
+      irregular: none,
+    });
   }
 
   /** The dense positions changed (all of them, or the given rows). */
@@ -156,26 +172,29 @@ export class NetOverlay {
   }
 
   /**
-   * Colour the control points: hovered, chosen, irregular (a warning, as in
-   * QuickSurface) or plain. Only chosen, irregular and hovered points and those `shown`
-   * (near the pointer) are drawn, so a dense net does not cover its heatmap with dots.
+   * Colour the control points: hovered, chosen, pinned, irregular (a warning, as in
+   * QuickSurface) or plain. Only marked and hovered points and those `shown` (near the
+   * pointer) are drawn, so a dense net does not cover its heatmap with dots.
    */
-  paintPoints(
-    selected: ReadonlySet<number>,
-    hover: number | null,
-    shown: (control: number) => boolean,
-    irregular: ReadonlySet<number> = new Set(),
-  ): void {
+  paintPoints(points: PointMarks): void {
     const plain = rgb(NET_COLORS.point);
     const chosen = rgb(SCENE_COLORS.selection);
     const hovered = rgb(NET_COLORS.hover);
+    const pinned = rgb(NET_COLORS.pinned);
     const warning = rgb(NET_COLORS.irregular);
     for (let i = 0; i < this.surface.controlCount; i += 1) {
-      const isChosen = selected.has(i);
-      const isIrregular = irregular.has(i);
-      const color = i === hover ? hovered : isChosen ? chosen : isIrregular ? warning : plain;
+      const color =
+        i === points.hover
+          ? hovered
+          : points.chosen.has(i)
+            ? chosen
+            : points.pinned.has(i)
+              ? pinned
+              : points.irregular.has(i)
+                ? warning
+                : plain;
       this.pointColors.set(color, i * 4);
-      this.pointColors[i * 4 + 3] = i === hover || isChosen || isIrregular || shown(i) ? 1 : 0;
+      this.pointColors[i * 4 + 3] = color !== plain || points.shown(i) ? 1 : 0;
     }
     (this.pointGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
   }

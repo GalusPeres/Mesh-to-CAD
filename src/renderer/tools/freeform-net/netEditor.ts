@@ -1,13 +1,14 @@
 // The freeform-net tool's working state outside React: the draft net, its dense
-// limit surface and viewport overlay, the chosen control points, the draft history,
-// and the kernel requests that generate, fit and map the net. Measuring against the
-// scan is NetMeasure's job, building by hand NetBuilder's, dragging points
+// limit surface and viewport overlay, the draft history, and the kernel requests that
+// generate, fit and map the net. The chosen and pinned points are NetPoints', measuring
+// against the scan NetMeasure's, building by hand NetBuilder's, dragging points
 // NetPointDrag's, running kernel requests NetJobs'. The panel subscribes for its
 // numbers; a drag only touches the viewport, never React.
 
 import type { ScreenPoint, Vec3, Viewport } from '../../viewport/api';
 import { LimitSurface } from './limitSurface';
 import { type Edge, borderEdges } from './netTopology';
+import { netAutomationInfo } from './netAutomation';
 import { NetBuilder } from './netBuilder';
 import { NetJobs } from './netJobs';
 import { NetMeasure } from './netMeasure';
@@ -21,7 +22,9 @@ import {
   sameTopology,
 } from './netModel';
 import { NetOverlay } from './NetOverlay';
+import { carriedPins, fixedMask, holdPinned, pinnedLimits } from './netPins';
 import { NetPointDrag } from './netPointDrag';
+import { type ChooseMode, NetPoints } from './netPoints';
 import { type NetEditorState, initialNetState } from './netState';
 
 export type { NetEditorState, NetJobKind } from './netState';
@@ -41,12 +44,7 @@ export class NetEditor {
   private surface: LimitSurface | null = null;
   private overlay: NetOverlay | null = null;
   private readonly measure: NetMeasure;
-  private readonly selection = new Set<number>();
-  private hover: number | null = null;
-  /** Control points near the pointer; only these (and chosen ones) are drawn. */
-  private nearby = new Set<number>();
-  /** Inner control points of valence other than 4, always drawn as warnings. */
-  private irregular = new Set<number>();
+  private readonly points = new NetPoints();
   private readonly history = new NetHistory();
   private readonly jobs: NetJobs;
   private detached = false;
@@ -73,7 +71,7 @@ export class NetEditor {
       net: () => this.net,
       limitPoint: (control) => this.limitPoint(control),
       screenOf: (control) => this.visibleScreen(control),
-      chosenPoints: () => this.selection,
+      chosenPoints: () => this.points.chosen,
       busy: () => this.state.job !== null,
       snap: () => this.state.snap,
       shown: () => !this.detached,
@@ -85,8 +83,11 @@ export class NetEditor {
       viewport,
       net: () => this.net,
       surface: () => (this.state.job ? null : this.surface),
-      selection: () => this.selection,
+      selection: () => this.points.chosen,
+      pinned: () => this.points.pinned,
       snap: () => this.state.snap,
+      keepNeighbours: () => this.state.keepNeighbours,
+      strength: () => this.state.strength,
       refreshRows: (rows) => this.refreshRows(rows),
       record: () => this.recordCurrent(),
       dropped: (controls) => controls.length === 1 && this.build.edits.weldOnto(controls[0] ?? 0),
@@ -117,6 +118,7 @@ export class NetEditor {
     const result = await this.jobs.run('generate', 'net.generate', { faces, targetQuads });
     if (!result) return;
     this.faces = faces;
+    this.points.setPinned([]);
     await this.setNet({ vertices: result.vertices, quads: result.quads }, true);
   }
 
@@ -124,29 +126,23 @@ export class NetEditor {
     const result = await this.jobs.run('load', 'net.featureNet', { featureId });
     if (!result) return;
     this.faces = result.faces;
-    await this.setNet({ vertices: result.vertices, quads: result.quads }, false);
+    await this.setNet({ vertices: result.vertices, quads: result.quads }, false, []);
     this.history.reset(this.net);
     this.syncHistory();
   }
 
   /**
    * Snap the net to the scan; with chosen points only those move ("Smooth": fairer).
-   * Returns whether the fitted net was shown (and recorded).
+   * Pinned points stay. Returns whether the fitted net was shown (and recorded).
    */
   async fit(smooth: boolean): Promise<boolean> {
     const net = this.net;
     if (!net) return false;
-    const fixed =
-      this.selection.size > 0
-        ? Uint8Array.from({ length: net.vertices.length / 3 }, (_, i) =>
-            this.selection.has(i) ? 0 : 1,
-          )
-        : null;
     const result = await this.jobs.run(smooth ? 'smooth' : 'fit', 'net.fit', {
       vertices: net.vertices,
       quads: net.quads,
       faces: this.faces,
-      fixed,
+      fixed: fixedMask(net.vertices.length / 3, this.points.pinned, this.points.chosen),
       smoothing: smooth ? SMOOTH_SMOOTHING : SNAP_SMOOTHING,
       iterations: FIT_ITERATIONS,
     });
@@ -156,18 +152,17 @@ export class NetEditor {
   }
 
   /**
-   * Lay the chosen control points on their best-fitting plane. Where a region of the
-   * net and the ring of points around it are coplanar, its limit surface is exactly
-   * that plane (affine invariance of subdivision), so flat faces become truly flat.
+   * Lay the chosen control points (not the pinned ones) on their best-fitting plane.
+   * Where a region of the net and the ring of points around it are coplanar, its limit
+   * surface is exactly that plane (affine invariance of subdivision), so flat faces
+   * become truly flat.
    */
   async flatten(): Promise<void> {
     const net = this.net;
     const surface = this.surface;
-    if (!net || !surface || this.selection.size < 3 || this.state.job) return;
-    const chosen = [...this.selection];
-    const limits = new Float64Array(chosen.length * 3);
-    chosen.forEach((control, index) => limits.set(surface.limitPoint(control), index * 3));
-    const plane = fitPlane(limits);
+    const chosen = [...this.points.chosen].filter((control) => !this.points.pinned.has(control));
+    if (!net || !surface || chosen.length < 3 || this.state.job) return;
+    const plane = fitPlane(pinnedLimits(surface, chosen));
     if (!plane) return;
     const next = cloneNet(net);
     projectOntoPlane(next.vertices, chosen, plane);
@@ -179,16 +174,16 @@ export class NetEditor {
   }
 
   undo(): boolean {
-    const net = this.history.undo();
-    if (!net) return false;
-    void this.setNet(net, false);
+    const step = this.history.undo();
+    if (!step) return false;
+    void this.setNet(step.net, false, step.pinned);
     return true;
   }
 
   redo(): boolean {
-    const net = this.history.redo();
-    if (!net) return false;
-    void this.setNet(net, false);
+    const step = this.history.redo();
+    if (!step) return false;
+    void this.setNet(step.net, false, step.pinned);
     return true;
   }
 
@@ -200,13 +195,14 @@ export class NetEditor {
         edges.flatMap(({ a, b }) => [a, b]),
         'replace',
       );
-    if (this.selection.size > 0) await this.fit(true);
+    if (this.points.chosen.size > 0) await this.fit(true);
   }
 
-  // Display options -------------------------------------------------------------------------
+  // Options -------------------------------------------------------------------------------
 
-  setSnap(snap: boolean): void {
-    this.update({ snap });
+  /** Snapping, "Don't move neighbours" and the drag strength. */
+  setDragOptions(options: Partial<Pick<NetEditorState, 'snap' | 'keepNeighbours' | 'strength'>>) {
+    this.update(options);
   }
 
   /** Space: show only the surface, or the net on it again. */
@@ -257,19 +253,18 @@ export class NetEditor {
   }
 
   isSelected(control: number): boolean {
-    return this.selection.has(control);
+    return this.points.chosen.has(control);
+  }
+
+  isPinned(control: number): boolean {
+    return this.points.pinned.has(control);
   }
 
   /** Replace, extend or reduce the chosen control points. */
-  choose(controls: Iterable<number>, mode: 'replace' | 'add' | 'remove' | 'toggle'): void {
-    if (mode === 'replace') this.selection.clear();
-    for (const control of controls) {
-      if (mode === 'remove') this.selection.delete(control);
-      else if (mode === 'toggle' && this.selection.has(control)) this.selection.delete(control);
-      else this.selection.add(control);
-    }
+  choose(controls: Iterable<number>, mode: ChooseMode): void {
+    this.points.choose(controls, mode);
     this.repaintPoints();
-    this.update({ selected: this.selection.size });
+    this.update(this.points.counts());
   }
 
   chooseAll(): void {
@@ -279,11 +274,16 @@ export class NetEditor {
     );
   }
 
-  setHover(control: number | null, nearby?: Iterable<number>): void {
-    if (control === this.hover && !nearby) return;
-    this.hover = control;
-    if (nearby) this.nearby = new Set(nearby);
+  /** Pin the chosen points (then no longer chosen), or release them: one draft step. */
+  pinChosen(pin: boolean): void {
+    if (!this.net || this.state.job || !this.points.pinChosen(pin)) return;
+    if (pin) this.points.choose([], 'replace');
     this.repaintPoints();
+    this.recordCurrent();
+  }
+
+  setHover(control: number | null, nearby?: Iterable<number>): void {
+    if (this.points.setHover(control, nearby)) this.repaintPoints();
   }
 
   // The net's edges -------------------------------------------------------------------------
@@ -304,17 +304,18 @@ export class NetEditor {
     );
   }
 
-  /** The net for automation clients: counts, border edges on screen, and the state. */
+  /** The net for automation clients: counts, border edges, chosen and pinned points. */
   automationInfo(): unknown {
-    const net = this.net;
-    if (!net || !this.surface) return { tool: FREEFORM_NET_TOOL_ID, net: null, state: this.state };
-    return {
+    return netAutomationInfo({
       tool: FREEFORM_NET_TOOL_ID,
-      quads: net.quads.length / 4,
-      points: net.vertices.length / 3,
-      border: this.build.automationBorder(),
+      net: this.surface ? this.net : null,
       state: this.state,
-    };
+      border: () => this.build.automationBorder(),
+      chosen: this.points.chosen,
+      pinned: this.points.pinned,
+      limitPoint: (control) => this.limitPoint(control),
+      screenOf: (control) => this.visibleScreen(control),
+    });
   }
 
   /** Points or rows are being dragged (no OK meanwhile). */
@@ -361,19 +362,27 @@ export class NetEditor {
   /** The current net becomes a draft history step (after a drag or a build step). */
   private recordCurrent(): void {
     if (!this.net) return;
-    this.history.push(this.net);
+    this.history.push(this.net, [...this.points.pinned]);
     this.syncHistory();
-    this.update({ summary: this.measure.summary() });
+    this.update({ summary: this.measure.summary(), ...this.points.counts() });
   }
 
-  /** Show a net: a new limit map when the quads changed, then positions and heatmap. */
-  private async setNet(net: Net, record: boolean): Promise<void> {
+  /**
+   * Show a net: a new limit map when the quads changed, then positions and heatmap.
+   * `pinned` comes with a history step; else the pins follow from the current net and
+   * their points are held where they were.
+   */
+  private async setNet(net: Net, record: boolean, pinned?: readonly number[]): Promise<void> {
     if (this.detached) return;
+    const previous = this.net;
+    const { pins, anchors } = pinned
+      ? { pins: [...pinned], anchors: null }
+      : carriedPins(this.surface, previous, net, [...this.points.pinned]);
     if (net.quads.length === 0) {
       this.showEmpty(net, record);
       return;
     }
-    const topologyChanged = !this.net || !this.surface || !sameTopology(this.net, net);
+    const topologyChanged = !previous || !this.surface || !sameTopology(previous, net);
     if (topologyChanged) {
       const map = await this.jobs.run('map', 'net.limitMap', {
         quads: net.quads,
@@ -385,22 +394,19 @@ export class NetEditor {
       this.overlay = new NetOverlay(this.viewport.createOverlay(), this.surface);
       this.overlay.setNetVisible(this.state.netVisible);
       this.measure.reset(this.surface);
-      for (const control of [...this.selection]) {
-        if (control >= this.surface.controlCount) this.selection.delete(control);
-      }
-      this.hover = null;
-      this.irregular = new Set(
-        irregularPoints(map.edges, map.boundaryEdges, this.surface.controlCount),
-      );
+      const count = this.surface.controlCount;
+      this.points.renumbered(count, irregularPoints(map.edges, map.boundaryEdges, count));
     }
     this.net = cloneNet(net);
     const surface = this.surface as LimitSurface;
     surface.evaluate(this.net.vertices);
+    this.points.setPinned(pins);
+    if (anchors) holdPinned(surface, this.net.vertices, pins, anchors);
     this.overlay?.positionsChanged();
     if (topologyChanged) this.build.topologyChanged(this.net);
     this.repaintPoints();
     if (record) {
-      this.history.push(this.net);
+      this.history.push(this.net, [...this.points.pinned]);
       this.syncHistory();
     }
     const { map } = surface;
@@ -409,9 +415,9 @@ export class NetEditor {
       quads: this.net.quads.length / 4,
       faces: map.faceCount,
       controlPoints: surface.controlCount,
-      irregular: this.irregular.size,
+      irregular: this.points.irregularCount,
       closed: !map.boundaryEdges.some((flag) => flag !== 0),
-      selected: this.selection.size,
+      ...this.points.counts(),
     });
     this.viewport.invalidate();
     await this.measureAll();
@@ -424,15 +430,14 @@ export class NetEditor {
     this.overlay = null;
     this.surface = null;
     this.net = cloneNet(net);
-    this.selection.clear();
-    this.irregular = new Set();
+    this.points.renumbered(0, []);
     this.build.topologyChanged(this.net);
     if (record) {
       this.history.push(this.net);
       this.syncHistory();
     }
-    const counts = { quads: 0, faces: 0, controlPoints: 0, irregular: 0, selected: 0 };
-    this.update({ hasNet: false, summary: null, ...counts });
+    const counts = { quads: 0, faces: 0, controlPoints: 0, irregular: 0 };
+    this.update({ hasNet: false, summary: null, ...counts, ...this.points.counts() });
     this.build.setFacing(true);
     this.viewport.invalidate();
   }
@@ -461,12 +466,7 @@ export class NetEditor {
   }
 
   private repaintPoints(): void {
-    this.overlay?.paintPoints(
-      this.selection,
-      this.hover,
-      (control) => this.nearby.has(control),
-      this.irregular,
-    );
+    this.points.paint(this.overlay);
     this.viewport.invalidate();
   }
 

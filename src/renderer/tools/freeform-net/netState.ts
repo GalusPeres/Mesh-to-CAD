@@ -15,10 +15,18 @@ export interface NetEditorState {
   irregular: number;
   closed: boolean;
   selected: number;
+  /** Pinned points (dragging, snapping and smoothing leave them where they are). */
+  pinned: number;
+  /** Chosen points that are pinned. */
+  chosenPinned: number;
   summary: DeviationSummary | null;
   job: { kind: NetJobKind; fraction: number | null; stage: string | null } | null;
   error: KernelFailure | null;
   snap: boolean;
+  /** A drag holds the limit points next to the dragged ones ("Don't move neighbours"). */
+  keepNeighbours: boolean;
+  /** Share of the pointer's movement dragged points follow (drag strength). */
+  strength: number;
   heatmap: boolean;
   /** Tolerance of the colour scale (mm). */
   tolerance: number;
@@ -45,10 +53,14 @@ export function initialNetState(tolerance: number): NetEditorState {
     irregular: 0,
     closed: false,
     selected: 0,
+    pinned: 0,
+    chosenPinned: 0,
     summary: null,
     job: null,
     error: null,
     snap: true,
+    keepNeighbours: false,
+    strength: 1,
     heatmap: true,
     tolerance,
     canUndo: false,

@@ -2,8 +2,11 @@ import {
   Combine,
   Crosshair,
   Eye,
+  Focus,
   Grid2x2Plus,
   Magnet,
+  Pin,
+  PinOff,
   RectangleHorizontal,
   Spline,
   SplitSquareVertical,
@@ -13,9 +16,11 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { MenuAt, MenuItem, MenuSeparator } from '../../ui/Menu/Menu';
+import { useFormatter } from '../../i18n/useFormatter';
+import { MenuAt, MenuItem, MenuSeparator, MenuSub } from '../../ui/Menu/Menu';
 import type { NetEditor, NetEditorState } from './netEditor';
 import type { NetMenuRequest } from './netInteraction';
+import { DRAG_STRENGTHS } from './NetPointOptions';
 
 const KEY = 'tools:freeformNet.menu';
 
@@ -38,6 +43,7 @@ function inWindow(at: { x: number; y: number }): { x: number; y: number } {
  */
 export function NetContextMenu({ editor, state, request, onClose }: NetContextMenuProps) {
   const { t } = useTranslation();
+  const format = useFormatter();
   const edge = request?.edge ?? null;
   const chosen = state.selected + state.chosenEdges > 0;
   const busy = state.job !== null;
@@ -75,6 +81,24 @@ export function NetContextMenu({ editor, state, request, onClose }: NetContextMe
         disabled={busy || !chosen}
         onSelect={() => void editor.smoothChosen()}
       />
+      {state.selected > state.chosenPinned && (
+        <MenuItem
+          label={item('pin')}
+          icon={Pin}
+          disabled={busy}
+          testId="freeform-net-menu-pin"
+          onSelect={() => editor.pinChosen(true)}
+        />
+      )}
+      {state.chosenPinned > 0 && (
+        <MenuItem
+          label={item('unpin')}
+          icon={PinOff}
+          disabled={busy}
+          testId="freeform-net-menu-unpin"
+          onSelect={() => editor.pinChosen(false)}
+        />
+      )}
       <MenuItem
         label={item('delete')}
         icon={Trash2}
@@ -100,8 +124,24 @@ export function NetContextMenu({ editor, state, request, onClose }: NetContextMe
         label={item('snap')}
         icon={Crosshair}
         checked={state.snap}
-        onSelect={() => editor.setSnap(!state.snap)}
+        onSelect={() => editor.setDragOptions({ snap: !state.snap })}
       />
+      <MenuItem
+        label={item('neighbours')}
+        icon={Focus}
+        checked={state.keepNeighbours}
+        onSelect={() => editor.setDragOptions({ keepNeighbours: !state.keepNeighbours })}
+      />
+      <MenuSub label={item('strength')}>
+        {DRAG_STRENGTHS.map((strength) => (
+          <MenuItem
+            key={strength}
+            label={`${format.number(strength * 100, 0)} %`}
+            checked={state.strength === strength}
+            onSelect={() => editor.setDragOptions({ strength })}
+          />
+        ))}
+      </MenuSub>
       <MenuItem
         label={item('net')}
         icon={Eye}

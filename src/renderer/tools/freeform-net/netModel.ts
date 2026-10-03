@@ -20,9 +20,19 @@ export function sameTopology(a: Net, b: Net): boolean {
   return true;
 }
 
+/** A draft history step: the net and its pinned control points. */
+export interface NetStep {
+  net: Net;
+  pinned: readonly number[];
+}
+
+function cloneStep(step: NetStep): NetStep {
+  return { net: cloneNet(step.net), pinned: [...step.pinned] };
+}
+
 /** Undo and redo of the draft net, independent of the document history. */
 export class NetHistory {
-  private entries: Net[] = [];
+  private entries: NetStep[] = [];
   private position = -1;
 
   constructor(private readonly limit = 100) {}
@@ -35,41 +45,42 @@ export class NetHistory {
     return this.position < this.entries.length - 1;
   }
 
-  reset(net: Net | null): void {
-    this.entries = net ? [cloneNet(net)] : [];
+  reset(net: Net | null, pinned: readonly number[] = []): void {
+    this.entries = net ? [cloneStep({ net, pinned })] : [];
     this.position = this.entries.length - 1;
   }
 
   /** Record a new state; redo steps after the current one are dropped. */
-  push(net: Net): void {
+  push(net: Net, pinned: readonly number[] = []): void {
     this.entries = this.entries.slice(0, this.position + 1);
-    this.entries.push(cloneNet(net));
+    this.entries.push(cloneStep({ net, pinned }));
     if (this.entries.length > this.limit) this.entries.shift();
     this.position = this.entries.length - 1;
   }
 
-  undo(): Net | null {
+  undo(): NetStep | null {
     if (!this.canUndo) return null;
     this.position -= 1;
-    return cloneNet(this.entries[this.position] as Net);
+    return cloneStep(this.entries[this.position] as NetStep);
   }
 
-  redo(): Net | null {
+  redo(): NetStep | null {
     if (!this.canRedo) return null;
     this.position += 1;
-    return cloneNet(this.entries[this.position] as Net);
+    return cloneStep(this.entries[this.position] as NetStep);
   }
 }
 
-const SOLVE_ITERATIONS = 12;
+/** Enough for the rings a drag holds still; the restricted system is well conditioned. */
+const SOLVE_ITERATIONS = 40;
 
 /**
  * Control-point offsets that move the limit points of `controls` by `wanted`
- * (x, y, z per entry). The limit point of a control point is a weighted average of
- * it and its neighbours, so moving one point by d moves its limit point by w d
- * (w about 0.44 on a regular net) and moving a whole patch by d moves its inside
- * by d. Gauss-Seidel on the limit rows restricted to the moved points covers both;
- * the restricted matrix is symmetric positive definite, so it converges.
+ * (x, y, z per entry; zero holds a limit point still). The limit point of a control
+ * point is a weighted average of it and its neighbours, so moving one point by d moves
+ * its limit point by w d (w about 0.44 on a regular net) and moving a whole patch by d
+ * moves its inside by d. Gauss-Seidel on the limit rows restricted to the moved points
+ * covers both; the restricted matrix is symmetric positive definite, so it converges.
  */
 export function controlOffsets(
   surface: LimitSurface,
@@ -81,7 +92,9 @@ export function controlOffsets(
   controls.forEach((control, index) => slot.set(control, index));
   const offsets = new Float64Array(controls.length * 3);
   const own = Float64Array.from(controls, (control) => surface.ownWeight(control) || 1);
+  const goal = wanted.reduce((largest, value) => Math.max(largest, Math.abs(value)), 0);
   for (let iteration = 0; iteration < SOLVE_ITERATIONS; iteration += 1) {
+    let step = 0;
     controls.forEach((control, index) => {
       let x = 0;
       let y = 0;
@@ -96,10 +109,13 @@ export function controlOffsets(
       }
       const o = index * 3;
       const scale = 1 / (own[index] ?? 1);
-      offsets[o] = (offsets[o] ?? 0) + ((wanted[o] ?? 0) - x) * scale;
-      offsets[o + 1] = (offsets[o + 1] ?? 0) + ((wanted[o + 1] ?? 0) - y) * scale;
-      offsets[o + 2] = (offsets[o + 2] ?? 0) + ((wanted[o + 2] ?? 0) - z) * scale;
+      const residual = [(wanted[o] ?? 0) - x, (wanted[o + 1] ?? 0) - y, (wanted[o + 2] ?? 0) - z];
+      residual.forEach((value, axis) => {
+        offsets[o + axis] = (offsets[o + axis] ?? 0) + value * scale;
+        step = Math.max(step, Math.abs(value));
+      });
     });
+    if (step <= goal * 1e-9) break;
   }
   return offsets;
 }
