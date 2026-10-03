@@ -9,6 +9,7 @@ import type { SceneItem } from '@shared/protocol/generated/document-display';
 
 import type { PickHit, ScreenPoint, Vec3 } from './api';
 import type { CameraRig } from './CameraRig';
+import { isBodyItem } from './displayItems';
 import type { ItemLayer } from './itemLayer';
 import type { ScanMesh } from './scanMesh';
 import { raycastScan } from './scanPicking';
@@ -91,7 +92,7 @@ export function pickScene(
   for (const hit of raycaster.intersectObjects(scene.items.surfaces(), false)) {
     const item = hit.object.userData.item as SceneItem | undefined;
     if (!item) continue;
-    const body = !!item.bodyId && item.style !== 'construction' && item.style !== 'patch';
+    const body = isBodyItem(item);
     if (body && scene.sectionOn && scene.clippingPlane.distanceToPoint(hit.point) < 0) continue;
     const point = tuple(hit.point);
     let pickHit: PickHit | null = null;

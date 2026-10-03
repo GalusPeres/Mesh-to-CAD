@@ -15,7 +15,6 @@ import { TOOLS } from '../tools/framework/registry';
 import { Checkbox } from '../ui/Checkbox/Checkbox';
 import { IconButton } from '../ui/IconButton/IconButton';
 import { Tree, type TreeNode } from '../ui/Tree/Tree';
-import { useViewport } from '../viewport/api';
 import { featureEditTools } from './editTools';
 import {
   canHide,
@@ -86,7 +85,6 @@ export function ProjectTree() {
   const onlyUnused = useTreeFilter((state) => state.onlyUnusedRegions);
   const hidden = useHiddenObjects((state) => state);
   const visibility = useView((state) => state.visibility);
-  const viewport = useViewport();
   const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   useViewportSync();
   const model = useProjectModel(snapshot, onlyUnused);
@@ -95,7 +93,7 @@ export function ProjectTree() {
 
   const menuContext = (node: ProjectNode) => ({
     hidden: !!node.ref && isHidden(node.ref, hidden, visibility),
-    canHide: !!node.ref && canHide(node.ref, viewport),
+    canHide: !!node.ref && canHide(node.ref),
     anythingHidden: somethingHidden(hidden, visibility),
   });
 
@@ -110,7 +108,7 @@ export function ProjectTree() {
       status: (
         <>
           <StateIcon state={node.state} label={t(`state.${node.state}`)} />
-          {node.ref && canHide(node.ref, viewport) && (
+          {node.ref && canHide(node.ref) && (
             <VisibilityToggle node={node} hidden={rowHidden} snapshot={snapshot} />
           )}
         </>
