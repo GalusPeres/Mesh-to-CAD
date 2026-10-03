@@ -18,10 +18,13 @@ import { PropertyRow, PropertyValue } from '../../ui/PropertyRow/PropertyRow';
 import { Select } from '../../ui/Select/Select';
 import {
   ORIGIN_AXES,
+  ORIGIN_PLANES,
   availableBodies,
   defaultTarget,
+  isPlane,
   storedParams,
   targetProblem,
+  usableFeatures,
 } from '../extrude/solid/model';
 import { InputProblemMessage, OperationFields, SolidResult } from '../extrude/solid/SolidSections';
 import { useSolidFeature } from '../extrude/solid/useSolidFeature';
@@ -35,6 +38,7 @@ import {
   rangeProblem,
   round3,
 } from './loftDraft';
+import { PlaneEnds } from './PlaneEnds';
 import { useLoftAxis, useRangeHandles } from './useLoftAxis';
 
 const KEY = 'tools:loft';
@@ -80,12 +84,18 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
     () => (snapshot ? availableBodies(snapshot, editTarget) : []),
     [snapshot, editTarget],
   );
+  const planes = useMemo(
+    () => (snapshot ? usableFeatures(snapshot, isPlane, editTarget) : []),
+    [snapshot, editTarget],
+  );
 
   const [path, setPath] = useState<string>(stored?.path ?? 'Z');
   const [range, setRange] = useState<[number, number] | null>(
     stored ? [stored.start, stored.end] : null,
   );
   const [sections, setSections] = useState(stored?.sectionCount ?? DEFAULT_SECTIONS);
+  const [startPlane, setStartPlane] = useState<string | null>(stored?.startPlane ?? null);
+  const [endPlane, setEndPlane] = useState<string | null>(stored?.endPlane ?? null);
   const [onlySelection, setOnlySelection] = useState(!!stored?.faces);
   const [operation, setOperation] = useState<BodyOperation>(stored?.operation ?? 'newBody');
   const [targetBody, setTargetBody] = useState<string | null>(
@@ -133,6 +143,8 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
       faces,
       operation,
       targetBody: operation === 'newBody' ? null : targetBody,
+      startPlane,
+      endPlane,
     };
   }, [
     hasRange,
@@ -146,6 +158,8 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
     sections,
     operation,
     targetBody,
+    startPlane,
+    endPlane,
   ]);
   const { preview, commit, previewOk } = useSolidFeature(
     'loft',
@@ -158,6 +172,10 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
   const axisLabel = (id: string) =>
     (ORIGIN_AXES as readonly string[]).includes(id)
       ? t(`tools:extrude.solid.originAxes.${id}`)
+      : (names.get(id) ?? id);
+  const planeLabel = (id: string) =>
+    (ORIGIN_PLANES as readonly string[]).includes(id)
+      ? t(`tools:extrude.solid.originPlanes.${id}`)
       : (names.get(id) ?? id);
   const typed = (update: (value: number) => void) => (value: number) => {
     update(value);
@@ -226,6 +244,14 @@ export function LoftPanel({ editTarget, close }: ToolPanelProps) {
             onCommit={(value) => setSections(clampSections(value))}
           />
         </PropertyRow>
+        <PlaneEnds
+          planes={planes}
+          startPlane={startPlane}
+          endPlane={endPlane}
+          label={planeLabel}
+          onStartPlane={setStartPlane}
+          onEndPlane={setEndPlane}
+        />
       </PanelSection>
       <PanelSection title={t('common:sections.options')}>
         <OperationFields
