@@ -61,31 +61,62 @@ test uses this).
 
 ## Tools
 
-| Tool                           | Purpose                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `app_status`                   | Scan, alignment, feature history with status and statistics, bodies, open tool, selection        |
-| `import_scan`                  | Load an STL, OBJ or PLY file (reduced to 1,000,000 triangles when larger than the limit)         |
-| `align_auto`                   | Automatic alignment, with flip and quarter-turn adjustments                                      |
-| `scan_bounds`                  | Bounding box of the aligned scan                                                                 |
-| `select_region`                | Select the triangles in a box, optionally only those facing a direction, and show them           |
-| `fit_shape`                    | Fit a plane, cylinder, cone, sphere or torus to the triangles in a box and add it to the history |
-| `auto_surface`                 | Turn the scan into a solid of B-spline surfaces                                                  |
-| `export_step`                  | Write bodies to a STEP file                                                                      |
-| `apply_ops`                    | Apply document operations as one undoable step                                                   |
-| `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                        |
-| `list_commands`, `run_command` | Run app commands: views, undo, tools                                                             |
-| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, outlines of lines and arcs          |
-| `build_shapes`                 | Build recognised shapes as plane, sketches and extrusions, joined to or cut from a body          |
-| `click`                        | Click a control by its `data-testid` or a button by its label or aria-label                      |
-| `press_key`                    | Press a key: Escape, Enter, tool shortcuts                                                       |
-| `screenshot`                   | Screenshot of the window                                                                         |
+| Tool                           | Purpose                                                                                            |
+| ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `app_status`                   | Scan, alignment, feature history with status and statistics, bodies, open tool, selection          |
+| `import_scan`                  | Load an STL, OBJ or PLY file (reduced to 1,000,000 triangles when larger than the limit)           |
+| `align_auto`                   | Automatic alignment, with flip and quarter-turn adjustments                                        |
+| `scan_bounds`                  | Bounding box of the aligned scan                                                                   |
+| `select_region`                | Select the triangles in a box, optionally only those facing a direction, and show them             |
+| `fit_shape`                    | Fit a plane, cylinder, cone, sphere or torus to the triangles in a box and add it to the history   |
+| `auto_surface`                 | Turn the scan into a solid of B-spline surfaces                                                    |
+| `export_step`                  | Write bodies to a STEP file                                                                        |
+| `apply_ops`                    | Apply document operations as one undoable step                                                     |
+| `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                          |
+| `list_commands`, `run_command` | Run app commands: views, undo, tools                                                               |
+| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, outlines, tops and edge radii         |
+| `build_shapes`                 | Build recognised shapes (sketches, extrusions, one fillet per group), joined to or cut from a body |
+| `click`                        | Click a control by its `data-testid` or a button by its label or aria-label                        |
+| `press_key`                    | Press a key: Escape, Enter, tool shortcuts                                                         |
+| `screenshot`                   | Screenshot of the window                                                                           |
 
 Coordinates are part coordinates in millimetres, after the alignment.
+
+### Radius of an edge from the scan
+
+`kernel_call` with `fillet.scanRadius` measures the rounding the scan shows at body edges, the
+way the fillet tool's _Radius aus Scan_ does. It works on short edges and on long ones that run
+around a whole outline.
+
+- Parameters: `targetBody` (body id), `edges` (edge references as the `fillet` feature takes
+  them: `{faces: [tag, tag], point: [x, y, z]}`), optional `before` (a feature id: measure the
+  body as it is before that feature, for a fillet being edited).
+- Result: `radius` (the design value: the measured radius snapped where a value lies within its
+  uncertainty; 0 for a sharp edge), `measured` (median over the cross-sections), `rms` (scan
+  points to the rounded corners), `samples` (cross-sections that measured it), `spread` (10th and
+  90th percentile of the sections' radii).
+- Error `cad.noScanAtEdges` when too few cross-sections see a rounding.
+
+Each cross-section fits a line, arc, line corner tangent to both faces to the scan points in a
+thin slab across the edge; the faces may sit a little off the scan (a flat top on a slightly
+tilted face), so the radius is the scan's, not the model's offset. Add the fillet with
+`apply_ops` (`addFeature` of type `fillet`, `size` = `radius`).
+
+`recognize_shapes` reports for every shape its `top` (`flat`, `inclined` with `tiltDeg`,
+`domed`, `through`) and `roundingMm`, the top edge's radius shared by its group (0 sharp, `null`
+not seen). `build_shapes` rounds every group with a radius unless `roundEdges` lists the shapes
+to round; inclined and domed tops are built up to a plane or patch fitted to the top.
+
+The `state` UI action also reports `visibility` (`both`, `scan`, `bodies`: what Space shows) and
+`deviation` (`shown`, and the `revision`, `min` and `max` of the last deviation map), so a client
+can wait until a heatmap is finished.
 
 The `toolInfo` UI action returns what the open tool lets the user grab, with screen positions.
 In sketch mode: `outlines` (a point inside each closed section outline, where a click fits its
 shape), `joints` (points where two entities meet, with those entities; a Ctrl click rounds them),
-`entities`, `shapes` with their sizes, and `state.job` while a gesture is being fitted.
+`entities`, `shapes` with their sizes, and `state.job` while a gesture is being fitted. In
+Formen erkennen: the `groups` with `rounding` and `rounded` (switched on). In the fillet tool:
+`edges`, `size` and the last `measurement` of _Radius aus Scan_.
 
 ## Protocol
 

@@ -42,6 +42,10 @@ export class ItemLayer {
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
   private bodyEdgesVisible = true;
   private hiddenOwner: string | null = null;
+  private hiddenObjects: { bodies: ReadonlySet<string>; owners: ReadonlySet<string> } = {
+    bodies: new Set(),
+    owners: new Set(),
+  };
 
   constructor(
     private readonly context: () => DisplayContext,
@@ -93,10 +97,20 @@ export class ItemLayer {
     this.invalidate();
   }
 
+  /** Hide document items: bodies by body id, other items by their owner feature. */
+  setHiddenObjects(bodies: readonly string[], owners: readonly string[]): void {
+    this.hiddenObjects = { bodies: new Set(bodies), owners: new Set(owners) };
+    this.applyEdgeVisibility();
+    this.invalidate();
+  }
+
   private applyEdgeVisibility(): void {
+    const { bodies, owners } = this.hiddenObjects;
     for (const object of this.items.values()) {
-      const edges = object.item.style !== 'bodyEdges' || this.bodyEdgesVisible;
-      object.object.visible = edges && object.item.owner !== this.hiddenOwner;
+      const { item } = object;
+      const edges = item.style !== 'bodyEdges' || this.bodyEdgesVisible;
+      const hidden = item.bodyId ? bodies.has(item.bodyId) : owners.has(item.owner);
+      object.object.visible = edges && !hidden && item.owner !== this.hiddenOwner;
     }
     for (const object of [...this.previews.values()].flatMap((preview) => preview.objects)) {
       if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;

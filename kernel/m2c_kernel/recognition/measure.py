@@ -110,7 +110,11 @@ def top_of(
     plane = _on_surface(points, weights, tolerance, quadric=False)
     if plane is None:
         quadric = _on_surface(points, weights, tolerance, quadric=True)
-        return Top("domed", quadric[0] if quadric else None)
+        if quadric is None:
+            return Top("domed")
+        # A quadric that slopes at its centre is inclined (a direction pad's arm).
+        sloped = np.degrees(quadric[0].tilt()) > MIN_TILT_DEG
+        return Top("inclined" if sloped else "domed", quadric[0])
     surface, inliers, inlier_weights = plane
     tilted = np.degrees(surface.tilt()) > MIN_TILT_DEG
     if tilted and float(np.ptp(surface.height(inliers[:, :2]))) >= tolerance:
