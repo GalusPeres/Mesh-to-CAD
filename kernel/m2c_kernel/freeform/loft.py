@@ -22,12 +22,14 @@ import numpy as np
 import numpy.typing as npt
 
 from m2c_kernel.codes.freeform import ErrorCode
+from m2c_kernel.freeform.anchors import anchored_sections
 from m2c_kernel.freeform.occ import LoftShape, section_wire, thru_sections
 from m2c_kernel.freeform.sections import (
     SECTION_POINTS,
+    Outline,
     largest_loop,
     loop_area,
-    normalise_section,
+    outline,
     polyline_distance,
     section_loops,
 )
@@ -180,6 +182,23 @@ def section_points(vertices: FloatArray, faces: IntArray, direction: FloatArray)
     return count
 
 
+def _reference_outline(
+    vertices: FloatArray, faces: IntArray, axis: LoftAxis, outlines: list[Outline]
+) -> Outline:
+    """The section in the middle of the scan's extent, the same for every loft along `axis`.
+
+    Its corners anchor the points of all sections (`anchors.py`). Where the scan has no
+    closed section there, the loft's middle section stands in.
+    """
+    direction = unit(axis.direction)
+    low, high = scan_extent(vertices[np.unique(faces)], axis)
+    section = _section(vertices, faces, axis, direction, (low + high) / 2.0)
+    if section.loop is None:
+        return outlines[len(outlines) // 2]
+    reference, _ = frame_from_axis(direction)
+    return outline(section.loop, direction, reference)
+
+
 def loft_scan(
     vertices: FloatArray,
     faces: IntArray,
@@ -195,9 +214,7 @@ def loft_scan(
     direction = unit(axis.direction)
     reference, _ = frame_from_axis(direction)
     heights = np.linspace(start, end, count)
-    points_per_section = section_points(vertices, faces, direction)
-    sections: list[FloatArray] = []
-    deviations: list[FloatArray] = []
+    loops: list[FloatArray] = []
     previous: _Section | None = None
     for height in heights:
         if check_cancelled is not None:
@@ -209,10 +226,18 @@ def loft_scan(
         if previous is not None and not _continues(previous, section, heights[1] - heights[0]):
             raise KernelError(ErrorCode.SECTION_JUMP, {"position": round(float(height), 3)})
         previous = section
-        points = normalise_section(loop, direction, reference, points_per_section)
-        sections.append(points)
-        sample = loop[:: max(1, len(loop) // _DEVIATION_SAMPLES)]
-        deviations.append(polyline_distance(sample, points))
+        loops.append(loop)
+    outlines = [outline(loop, direction, reference) for loop in loops]
+    sections = anchored_sections(
+        outlines,
+        _reference_outline(vertices, faces, axis, outlines),
+        direction,
+        section_points(vertices, faces, direction),
+    )
+    deviations = [
+        polyline_distance(loop[:: max(1, len(loop) // _DEVIATION_SAMPLES)], points)
+        for loop, points in zip(loops, sections, strict=True)
+    ]
     wires = [section_wire(points) for points in sections]
     solid = thru_sections(wires)
     distances = np.concatenate(deviations)
