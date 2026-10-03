@@ -17,7 +17,7 @@ import math
 
 import numpy as np
 
-from m2c_kernel.sketch import fit2d
+from m2c_kernel.sketch import fit2d, split2d
 from m2c_kernel.sketch.model import FloatArray
 from m2c_kernel.sketch.section import Section
 
@@ -80,7 +80,7 @@ def _straightness(section: Section, tolerance: float) -> float:
             continue
         spacing = sample_spacing(raw, closed)
         samples = fit2d.resample(raw, spacing, closed)
-        points, segments = fit2d.split_polyline(
+        points, segments = split2d.split_polyline(
             samples, closed, tolerance / 3.0, spacing, options, max_candidates=SIDE_CANDIDATES
         )
         for segment in segments:

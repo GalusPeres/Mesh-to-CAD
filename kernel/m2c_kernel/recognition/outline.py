@@ -29,7 +29,7 @@ from m2c_kernel.recognition.shapes import (
     rotate,
 )
 from m2c_kernel.recognition.templates import template_chain
-from m2c_kernel.sketch import fit2d
+from m2c_kernel.sketch import fit2d, split2d
 from m2c_kernel.sketch.noise import sample_spacing, suggested_tolerance
 
 RING_REACH = 3.0
@@ -144,7 +144,7 @@ def fit_cut_circle(points: FloatArray, scale: float, tolerance: float) -> Outlin
     spacing = sample_spacing(points, closed=True)
     samples = fit2d.resample(points, spacing, closed=True)
     options = fit2d.SegmentOptions(tolerance=tolerance)
-    split, segments = fit2d.split_polyline(samples, True, tolerance / 3.0, spacing, options)
+    split, segments = split2d.split_polyline(samples, True, tolerance / 3.0, spacing, options)
     arcs = [s for s in segments if isinstance(s.fit, fit2d.CircleFit)]
     lines = [s for s in segments if isinstance(s.fit, fit2d.LineFit)]
     if not arcs or not lines:

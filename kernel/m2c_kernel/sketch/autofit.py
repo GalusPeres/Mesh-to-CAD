@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from m2c_kernel.sketch import fit2d
+from m2c_kernel.sketch import fit2d, split2d
 from m2c_kernel.sketch.constraints import (
     ConstraintOptions,
     infer_constraints,
@@ -99,7 +99,7 @@ def _add_polyline(
             sketch.samples[eid] = samples
             return []
     # sigma = tolerance / 3 in the BIC cost: the tolerance decides how many entities appear.
-    pts, segments = fit2d.split_polyline(samples, closed, tolerance / 3.0, spacing, opts)
+    pts, segments = split2d.split_polyline(samples, closed, tolerance / 3.0, spacing, opts)
     count = len(segments)
     point_ids = [ids.take("p") for _ in range(count if closed else count + 1)]
     if closed:
