@@ -10,7 +10,8 @@ much faster than it moves along the axis, the range has run into something else:
 button on a remote's top, or a flat slope at its bottom. A smooth loft through such a
 section swings far outside the scan (on the remote: 19 times the volume) and can take
 minutes to build. `body_range` finds the stretch where the walls stay steep;
-`loft_scan` refuses a section beyond it.
+`loft_scan` refuses a section beyond it. Up to a plane the walls continue straight
+instead (`ends.py`).
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import numpy as np
 import numpy.typing as npt
 
 from m2c_kernel.codes.freeform import ErrorCode
+from m2c_kernel.freeform.ends import PlaneEnd, past_plane
 from m2c_kernel.freeform.occ import LoftShape, section_wire, thru_sections
 from m2c_kernel.freeform.sections import (
     largest_loop,
@@ -66,6 +68,8 @@ class ScanLoft:
     section_rms: float
     section_max: float
     """Distance of the raw section points to the normalised sections."""
+    inside: FloatArray
+    """A point inside the loft (the middle section's centre)."""
 
 
 def scan_extent(vertices: FloatArray, axis: LoftAxis) -> tuple[float, float]:
@@ -164,8 +168,13 @@ def loft_scan(
     end: float,
     count: int,
     check_cancelled: Callable[[], None] | None = None,
+    start_plane: PlaneEnd | None = None,
+    end_plane: PlaneEnd | None = None,
 ) -> ScanLoft:
-    """Loft through `count` sections between `start` and `end` (mm along the axis)."""
+    """Loft through `count` sections between `start` and `end` (mm along the axis).
+
+    An end with a plane continues past it; the caller cuts the solid there.
+    """
     if end - start < MIN_LENGTH_MM:
         raise KernelError(ErrorCode.INVALID_RANGE, {"start": start, "end": end})
     direction = unit(axis.direction)
@@ -188,8 +197,15 @@ def loft_scan(
         sections.append(points)
         sample = loop[:: max(1, len(loop) // _DEVIATION_SAMPLES)]
         deviations.append(polyline_distance(sample, points))
-    wires = [section_wire(points) for points in sections]
-    solid = thru_sections(wires)
+    inside = sections[len(sections) // 2].mean(axis=0)
+    lofted = list(sections)
+    if start_plane is not None:
+        before = past_plane(sections[0], sections[1], start_plane, inside)
+        lofted = lofted if before is None else [before, *lofted]
+    if end_plane is not None:
+        after = past_plane(sections[-1], sections[-2], end_plane, inside)
+        lofted = lofted if after is None else [*lofted, after]
+    solid = thru_sections([section_wire(points) for points in lofted])
     distances = np.concatenate(deviations)
     return ScanLoft(
         solid=solid,
@@ -197,4 +213,5 @@ def loft_scan(
         sections=tuple(sections),
         section_rms=float(np.sqrt(np.mean(distances**2))),
         section_max=float(distances.max()),
+        inside=inside,
     )

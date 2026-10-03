@@ -13,6 +13,8 @@ export interface LoftParams {
   faces: BlobRef | null;
   operation: BodyOperation;
   targetBody: string | null;
+  startPlane: string | null;
+  endPlane: string | null;
 }
 
 export const LOFT_PARAMS_RANGES = { sectionCount: { min: 3, max: 64 } } as const;
@@ -25,6 +27,8 @@ export interface LoftInput {
   faces?: Uint32Array | null;
   operation?: BodyOperation;
   targetBody?: string | null;
+  startPlane?: string | null;
+  endPlane?: string | null;
 }
 
 export const LOFT_INPUT_RANGES = { sectionCount: { min: 3, max: 64 } } as const;

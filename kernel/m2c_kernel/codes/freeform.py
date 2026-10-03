@@ -12,6 +12,7 @@ class ErrorCode(StrEnum):
     NOT_AN_AXIS = "freeform.notAnAxis"
     NO_SECTION = "freeform.noSection"
     SECTION_JUMP = "freeform.sectionJump"
+    PLANE_NOT_REACHED = "freeform.planeNotReached"
     LOFT_FAILED = "freeform.loftFailed"
     NOT_A_FREEFORM_FEATURE = "freeform.notAFreeformFeature"
 
