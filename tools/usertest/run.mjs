@@ -13,11 +13,13 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { INSTANCE, automationClient } from '../automation/client.mjs';
+import { writeBlockPart } from './block.mjs';
 import { createDriver } from './driver.mjs';
 import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
+import { roundingTest } from './rounding.mjs';
 import { sketchTest } from './sketch.mjs';
 import { solidTest } from './solid.mjs';
 import { writeTubPart } from './tub.mjs';
@@ -29,10 +31,11 @@ const TESTS = {
   recognize: recognizeTest,
   sketch: sketchTest,
   solid: solidTest,
+  rounding: roundingTest,
 };
 
 /** The part a test runs on, when it is not the plate with the boss. */
-const PARTS = { recognize: writeButtonsPart, solid: writeTubPart };
+const PARTS = { recognize: writeButtonsPart, solid: writeTubPart, rounding: writeBlockPart };
 
 /** A new project with a synthetic part as its scan, no tool open. */
 async function startOver(client, d, writePart) {

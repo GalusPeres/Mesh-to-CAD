@@ -81,42 +81,49 @@ def test_a_band_inside_a_body_is_pushed_out_of_it() -> None:
     assert np.allclose(limits[net.rows * net.around :, 2], 10.5, atol=1e-6)
 
 
-def _sheet(x: tuple[float, float], y: tuple[float, float], z: float, cells: int = 4) -> BandNet:
-    """A flat grid of cells x cells quads at height z, facing up."""
-    xs, ys = np.linspace(*x, cells + 1), np.linspace(*y, cells + 1)
-    vertices = np.array([(px, py, z) for py in ys for px in xs])
-    quads = [
-        (
-            j * (cells + 1) + i,
-            j * (cells + 1) + i + 1,
-            (j + 1) * (cells + 1) + i + 1,
-            (j + 1) * (cells + 1) + i,
-        )
-        for j in range(cells)
-        for i in range(cells)
+def _rounding_net(columns: int = 7) -> BandNet:
+    """A net on the rounded back edge of the block (R 6 along x at y = 40, z = 20).
+
+    It starts 2 mm before the rounding on the top (y = 32) and ends 2 mm below it on
+    the back (z = 12), and stops 1.5 mm short of the end faces. Row j runs along x.
+    """
+    angles = np.radians([22.5, 45.0, 67.5])
+    profile = [
+        (32.0, 20.0),
+        (34.0, 20.0),
+        *((34.0 + 6.0 * np.sin(a), 14.0 + 6.0 * np.cos(a)) for a in angles),
+        (40.0, 14.0),
+        (40.0, 12.0),
     ]
-    return BandNet(vertices, np.array(quads, dtype=np.int64), cells + 1, cells)
+    xs = np.linspace(1.5, 58.5, columns)
+    vertices = np.array([(x, y, z) for y, z in profile for x in xs])
+    quads = [
+        (j * columns + i, j * columns + i + 1, (j + 1) * columns + i + 1, (j + 1) * columns + i)
+        for j in range(len(profile) - 1)
+        for i in range(columns - 1)
+    ]
+    return BandNet(vertices, np.array(quads, dtype=np.int64), columns, len(profile) - 1)
 
 
-def test_a_border_passes_every_face_near_it_not_only_the_nearest() -> None:
-    # The sheet lies 1 mm under the top of the block and 1.5 mm short of its end faces:
-    # its border must pass the top and, at the ends, the end faces too, or it encloses
-    # nothing with the block (a rounding net along a block's edge, issue #7).
+def test_a_rounding_net_passes_the_faces_it_ends_at() -> None:
+    # The net must pass the top and the back where it lies on them, and the end faces
+    # it runs into, but not the top and the back beside its ends, which it runs along:
+    # there it stays on the rounding (issue #7).
     box = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), gp_Pnt(60, 40, 20)).Solid()
-    net = _sheet((1.5, 58.5), (10.0, 30.0), 19.0)
+    net = _rounding_net()
+    before = _limits(net, net.vertices)
     pushed = push_past(net.vertices, net.quads, _box_faces(box), tolerance=0.5, reach=2.0)
     limits = _limits(net, pushed.vertices)
-    border = np.unique(
-        np.concatenate(
-            [
-                np.flatnonzero(np.isclose(net.vertices[:, k], v))
-                for k, v in ((0, 1.5), (0, 58.5), (1, 10), (1, 30))
-            ]
-        )
-    )
-    assert np.allclose(limits[border, 2], 20.5, atol=1e-6)
-    ends = np.isclose(net.vertices[:, 0], 1.5) | np.isclose(net.vertices[:, 0], 58.5)
+    columns, rows = net.around, net.rows
+    top, back = slice(0, columns), slice(rows * columns, None)
+    assert np.allclose(limits[top, 2], 20.5, atol=1e-6)
+    assert np.allclose(limits[back, 1], 40.5, atol=1e-6)
+    ends = np.array([j * columns + i for j in range(1, rows) for i in (0, columns - 1)])
     assert np.allclose(np.abs(limits[ends, 0] - 30), 30.5, atol=1e-6)
+    # On the arc between the tangent lines the ends only move along x.
+    arc = np.array([j * columns + i for j in range(2, rows - 1) for i in (0, columns - 1)])
+    assert np.allclose(limits[arc, 1:], before[arc, 1:], atol=1e-6)
+    # Net and block now enclose the corner: two pieces.
     shape = net_shape(pushed.vertices, net.quads, lambda: None)
     body = Body(shape=box, face_tags=tuple(f"b:{i}" for i in range(6)))
     assert len(split_cells([body], [SurfaceInput(shape.shape, "n")], [], "t")) == 2
