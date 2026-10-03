@@ -45,7 +45,9 @@ export function table(regions) {
   );
   const line = (cells) =>
     cells
-      .map((cell, column) => (column === 0 ? cell.padEnd(widths[0]) : cell.padStart(widths[column])))
+      .map((cell, column) =>
+        column === 0 ? cell.padEnd(widths[0]) : cell.padStart(widths[column]),
+      )
       .join('  ');
   return [line(HEADER), ...body.map(line)].join('\n');
 }
@@ -66,13 +68,17 @@ export function worst(regions, count = 3) {
 
 /** What changed per region since `previous`: lines starting with "better" or "worse". */
 export function compare(previous, current) {
-  if (!previous?.measure) return [];
+  if (!previous?.measure || !current.measure) return [];
   const before = new Map(previous.measure.regions.map((region) => [region.name, region]));
   // Shapes are the same shape when their centres are close, even if a name changed.
   const same = (region) =>
     before.get(region.name) ??
     previous.measure.regions.find(
-      (old) => old.centre && region.centre && Math.hypot(old.centre[0] - region.centre[0], old.centre[1] - region.centre[1]) < SAME_SHAPE_MM,
+      (old) =>
+        old.centre &&
+        region.centre &&
+        Math.hypot(old.centre[0] - region.centre[0], old.centre[1] - region.centre[1]) <
+          SAME_SHAPE_MM,
     );
   const matched = new Set();
   const lines = [];
@@ -93,7 +99,9 @@ export function compare(previous, current) {
     note('within', diff(region.within, old.within), NOTICE.within, true, (v) =>
       sign(v, `${(v * 100).toFixed(1)} pt within`),
     );
-    note('rms', diff(region.rms, old.rms), NOTICE.rms, false, (v) => sign(v, `${v.toFixed(3)} RMS`));
+    note('rms', diff(region.rms, old.rms), NOTICE.rms, false, (v) =>
+      sign(v, `${v.toFixed(3)} RMS`),
+    );
     const max = diff(Math.abs(region.max?.value ?? 0), Math.abs(old.max?.value ?? 0));
     note('max', max, NOTICE.max, false, (v) => sign(v, `${v.toFixed(3)} max`));
     note('uncovered', diff(region.uncovered, old.uncovered), NOTICE.uncovered, false, (v) =>
@@ -102,7 +110,9 @@ export function compare(previous, current) {
     for (const better of [true, false]) {
       const chosen = changes.filter((change) => change.better === better);
       if (chosen.length) {
-        lines.push(`${better ? 'better' : 'worse '}  ${region.name}: ${chosen.map((c) => c.text).join(', ')}`);
+        lines.push(
+          `${better ? 'better' : 'worse '}  ${region.name}: ${chosen.map((c) => c.text).join(', ')}`,
+        );
       }
     }
   }
@@ -135,7 +145,7 @@ export function writeReport(dir, report, changes) {
   const markdown = [
     `# Remote pipeline, ${report.started}`,
     '',
-    `Commit ${report.commit}, scan ${report.scan.triangles} triangles.`,
+    `Commit ${report.commit}, base body: ${report.base}, scan ${report.scan.triangles} triangles.`,
     '',
     '## Steps',
     ...steps,

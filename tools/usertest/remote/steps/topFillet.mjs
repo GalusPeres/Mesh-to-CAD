@@ -3,7 +3,7 @@
 // gap is recorded and the fillet is added with the remote's measured 0.78 mm instead,
 // so the steps after it still run.
 
-import { setView } from '../view.mjs';
+import { setView, turn } from '../view.mjs';
 import { applyOps, bodyEdges, snapshot } from '../scene.mjs';
 
 /** The remote's top edge radius, measured on the scan by hand. */
@@ -30,20 +30,39 @@ async function topEdges(d, bodyId) {
   return [...edges.values()].map(({ faces, points }) => ({
     faces,
     point: points[0],
-    along: points.filter((_, index) => index % Math.max(1, Math.floor(points.length / SAMPLES)) === 0),
+    along: points.filter(
+      (_, index) => index % Math.max(1, Math.floor(points.length / SAMPLES)) === 0,
+    ),
   }));
 }
 
-/** A screen point where a click finds `edge`, or what the clicks found instead. */
-async function clickable(d, edge) {
-  const found = new Set();
+/** Click along `edge` until the tool has picked one more edge; true when it did. */
+async function pickEdge(d, edge) {
+  const before = (await d.toolInfo())?.edges ?? 0;
   for (const point of edge.along) {
     const screen = await d.at(point).catch(() => null);
-    const hit = screen && (await d.pick(screen));
-    if (hit?.kind === 'edge') return { screen };
-    found.add(hit?.kind === 'item' ? `${hit.kind} of ${hit.owner}` : (hit?.kind ?? 'nothing'));
+    if (!screen) continue;
+    await d.tap(screen);
+    // The tool loads the body's edges before it adds the pick.
+    const added = await d
+      .until(async () => ((await d.toolInfo())?.edges ?? 0) > before, 'the picked edge', 2_000)
+      .catch(() => false);
+    if (added) return true;
   }
-  return { found: [...found] };
+  return false;
+}
+
+/** Pick every edge the view shows, from the front (iso) and with the part turned. */
+async function pickAll(d, edges, centre) {
+  let left = edges;
+  for (const degrees of [0, 180]) {
+    await setView(d, 'iso', 'bodies');
+    await turn(d, degrees, centre);
+    const missed = [];
+    for (const edge of left) if (!(await pickEdge(d, edge))) missed.push(edge);
+    left = missed;
+  }
+  return left;
 }
 
 async function closeTool(d) {
@@ -52,25 +71,26 @@ async function closeTool(d) {
 }
 
 /** Verrundung through its panel; returns the radius, or a gap that stopped it. */
-async function filletInTool(d, edges) {
+async function filletInTool(d, edges, centre) {
   await d.press('tool-fillet');
-  await setView(d, 'iso', 'bodies');
-  let picked = 0;
-  const missed = [];
-  for (const edge of edges) {
-    const { screen, found } = await clickable(d, edge);
-    if (!screen) {
-      missed.push(...found);
-      continue;
-    }
-    await d.tap(screen);
-    picked += 1;
+  const notes = [];
+  const first = await pickEdge(d, edges[0]);
+  if (!first) {
+    // Body edges are drawn, and can be clicked, only outside the display mode
+    // "Schattiert"; "Schattiert mit Kanten" is off for scans this large (#41).
+    await d.command('view.display.flat');
+    notes.push('edges can be clicked only after switching to "Flach"');
   }
-  if (picked === 0) {
+  const left = await pickAll(d, first ? edges.slice(1) : edges, centre);
+  await d.command('view.display.shaded');
+  const picked = (await d.toolInfo())?.edges ?? 0;
+  if (picked === 0 || left.length > 0) {
     await closeTool(d);
-    return { gap: `a click on the top edge finds ${[...new Set(missed)].join(', ')}, no edge` };
+    notes.push(`clicks pick ${picked} of the ${edges.length} top edges`);
+    return { gap: notes.join('; ') };
   }
-  await d.until(async () => (await d.toolInfo())?.edges > 0, 'the picked edges', 10_000);
+  // Radius aus Scan fits the scan triangles the view shows along the edges.
+  await setView(d, 'iso', 'scan');
   await d.press('fillet-from-scan');
   const { measurement } = await d.until(async () => {
     const info = await d.toolInfo();
@@ -80,10 +100,16 @@ async function filletInTool(d, edges) {
     await closeTool(d);
     return { gap: `Radius aus Scan: ${measurement.status} ${measurement.message ?? ''}`.trim() };
   }
-  await d.until(async () => (await d.toolInfo())?.ready, 'the fillet preview', 180_000);
+  const ready = await d
+    .until(async () => (await d.toolInfo())?.ready, 'the fillet preview', 60_000)
+    .catch(() => false);
+  if (!ready) {
+    await closeTool(d);
+    return { gap: `no fillet preview with the scan radius ${measurement.radius} mm` };
+  }
   await d.press('panel-ok');
   await d.until(async () => (await d.state()).activeTool === null, 'the fillet', 120_000);
-  return { radius: measurement.radius, measured: measurement.measured, picked };
+  return { radius: measurement.radius, measured: measurement.measured, picked, notes };
 }
 
 export const topFillet = {
@@ -94,8 +120,13 @@ export const topFillet = {
     const edges = await topEdges(d, ctx.body);
     if (edges.length === 0) throw new Error('the body has no top edge');
     const before = (await snapshot(d)).document.features.length;
-    const done = await filletInTool(d, edges);
-    if (!done.gap) return { edges: edges.length, source: 'scan', ...done };
+    const { min, max } = ctx.bounds;
+    const centre = min.map((value, axis) => (value + max[axis]) / 2);
+    const done = await filletInTool(d, edges, centre);
+    if (!done.gap) {
+      const { notes, ...result } = done;
+      return { edges: edges.length, source: 'scan', ...result, gaps: notes };
+    }
 
     await applyOps(
       d,

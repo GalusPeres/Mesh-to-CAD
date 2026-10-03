@@ -62,6 +62,7 @@ export function GenerateSection(props: GenerateProps) {
       <SegmentedControl<NetSource>
         value={source}
         ariaLabel={t(`${KEY}.source`)}
+        testId="freeform-net-source"
         segments={[
           { value: 'scan', label: t(`${KEY}.sources.scan`) },
           { value: 'selection', label: t(`${KEY}.sources.selection`) },
@@ -72,6 +73,7 @@ export function GenerateSection(props: GenerateProps) {
         <SegmentedControl<NetDensity>
           value={props.density}
           ariaLabel={t(`${KEY}.density`)}
+          testId="freeform-net-density"
           segments={DENSITIES.map((value) => ({ value, label: t(`${KEY}.densities.${value}`) }))}
           onChange={props.onDensity}
         />

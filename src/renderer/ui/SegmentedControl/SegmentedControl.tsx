@@ -10,6 +10,8 @@ export interface SegmentedControlProps<T extends string> {
   segments: readonly Segment<T>[];
   onChange: (value: T) => void;
   ariaLabel: string;
+  /** Each segment gets the test id `<testId>-<value>`. */
+  testId?: string;
 }
 
 /** Mutually exclusive options shown side by side (operation, direction). */
@@ -18,6 +20,7 @@ export function SegmentedControl<T extends string>({
   segments,
   onChange,
   ariaLabel,
+  testId,
 }: SegmentedControlProps<T>) {
   return (
     <div className={styles.control} role="radiogroup" aria-label={ariaLabel}>
@@ -27,6 +30,7 @@ export function SegmentedControl<T extends string>({
           type="button"
           role="radio"
           aria-checked={segment.value === value}
+          data-testid={testId ? `${testId}-${segment.value}` : undefined}
           className={styles.segment}
           onClick={() => onChange(segment.value)}
         >

@@ -29,6 +29,17 @@ save screenshots to `test-results/usertest/<name>/`: `M2C_INSTANCE=<name> npm ru
 (or `-- net` for one test). They refuse to run without `M2C_INSTANCE`, because each run
 starts a new project in that app.
 
+`npm run usertest -- remote` (run only when named) rebuilds the reference part, a TV remote
+scan, end to end with the current tools (`tools/usertest/remote/`): import and alignment,
+planes, the base body (a net by default, `M2C_REMOTE_BASE=loft` for the loft), the top edge
+fillet and Formen erkennen. It then measures the deviation per region (walls, the four
+vertical corners, top edge, top face, each recognised shape, underside: share within
+±0.1 mm, RMS, largest deviation and where, scan not covered), takes screenshots after the
+heatmap has finished (five views, every corner and the D-pad, each as bodies only, with the
+scan and as the heatmap) and prints what got better or worse since the previous run. The
+scan comes from `M2C_REMOTE_SCAN` or `--scan=<path>` and is never committed; results go to
+`test-results/remote/` (`report.json`, `report.md`, `shots/`).
+
 The app then listens on `127.0.0.1` with a random port and a random token and writes both
 to `%APPDATA%\Mesh-to-CAD\automation.json`. The file is removed when the app closes or the
 setting is turned off. Requests without the token, and requests from web pages (with an
@@ -86,6 +97,16 @@ The `toolInfo` UI action returns what the open tool lets the user grab, with scr
 In sketch mode: `outlines` (a point inside each closed section outline, where a click fits its
 shape), `joints` (points where two entities meet, with those entities; a Ctrl click rounds them),
 `entities`, `shapes` with their sizes, and `state.job` while a gesture is being fitted.
+In Verrundung: the number of picked `edges`, the `size`, the `measurement` of _Radius aus
+Scan_ and `ready` once the preview allows OK.
+
+The `state` UI action also tells what the view shows: `visibility` (`both`, `scan`,
+`bodies`), `displayMode` and `deviation` (`shown`, and the `revision` the heatmap was
+computed for; it has finished when that is the document's revision).
+
+`automation.scanVertices` returns every n-th scan vertex with its normal in part
+coordinates, in the order of the values of `inspection.deviation`, so a client can sort the
+deviation into regions of its own.
 
 ## Protocol
 

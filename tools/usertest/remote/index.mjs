@@ -4,7 +4,8 @@
 //
 //   M2C_REMOTE_SCAN=<path to the scan .stl> M2C_INSTANCE=<name> npm run usertest -- remote
 //
-// (or `-- remote --scan=<path>`). The scan never goes into the repository. Results:
+// (or `-- remote --scan=<path>`). The scan never goes into the repository. The base
+// body is a net by default; M2C_REMOTE_BASE=loft builds it as a loft instead. Results:
 // test-results/remote/ (report.json, report.md, screenshots).
 
 import { existsSync, mkdirSync } from 'node:fs';
@@ -15,7 +16,8 @@ import { createDriver } from '../driver.mjs';
 import { look, heatmap } from './look.mjs';
 import { measure } from './measure/index.mjs';
 import { compare, previousReport, table, worst, writeReport } from './report.mjs';
-import { REQUIRED, STEPS } from './steps/index.mjs';
+import { REQUIRED, steps } from './steps/index.mjs';
+import { showPlanes } from './tidy.mjs';
 
 const OUT = path.join('test-results', 'remote');
 
@@ -37,7 +39,7 @@ const message = (error) => (error instanceof Error ? error.message : String(erro
 
 /** Run the build steps in order; a failed step is recorded and the next one tried. */
 async function build(ctx, report) {
-  for (const step of STEPS) {
+  for (const step of steps(report.base)) {
     const started = Date.now();
     console.log(`  ${step.id}: ${step.title}`);
     const entry = { id: step.id, title: step.title, ok: false };
@@ -54,7 +56,9 @@ async function build(ctx, report) {
     }
     entry.seconds = +((Date.now() - started) / 1000).toFixed(1);
     report.steps.push(entry);
-    console.log(`    ${entry.ok ? 'ok' : 'FAILED'} (${entry.seconds} s) ${entry.error ?? JSON.stringify(entry.details)}`);
+    console.log(
+      `    ${entry.ok ? 'ok' : 'FAILED'} (${entry.seconds} s) ${entry.error ?? JSON.stringify(entry.details)}`,
+    );
     if (!entry.ok && REQUIRED.has(step.id)) break;
   }
 }
@@ -76,6 +80,7 @@ export async function remoteTest(d, client) {
   const report = {
     started: new Date().toISOString(),
     commit: commit(),
+    base: process.env.M2C_REMOTE_BASE ?? 'net',
     scan: { path: scanPath, triangles: null },
     steps: [],
     gaps: [],
@@ -91,6 +96,8 @@ export async function remoteTest(d, client) {
 
   if (ctx.bounds) {
     try {
+      await eyes.key('Escape');
+      report.gaps.push(...(await showPlanes(ctx, false)).map((problem) => `tidy: ${problem}`));
       report.measure = await measure(ctx);
     } catch (error) {
       report.gaps.push(`measure: ${message(error)}`);
@@ -114,7 +121,11 @@ export async function remoteTest(d, client) {
       `  all: ${(overall.within * 100).toFixed(1)} % within, RMS ${overall.rms} mm, ` +
         `max ${overall.max?.value} mm at ${overall.max?.at.join(', ')}`,
     );
-    console.log(`  worst: ${worst(report.measure.regions).map((region) => region.name).join(', ')}`);
+    console.log(
+      `  worst: ${worst(report.measure.regions)
+        .map((region) => region.name)
+        .join(', ')}`,
+    );
   }
   for (const gap of report.gaps) console.log(`  gap  ${gap}`);
   for (const line of changes) console.log(`  ${line}`);

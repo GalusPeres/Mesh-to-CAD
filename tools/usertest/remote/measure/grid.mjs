@@ -54,7 +54,8 @@ function walk(grid, starts, open) {
 export function outlineDistance(grid, occupied) {
   const border = [];
   for (let c = 0; c < grid.columns; c += 1) border.push(c, (grid.rows - 1) * grid.columns + c);
-  for (let r = 0; r < grid.rows; r += 1) border.push(r * grid.columns, r * grid.columns + grid.columns - 1);
+  for (let r = 0; r < grid.rows; r += 1)
+    border.push(r * grid.columns, r * grid.columns + grid.columns - 1);
   const outside = walk(grid, border, (cell) => !occupied[cell]);
   const edge = [];
   for (let cell = 0; cell < grid.size; cell += 1) if (outside[cell] >= 0) edge.push(cell);
