@@ -26,7 +26,10 @@
     "toolsRequired": "Choose at least one tool body.",
     "toolIsTarget": "The target body cannot also be a tool.",
     "unsupportedFit": "Primitives need a fitted cylinder, cone, sphere or torus.",
-    "noExtent": "The length cannot be taken from the scan: no scan triangles lie on the fitted surface. Enter the length manually."
+    "noExtent": "The length cannot be taken from the scan: no scan triangles lie on the fitted surface. Enter the length manually.",
+    "trimNeedsSurface": "Trimming needs at least one body or surface, not only planes.",
+    "noClosedRegion": "The chosen faces enclose no space: push the net past the planes or choose a missing plane.",
+    "noPieceKept": "Every piece is removed: keep at least one."
   },
   "issues": {
     "highTolerance": "The body has imprecise edges (tolerance above 0.0001 mm).",

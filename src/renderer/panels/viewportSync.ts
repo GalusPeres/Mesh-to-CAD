@@ -17,6 +17,7 @@ import {
 import { toolStore } from '../state/toolStore';
 import { type PickHit, useViewport, type Viewport } from '../viewport/api';
 import { connectObjectVisibility } from './objectVisibility';
+import { connectSelectionReset } from './selectionReset';
 import { connectUsedConstruction } from './usedConstruction';
 
 type HighlightTarget = { bodyId: string } | { owner: string } | null;
@@ -154,6 +155,7 @@ export function useViewportSync(): void {
       syncPicking(viewport),
       connectObjectVisibility(viewport),
       connectUsedConstruction(),
+      connectSelectionReset(),
     ];
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [viewport]);

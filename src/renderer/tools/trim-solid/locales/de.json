@@ -1,0 +1,19 @@
+{
+  "label": "Zuschneiden",
+  "help": "Netze, Ebenen und Körper wählen, die sich gegenseitig schneiden. Die Stücke im Scan werden zu einem Körper; ein Klick auf ein Stück entfernt es, ein Klick auf ein blasses Stück behält es. Netze vorher im Freiform-Netz über die Ebenen hinausschieben.",
+  "nothing": "Erst ein offenes Netz, eine Freiformfläche oder einen Körper anlegen.",
+  "pieces": "Stücke",
+  "kept_one": "{{kept}} von {{count}} Stück behalten",
+  "kept_other": "{{kept}} von {{count}} Stücken behalten",
+  "noPieces": "Noch keine Stücke",
+  "noneKept": "Kein Stück behalten",
+  "automatic": {
+    "label": "Automatisch",
+    "description": "Wieder die Stücke im Scan behalten; die Klicks entfallen."
+  },
+  "hints": {
+    "pick": "Stück anklicken: entfernen oder wieder behalten",
+    "remove": "Klick: dieses Stück entfernen",
+    "keep": "Klick: dieses Stück behalten"
+  }
+}

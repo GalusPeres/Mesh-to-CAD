@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { Feature } from '@shared/protocol/generated/document-model';
 
-import { EMPTY_HIDDEN } from './objectVisibility';
-import { afterUse, usedFeatures } from './usedConstruction';
+import { setDocumentSnapshot } from '../state/documentStore';
+import { EMPTY_HIDDEN, objectVisibilityStore } from './objectVisibility';
+import { afterUse, connectUsedConstruction, usedFeatures } from './usedConstruction';
 
 const feature = (id: string, type: string, params: Record<string, unknown>): Feature =>
   ({ id, type, name: null, suppressed: false, params }) as Feature;
 
-const history = (features: Feature[]) => ({ document: { features } }) as never;
+const history = (features: Feature[], cause = 'apply') =>
+  ({ cause, document: { features } }) as never;
 
 const plane = feature('f1', 'fit', { kind: 'plane', faces: 'blob:aa' });
 const sketch = feature('f2', 'sketch', {
@@ -45,5 +47,16 @@ describe('used construction', () => {
       bodies: [],
       owners: ['f1'],
     });
+  });
+
+  it('shows what the last project hid when a new one starts', () => {
+    objectVisibilityStore.setState(EMPTY_HIDDEN, true);
+    setDocumentSnapshot(history([plane, sketch]));
+    const disconnect = connectUsedConstruction();
+    expect(objectVisibilityStore.getState().owners).toEqual(['f1']);
+    setDocumentSnapshot(history([]));
+    setDocumentSnapshot(history([plane]));
+    expect(objectVisibilityStore.getState().owners).toEqual([]);
+    disconnect();
   });
 });
