@@ -1,7 +1,7 @@
 {
   "label": "Loft",
   "tooltip": "Körper durch Schnitte des Scans entlang einer Achse.",
-  "help": "Achse wählen: X, Y, Z, eine eingepasste Achse oder eine Ebene (Schnitte senkrecht zur Normalen). Anfang und Ende werden aus dem Scan übernommen und lassen sich an den Pfeilen ziehen. Jeder Schnitt muss eine geschlossene Kontur ergeben; mit Nur Auswahl wird nur ein Teil des Scans geschnitten. Mehr Schnitte folgen stark veränderlichen Querschnitten besser.",
+  "help": "Achse wählen: X, Y, Z, eine eingepasste Achse oder eine Ebene (Schnitte senkrecht zur Normalen). Anfang und Ende werden aus dem Scan übernommen und lassen sich an den Pfeilen ziehen. Jeder Schnitt muss eine geschlossene Kontur ergeben; mit Nur Auswahl wird nur ein Teil des Scans geschnitten. Mehr Schnitte folgen stark veränderlichen Querschnitten besser. Mit Anfang bis und Ende bis laufen die Wände gerade bis zu einer Ebene.",
   "noScan": "Kein Scan geladen.",
   "axis": "Achse",
   "onlySelection": "Nur ausgewählte Dreiecke schneiden",
@@ -10,5 +10,8 @@
   "start": "Anfang",
   "end": "Ende",
   "sections": "Schnitte",
+  "startPlane": "Anfang bis",
+  "endPlane": "Ende bis",
+  "noPlane": "Schnitt",
   "emptyRange": "Das Ende muss hinter dem Anfang liegen."
 }

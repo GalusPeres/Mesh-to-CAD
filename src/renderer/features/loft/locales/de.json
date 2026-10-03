@@ -3,6 +3,7 @@
   "summary_one": "{{count}} Schnitt über {{length}}",
   "summary_other": "{{count}} Schnitte über {{length}}",
   "along": "{{axis}}: {{text}}",
+  "toPlane": "bis Ebene",
   "stats": {
     "sections": "Schnitte",
     "sectionRms": "Schnittabweichung RMS",

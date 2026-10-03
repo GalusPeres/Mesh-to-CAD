@@ -11,10 +11,14 @@ export const featureView: FeatureView<'loft'> = {
   icon: Layers,
   editTool: 'loft',
   summary: (params, format, t) => {
-    const text = t('features:loft.summary', {
+    const sections = t('features:loft.summary', {
       count: params.sectionCount,
       length: format.length(params.end - params.start),
     });
+    const text =
+      params.startPlane || params.endPlane
+        ? `${sections}, ${t('features:loft.toPlane')}`
+        : sections;
     const along = GLOBAL_AXES.has(params.path)
       ? t('features:loft.along', { axis: params.path, text })
       : text;

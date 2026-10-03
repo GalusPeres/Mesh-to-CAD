@@ -13,7 +13,7 @@ import {
   createLines,
 } from './displayItems';
 import { distanceToSegment } from './handleMath';
-import { type ItemVisibility, itemShown } from './itemVisibility';
+import { type ItemVisibility, edgesOnlyModeHides, itemShown } from './itemVisibility';
 import { SCENE_COLORS } from './palette';
 
 export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
@@ -195,7 +195,7 @@ export class ItemLayer {
         z: project.z,
       };
     };
-    for (const display of this.visible()) {
+    for (const display of this.pickable(kinds.includes('edge'))) {
       const { item, object } = display;
       const isEdge = item.style === 'bodyEdges' && !!item.bodyId;
       if (!kinds.includes(isEdge ? 'edge' : 'item')) continue;
@@ -252,6 +252,19 @@ export class ItemLayer {
     for (const object of this.all()) object.dispose();
     this.items.clear();
     this.previews.clear();
+  }
+
+  /**
+   * The shown objects, and with `edges` also the body edges that only the display mode
+   * hides: in the shaded view a fillet still picks the edge under the pointer.
+   */
+  private pickable(edges: boolean): DisplayObject[] {
+    const shown = this.visible();
+    if (!edges || !this.group.visible) return shown;
+    const hiddenEdges = [...this.items.values()].filter((object) =>
+      edgesOnlyModeHides(object.item, this.visibility),
+    );
+    return [...shown, ...hiddenEdges];
   }
 
   private visible(): DisplayObject[] {
