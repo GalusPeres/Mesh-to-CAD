@@ -23,7 +23,7 @@ from m2c_kernel.fitting.primitives import Axis, Cone, Cylinder, Plane, Torus
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.sketch import autofit, deviation
 from m2c_kernel.sketch.convert import InvalidSketchError, to_params, to_work
-from m2c_kernel.sketch.model import FloatArray, Point, WorkSketch, entity_polyline
+from m2c_kernel.sketch.model import Constraint, FloatArray, Point, WorkSketch, entity_polyline
 from m2c_kernel.sketch.params import (
     AxisNormalSource,
     FeaturePlaneSource,
@@ -53,6 +53,7 @@ __all__ = [
     "SectionGeometry",
     "SketchEvaluation",
     "SketchProfiles",
+    "assess",
     "auto_fit",
     "cut",
     "deviation_from",
@@ -222,6 +223,13 @@ def auto_fit(params: SketchParams, section: Section, units: SnapUnits, refit: bo
     return FitResult(result, fits, analyse(sketch), noise, tolerance)
 
 
+def assess(params: SketchParams, section: Section, noise: float, tolerance: float) -> FitResult:
+    """Fit quality and profile state of a sketch as it is (after a gesture)."""
+    sketch, _ = _working(params)
+    fits = deviation.entity_fits(sketch, autofit.fit_points(section), tolerance)
+    return FitResult(params, fits, analyse(sketch), noise, tolerance)
+
+
 def fit_entity(
     params: SketchParams,
     section: Section,
@@ -239,6 +247,9 @@ def fit_entity(
     sketch.points[start_id] = Point(start_id, start)
     sketch.points[end_id] = Point(end_id, end)
     sketch.entities[entity_id] = replace(entity, id=entity_id, start=start_id, end=end_id)
+    axis = autofit.axis_of_painted(sketch.entities[entity_id])
+    if axis is not None:
+        constraints.append(Constraint(axis, (entity_id,)))
     return to_params(params, sketch, constraints), entity_id, max_error
 
 

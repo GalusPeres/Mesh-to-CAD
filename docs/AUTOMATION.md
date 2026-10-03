@@ -82,6 +82,11 @@ test uses this).
 
 Coordinates are part coordinates in millimetres, after the alignment.
 
+The `toolInfo` UI action returns what the open tool lets the user grab, with screen positions.
+In sketch mode: `outlines` (a point inside each closed section outline, where a click fits its
+shape), `joints` (points where two entities meet, with those entities; a Ctrl click rounds them),
+`entities`, `shapes` with their sizes, and `state.job` while a gesture is being fitted.
+
 ## Protocol
 
 `POST http://127.0.0.1:<port>/rpc` with `Authorization: Bearer <token>` and a JSON body
