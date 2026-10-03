@@ -104,7 +104,7 @@ def _shell_display(shape: NetShape) -> tuple[DisplaySource, ...]:
     mesh = tessellate(shape.shape)
     return (
         DisplaySource(kind="mesh", style="patch", positions=mesh.vertices, indices=mesh.triangles),
-        DisplaySource(kind="lines", style="constructionEdges", positions=mesh.edge_segments),
+        DisplaySource(kind="lines", style="patch", positions=mesh.edge_segments),
     )
 
 

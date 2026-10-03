@@ -145,10 +145,26 @@ export function createNetPicking(editor: NetEditor, viewport: Viewport): NetPick
       const end = onPlane(to);
       const aside = onPlane({ x: from.x + 10, y: from.y });
       if (!end || !aside) return null;
-      // Screen x in the plane, and the plane's direction across it.
+      // The sides follow the part's axes (aligned in the Align step): of X, Y and Z laid
+      // into the tangent plane, the one closest to the screen's x direction.
       const n = first.normal;
-      const along = sub(aside, first.point);
-      const right = unit(add(along, n, -dot(along, n)));
+      const screenRight = sub(aside, first.point);
+      const inPlane = (v: Vec3): Vec3 => add(v, n, -dot(v, n));
+      const axes: Vec3[] = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ];
+      const candidates = axes.map(inPlane).filter((v) => Math.hypot(...v) > 0.3);
+      const best = candidates.reduce<Vec3 | null>(
+        (chosen, v) =>
+          !chosen || Math.abs(dot(unit(v), screenRight)) > Math.abs(dot(unit(chosen), screenRight))
+            ? v
+            : chosen,
+        null,
+      );
+      const axis = unit(best ?? inPlane(screenRight));
+      const right: Vec3 = dot(axis, screenRight) < 0 ? [-axis[0], -axis[1], -axis[2]] : axis;
       const up = cross(n, right);
       const span = sub(end, first.point);
       const [width, height] = [dot(span, right), dot(span, up)];

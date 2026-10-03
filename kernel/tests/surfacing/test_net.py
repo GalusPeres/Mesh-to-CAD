@@ -260,6 +260,19 @@ def test_a_net_in_pieces_is_a_valid_open_surface(session: Session, job: JobConte
     assert [issue.code for issue in status.issues] == ["surfacing.openNet"]
 
 
+def test_a_small_net_is_measured_against_the_scan_under_it_only() -> None:
+    # A unit quad at z = 0 over scan points on it and on a floor 20 mm below.
+    vertices = np.array([[0, 0, 0], [10, 0, 0], [10, 10, 0], [0, 10, 0]], dtype=np.float64)
+    shape = net_shape(vertices, np.array([[0, 1, 2, 3]], dtype=np.int64))
+    grid = np.stack(np.meshgrid(np.linspace(3, 7, 9), np.linspace(3, 7, 9)), axis=-1).reshape(-1, 2)
+    on_top = np.column_stack([grid, np.full(len(grid), 0.01)])
+    floor = np.column_stack([grid, np.full(len(grid), -20.0)])
+    deviation = net_deviation(shape, np.concatenate([on_top, floor]))
+    assert deviation is not None
+    assert deviation.count == len(on_top)
+    assert deviation.max < 0.05
+
+
 def test_broken_net_feature_fails_with_a_code(session: Session, job: JobContext) -> None:
     scan = shapes.sphere()
     broken = QuadNet(np.zeros((4, 3)), np.array([[0, 1, 2, 3], [0, 1, 2, 3]], dtype=np.int64))

@@ -112,5 +112,10 @@
     "space": "Space",
     "face": "Place face (4 corners)",
     "rectangle": "Place rectangle (2 corners)"
+  },
+  "modes": {
+    "face": "Place face: click 4 corners",
+    "rectangle": "Place rectangle: click 2 corners",
+    "edit": "Edit the net"
   }
 }

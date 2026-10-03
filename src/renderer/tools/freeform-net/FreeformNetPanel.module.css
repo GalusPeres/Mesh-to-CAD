@@ -67,3 +67,28 @@
   overflow: hidden;
   pointer-events: none;
 }
+
+/* Tool and mode at the top left of the viewport. */
+.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: var(--space-8);
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.modeName {
+  color: var(--text-secondary);
+}
+
+.placing {
+  border-color: var(--accent);
+}
+
+.placing .modeName {
+  color: var(--accent-text);
+}

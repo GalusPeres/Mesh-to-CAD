@@ -112,5 +112,10 @@
     "space": "Leertaste",
     "face": "Fläche setzen (4 Ecken)",
     "rectangle": "Rechteck setzen (2 Ecken)"
+  },
+  "modes": {
+    "face": "Fläche setzen: 4 Ecken klicken",
+    "rectangle": "Rechteck setzen: 2 Ecken klicken",
+    "edit": "Netz bearbeiten"
   }
 }

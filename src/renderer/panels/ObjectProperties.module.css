@@ -78,3 +78,12 @@
 .disabled {
   color: var(--text-disabled);
 }
+
+.edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  width: calc(100% - 2 * var(--panel-padding));
+  margin: var(--space-8) var(--panel-padding) 0;
+}

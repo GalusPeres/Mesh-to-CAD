@@ -1,10 +1,14 @@
-import type { LucideIcon } from 'lucide-react';
+import { type LucideIcon, Pencil } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { featureNames, featureView } from '../features/registry';
 import { useDocument } from '../state/documentStore';
 import { useObjectSelection } from '../state/objectSelectionStore';
+import { openTool } from '../tools/framework/toolActions';
+import { TOOLS } from '../tools/framework/registry';
+import { Button } from '../ui/Button/Button';
+import { featureEditTools } from './editTools';
 import styles from './ObjectProperties.module.css';
 import {
   BodyProperties,
@@ -14,6 +18,26 @@ import {
 } from './propertySections';
 import { treeIcon } from './treeIcons';
 import { bodyNames, regionName } from './treeModel';
+
+const EDIT_TOOLS = featureEditTools(undefined, TOOLS);
+
+/** The obvious next step for a chosen feature: open it in its tool. */
+function EditButton({ type, id }: { type: string; id: string }) {
+  const { t } = useTranslation('panels');
+  const toolId = EDIT_TOOLS.get(type);
+  if (!toolId) return null;
+  return (
+    <Button
+      variant="primary"
+      className={styles.edit}
+      data-testid="properties-edit"
+      onClick={() => void openTool(toolId, null, id)}
+    >
+      <Pencil size={16} aria-hidden />
+      {t('menu.edit')}
+    </Button>
+  );
+}
 
 function Header({ icon: Icon, title }: { icon?: LucideIcon; title: string }) {
   return (
@@ -69,6 +93,7 @@ export function ObjectProperties() {
             icon={featureView(feature.type)?.icon}
             title={featureNames(document.features, t).get(feature.id) ?? feature.id}
           >
+            <EditButton type={feature.type} id={feature.id} />
             <FeatureProperties feature={feature} snapshot={snapshot} />
           </Frame>
         );

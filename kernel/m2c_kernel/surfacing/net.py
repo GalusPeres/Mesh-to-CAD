@@ -390,6 +390,10 @@ def _piece_shape(
     )
 
 
+COVER_DISTANCE_MM = 2.0
+"""Scan points farther from every surface sample are not covered by the net."""
+
+
 @dataclass(frozen=True)
 class NetDeviation:
     """Unsigned distances of the covered scan points to the net's surface (mm).
@@ -406,8 +410,17 @@ class NetDeviation:
 
 
 def net_deviation(shape: NetShape, points: FloatArray) -> NetDeviation | None:
-    """Point-to-surface distances: nearest dense surface sample, then its tangent plane."""
-    _, index = cKDTree(shape.samples).query(points, workers=-1)
+    """Point-to-surface distances: nearest dense surface sample, then its tangent plane.
+
+    Only scan points near the net count: a small net on the top of a part must not be
+    measured against its bottom far below (as the heatmap in the tool, which looks
+    COVER_DISTANCE_MM around the surface).
+    """
+    reach, index = cKDTree(shape.samples).query(
+        points, distance_upper_bound=COVER_DISTANCE_MM, workers=-1
+    )
+    near = np.isfinite(reach)
+    points, index = points[near], index[near]
     covered = ~shape.on_border[index]
     if not np.any(covered):
         return None

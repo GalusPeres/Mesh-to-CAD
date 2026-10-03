@@ -9,7 +9,7 @@ import { useViewport } from '../../viewport/api';
 import { defaultHeatmapTolerance } from './heatmap';
 import { NetEditor, type NetEditorState } from './netEditor';
 import { type BoxRectangle, type NetMenuRequest, createNetInteraction } from './netInteraction';
-import { setNetHint } from './netSession';
+import { setNetHint, setNetMode } from './netSession';
 
 /**
  * The tool's NetEditor for as long as the panel is open: it owns the viewport
@@ -49,6 +49,12 @@ export function useNetEditor(editTarget: string | null): {
     // An empty net starts with placing its first face: click four corners or drag.
     if (empty && !editor.getState().facing) editor.build.setFacing(true);
     setNetHint(empty ? 'start' : 'idle');
+    const showMode = () => {
+      const { facing, faceMode } = editor.getState();
+      setNetMode(!facing ? 'edit' : faceMode === 'rectangle' ? 'rectangle' : 'face');
+    };
+    showMode();
+    const stopMode = editor.subscribe(showMode);
     if (editTarget) {
       viewport.setOwnerHidden(editTarget);
       if (!editor.getState().hasNet) void editor.load(editTarget);
@@ -56,6 +62,8 @@ export function useNetEditor(editTarget: string | null): {
     return () => {
       removeInteraction();
       removeInfo();
+      stopMode();
+      setNetMode(null);
       setNetHint(null);
       setDraftHistoryHandler(null);
       viewport.setOwnerHidden(null);

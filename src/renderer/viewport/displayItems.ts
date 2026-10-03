@@ -9,7 +9,7 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import type { SceneItem, ScenePayload } from '@shared/protocol/generated/document-display';
 
 import type { DepthBias } from './depthBias';
-import { SCENE_COLORS, SCENE_MIX } from './palette';
+import { NET_COLORS, SCENE_COLORS, SCENE_MIX } from './palette';
 
 /** Colours the scene takes from the UI theme. */
 export interface ThemeColors {
@@ -64,20 +64,29 @@ function meshGeometry(payload: Extract<ScenePayload, { type: 'mesh' }>): THREE.B
 
 function surfaceMaterial(item: SceneItem, context: DisplayContext): THREE.MeshStandardMaterial {
   const construction = item.style === 'construction' || item.style === 'patch';
-  const material = construction
-    ? new THREE.MeshStandardMaterial({
-        color: SCENE_COLORS.construction,
-        transparent: true,
-        opacity: item.style === 'patch' ? SCENE_MIX.patchFill : SCENE_MIX.constructionFill,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      })
-    : new THREE.MeshStandardMaterial({
-        color: SCENE_COLORS.body,
-        roughness: 0.45,
-        metalness: 0,
-        side: THREE.DoubleSide,
-      });
+  // Freeform surfaces (nets, patches) keep the colour they are built in.
+  const material =
+    item.style === 'patch'
+      ? new THREE.MeshStandardMaterial({
+          color: NET_COLORS.surface,
+          roughness: 0.55,
+          metalness: 0,
+          side: THREE.DoubleSide,
+        })
+      : construction
+        ? new THREE.MeshStandardMaterial({
+            color: SCENE_COLORS.construction,
+            transparent: true,
+            opacity: SCENE_MIX.constructionFill,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: SCENE_COLORS.body,
+            roughness: 0.45,
+            metalness: 0,
+            side: THREE.DoubleSide,
+          });
   if (!construction) material.clippingPlanes = context.clipping;
   context.bias.apply(material, construction ? 1.5 : 1);
   return material;
@@ -92,7 +101,7 @@ const LINE_STYLES: Partial<Record<SceneItem['style'], LineStyle>> = {
     color: (theme) => (theme.dark ? SCENE_COLORS.bodyEdgesDark : SCENE_COLORS.bodyEdgesLight),
   },
   constructionEdges: { width: 2, bias: 1.5, color: () => SCENE_COLORS.construction },
-  patch: { width: 1, bias: 1.5, color: () => SCENE_COLORS.construction },
+  patch: { width: 1, bias: 1.5, color: () => NET_COLORS.lines },
   sketch: { width: 2, bias: 2, color: (theme) => theme.text },
   section: { width: 1.5, bias: 2, color: () => SCENE_COLORS.section },
 };
