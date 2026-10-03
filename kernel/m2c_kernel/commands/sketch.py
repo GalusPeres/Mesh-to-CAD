@@ -30,9 +30,10 @@ from m2c_kernel.sketch.api import (
     fit_tolerance,
     section_geometry,
 )
-from m2c_kernel.sketch.autofit import fit_points, section_noise, suggested_tolerance
+from m2c_kernel.sketch.autofit import fit_points
 from m2c_kernel.sketch.fillet import fillet_corner
 from m2c_kernel.sketch.gestures import fit_outline
+from m2c_kernel.sketch.noise import section_noise, suggested_tolerance
 from m2c_kernel.sketch.params import ShapeKind, SketchParams, SketchSection
 from m2c_kernel.sketch.section import Section
 

@@ -13,11 +13,12 @@ from dataclasses import dataclass, replace
 from m2c_kernel.codes.sketch import ErrorCode
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.sketch import fit2d
-from m2c_kernel.sketch.autofit import IdSource, add_polyline, sample_spacing
+from m2c_kernel.sketch.autofit import IdSource, add_polyline
 from m2c_kernel.sketch.carriers import update_points
 from m2c_kernel.sketch.constraints import ConstraintOptions, infer_constraints
 from m2c_kernel.sketch.convert import to_params, to_work
 from m2c_kernel.sketch.model import Circle, Constraint, FloatArray, WorkSketch
+from m2c_kernel.sketch.noise import sample_spacing
 from m2c_kernel.sketch.outlines import (
     CLICK_LENIENCY,
     Outline,

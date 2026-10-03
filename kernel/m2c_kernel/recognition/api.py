@@ -16,16 +16,13 @@ import numpy as np
 import numpy.typing as npt
 
 from m2c_kernel.geometry import FloatArray
+from m2c_kernel.recognition.chain import chain_points
+from m2c_kernel.recognition.contours import inside_contour, signed_area
 from m2c_kernel.recognition.intent import beautify
-from m2c_kernel.recognition.outline import Outline, outline_points
+from m2c_kernel.recognition.meshdata import mesh_data
+from m2c_kernel.recognition.outline import Outline
 from m2c_kernel.recognition.planes import BasePlane, base_planes
-from m2c_kernel.recognition.relief import (
-    Relief,
-    find_reliefs,
-    inside_contour,
-    mesh_data,
-    signed_area,
-)
+from m2c_kernel.recognition.relief import Relief, find_reliefs
 
 type IntArray = npt.NDArray[np.int64]
 
@@ -61,10 +58,8 @@ class Recognition:
     features: tuple[Feature, ...]
 
     def outline_3d(self, feature: Feature, at: float) -> FloatArray:
-        """The fitted outline of a feature in part coordinates, `at` mm above its plane."""
-        points = outline_points(feature.outline)
-        if len(points) == 0:
-            points = feature.relief.contour
+        """The fitted outline (its lines and arcs) in part coordinates, `at` mm above its plane."""
+        points = chain_points(feature.outline.chain)
         plane = self.planes[feature.plane]
         uvh = np.column_stack([points, np.full(len(points), at)])
         return plane.from_plane(uvh)
