@@ -56,6 +56,8 @@ class ErrorCode(StrEnum):
 class IssueCode(StrEnum):
     HIGH_TOLERANCE = "cad.highTolerance"
     SPLIT_FACES_KEPT = "cad.splitFacesKept"
+    FILLET_NARROWED = "cad.filletNarrowed"
+    """Where the faces bend tighter than the radius, the fillet narrows (to `smallest`)."""
 
 
 class ProgressStage(StrEnum):

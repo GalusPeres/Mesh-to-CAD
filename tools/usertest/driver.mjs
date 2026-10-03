@@ -93,6 +93,7 @@ export function createDriver(client, out) {
 
   /** The app's view: revision, open tool, what is visible, the deviation map. */
   const state = () => ui({ type: 'state' });
+
   /** What the pointer finds at a screen point: scan, body, edge or item. */
   const pick = (screen) => ui({ type: 'pick', x: screen.x, y: screen.y });
 

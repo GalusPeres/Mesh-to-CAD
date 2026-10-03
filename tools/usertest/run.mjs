@@ -18,9 +18,11 @@ import { createDriver } from './driver.mjs';
 import { hideTest } from './hide.mjs';
 import { buttonRadiiTest } from './buttonRadii.mjs';
 import { loftTest } from './loft.mjs';
+import { loftEndTest } from './loftend.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
+import { writeRoundedBlock } from './rounded.mjs';
 import { writeRoundedPart } from './roundedPart.mjs';
 import { roundingTest } from './rounding.mjs';
 import { sketchTest } from './sketch.mjs';
@@ -31,6 +33,7 @@ import { writeTubPart } from './tub.mjs';
 const TESTS = {
   net: netTest,
   loft: loftTest,
+  loftend: loftEndTest,
   recognize: recognizeTest,
   sketch: sketchTest,
   hide: hideTest,
@@ -45,6 +48,7 @@ const PARTS = {
   solid: writeTubPart,
   rounding: writeBlockPart,
   radii: writeRoundedPart,
+  loftend: writeRoundedBlock,
 };
 
 /** A new project with a synthetic part as its scan, no tool open. */

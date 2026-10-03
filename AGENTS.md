@@ -53,6 +53,12 @@ is written by `npm run codegen` only.
    clients (the MCP server, scripts) take the same `M2C_INSTANCE`.
 4. Pull request to `dev` (the integration branch; `main` takes releases) with `Closes #n`.
    CI starts by itself; merged when it is green.
+5. Stay on your issue. Chats do not start other chats (no task suggestions) and do not open
+   issues for things found on the way. Report such a finding to the coordinator chat in
+   one message: what, where and how to reproduce it. The coordinator checks whether
+   someone already owns it, then opens the issue or hands it on. Two chats once found the
+   same bug at the same time, opened two issues, and a third chat redid a fix that was
+   already in a pull request.
 
 ## Done means
 

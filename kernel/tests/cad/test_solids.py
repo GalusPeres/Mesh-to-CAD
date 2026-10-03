@@ -182,11 +182,11 @@ def test_cylinder_caps_are_named_by_their_end() -> None:
 
 def test_fillet_and_chamfer_on_four_top_edges() -> None:
     body = _box()
-    rounded = fillet_edges(body, _top_edges(body), 2.0, "fillet", "f6")
+    rounded = fillet_edges(body, _top_edges(body), 2.0, "fillet", "f6").body
     assert _volume(rounded) == pytest.approx(5917.227, abs=EXACT)
     assert sum(tag.startswith("f6:fillet:") for tag in rounded.face_tags) == 4
     assert UNTAGGED not in rounded.face_tags
-    bevelled = fillet_edges(body, _top_edges(body), 1.5, "chamfer", "f6")
+    bevelled = fillet_edges(body, _top_edges(body), 1.5, "chamfer", "f6").body
     assert _volume(bevelled) == pytest.approx(5892.0, abs=EXACT)
     assert sum(tag.startswith("f6:chamfer:") for tag in bevelled.face_tags) == 4
 
@@ -325,7 +325,7 @@ def test_cut_splitting_a_tagged_face_keeps_the_tag_and_the_point_picks_the_edge(
     left = resolve_edge(cut, front, (2.0, 0.0, 10.0), 0)
     right = resolve_edge(cut, front, (28.0, 0.0, 10.0), 0)
     assert not left.IsSame(right)
-    rounded = fillet_edges(cut, [left], 1.0, "fillet", "f3")
+    rounded = fillet_edges(cut, [left], 1.0, "fillet", "f3").body
     assert check_solid(rounded.shape).is_usable
 
 

@@ -1,7 +1,7 @@
 {
   "label": "Loft",
   "tooltip": "Body through sections of the scan along an axis.",
-  "help": "Choose the axis: X, Y, Z, a fitted axis or a plane (sections perpendicular to its normal). Start and end are taken from the scan and can be dragged at the arrows. Every section must give one closed contour; with Only selected triangles, only part of the scan is sectioned. More sections follow strongly changing cross-sections more closely.",
+  "help": "Choose the axis: X, Y, Z, a fitted axis or a plane (sections perpendicular to its normal). Start and end are taken from the scan and can be dragged at the arrows. Every section must give one closed contour; with Only selected triangles, only part of the scan is sectioned. More sections follow strongly changing cross-sections more closely. With Start up to and End up to, the walls continue straight up to a plane.",
   "noScan": "No scan loaded.",
   "axis": "Axis",
   "onlySelection": "Only section the selected triangles",
@@ -10,5 +10,8 @@
   "start": "Start",
   "end": "End",
   "sections": "Sections",
+  "startPlane": "Start up to",
+  "endPlane": "End up to",
+  "noPlane": "Section",
   "emptyRange": "The end must lie beyond the start."
 }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { SceneItem } from '@shared/protocol/generated/document-display';
 
-import { type ItemVisibility, itemShown } from './itemVisibility';
+import { type ItemVisibility, edgesOnlyModeHides, itemShown } from './itemVisibility';
 
 const item = (style: SceneItem['style'], owner: string, bodyId: string | null = null) =>
   ({ key: `${owner}:${style}`, kind: 'mesh', style, owner, bodyId }) as SceneItem;
@@ -59,5 +59,19 @@ describe('item visibility', () => {
   it('leaves out body edges in shaded mode and the feature a tool edits', () => {
     expect(shown(visibility({ bodyEdges: false }))).not.toContain(edges.key);
     expect(shown(visibility({ editedOwner: 'f4' }))).not.toContain(sketch.key);
+  });
+
+  it('keeps body edges pickable where only the shaded mode hides them', () => {
+    const shaded = visibility({ bodyEdges: false });
+    expect(itemShown(edges, shaded)).toBe(false);
+    expect(edgesOnlyModeHides(edges, shaded)).toBe(true);
+    expect(edgesOnlyModeHides(edges, visibility())).toBe(false);
+    expect(edgesOnlyModeHides(faces, shaded)).toBe(false);
+    expect(
+      edgesOnlyModeHides(edges, visibility({ bodyEdges: false, hiddenBodies: new Set(['f1']) })),
+    ).toBe(false);
+    expect(edgesOnlyModeHides(edges, visibility({ bodyEdges: false, editedOwner: 'f3' }))).toBe(
+      false,
+    );
   });
 });

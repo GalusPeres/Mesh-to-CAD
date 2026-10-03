@@ -8,6 +8,8 @@
     "notAnAxis": "Cannot loft: the chosen element has no axis. Choose an axis, a cylinder, a cone or a plane.",
     "noSection": "Cannot loft: at {{position, length}} the scan gives no closed contour. Place start and end inside the scan or fill holes.",
     "sectionJump": "Cannot loft: at {{position, length}} the section grows or shrinks abruptly, as at a button or a flat slope. Place start and end inside the continuing body.",
+    "planeNotReached": "Cannot loft: the walls do not run towards the plane. Choose a plane across the axis.",
+    "planeCutsRange": "Cannot loft: the plane cuts off almost all of the range. Place start and end between the planes.",
     "loftFailed": "Loft failed: the sections cannot be joined into a body. Change the section count or the range.",
     "notAFreeformFeature": "The element is neither a freeform patch nor a loft."
   },
