@@ -46,12 +46,14 @@ is written by `npm run codegen` only.
 
 1. Take an issue: assign it to yourself and add the label `in progress`.
 2. Work in a worktree on a branch of your own:
-   `git worktree add ../m2c-<issue> -b feat/<issue>-<topic> main`, then `npm ci` there;
+   `git worktree add ../m2c-<issue> -b feat/<issue>-<topic> dev`, then `npm ci` there;
    `M2C_PYTHON` may point to the main checkout's `.venv\Scripts\python.exe`.
 3. Run your own app next to the others:
    `M2C_INSTANCE=<issue> M2C_WINDOW=offscreen M2C_AUTOMATION=1 npm run dev`; automation
    clients (the MCP server, scripts) take the same `M2C_INSTANCE`.
-4. Pull request to `main` with `Closes #n`; merged when CI is green.
+4. Pull request to `dev` (the integration branch; `main` takes releases) with `Closes #n`.
+   CI does not start by itself yet (#14): `gh workflow run CI --ref <branch>`. Merged when
+   CI is green.
 
 ## Done means
 

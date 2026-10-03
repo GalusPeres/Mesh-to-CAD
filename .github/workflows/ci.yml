@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
   schedule:
     # Weekly run of the slow kernel tests (Monday 03:00 UTC).
