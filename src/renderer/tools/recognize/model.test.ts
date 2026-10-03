@@ -88,6 +88,16 @@ describe('recognised shapes in the panel', () => {
     expect(labels).toEqual(['2× Ø8,0', null, 'Ø12,0', 'Ø5,0', 'Ø6,0', '20,0×12,5', 'Ø7,1']);
   });
 
+  it('puts a group label on the member clear of the other groups', () => {
+    const arms = { shape: 'ringSegment' as const, params: { inner: 9, outer: 14 }, group: 1 };
+    const pad = result([
+      feature({ group: 0, label: [2, 0, 1] }),
+      feature({ ...arms, label: [4, 0, 1] }),
+      feature({ ...arms, label: [-11, 0, 1] }),
+    ]);
+    expect(groupLabels(pad, createFormatter('de-DE'))).toEqual(['Ø8,0', null, '2× R9,0–14,0']);
+  });
+
   it('describes sizes in the user locale', () => {
     const format = createFormatter('de-DE');
     const slot = feature({ shape: 'slot', params: { length: 10.1, width: 6.45 } });

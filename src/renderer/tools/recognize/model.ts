@@ -135,19 +135,30 @@ export function labelText(feature: RecognizedFeature, format: Formatter): string
 }
 
 /**
- * Per feature, its label in the viewport, or null: one label per group (on its first
- * feature) with the count.
+ * Per feature, its label in the viewport, or null: one label per group with the count,
+ * on the member farthest from the other groups' features (the arms of a direction pad
+ * keep their label clear of the centre button's).
  */
 export function groupLabels(result: RecognizeResult, format: Formatter): (string | null)[] {
-  const counts = new Map<number, number>();
-  for (const feature of result.features) {
-    counts.set(feature.group, (counts.get(feature.group) ?? 0) + 1);
-  }
+  const { features } = result;
+  const members = new Map<number, number[]>();
+  features.forEach((feature, index) => {
+    members.set(feature.group, [...(members.get(feature.group) ?? []), index]);
+  });
+  const clearance = (feature: RecognizedFeature) =>
+    Math.min(
+      ...features
+        .filter((other) => other.group !== feature.group)
+        .map((other) => Math.hypot(...other.label.map((value, k) => value - feature.label[k]!))),
+    );
   const labelled = new Set<number>();
-  return result.features.map((feature) => {
-    if (labelled.has(feature.group)) return null;
-    labelled.add(feature.group);
-    const count = counts.get(feature.group) ?? 1;
+  for (const indices of members.values()) {
+    const scored = indices.map((index) => ({ index, clear: clearance(features[index]!) }));
+    labelled.add(scored.reduce((best, next) => (next.clear > best.clear ? next : best)).index);
+  }
+  return features.map((feature, index) => {
+    if (!labelled.has(index)) return null;
+    const count = members.get(feature.group)?.length ?? 1;
     return `${count > 1 ? `${count}× ` : ''}${labelText(feature, format)}`;
   });
 }
