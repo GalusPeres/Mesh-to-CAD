@@ -5,7 +5,7 @@ import * as THREE from 'three';
 
 import type { SceneItem, ScenePayload } from '@shared/protocol/generated/document-display';
 
-import type { PickHit } from './api';
+import type { HiddenObjects, PickHit } from './api';
 import {
   type DisplayContext,
   type DisplayObject,
@@ -13,15 +13,11 @@ import {
   createLines,
 } from './displayItems';
 import { distanceToSegment } from './handleMath';
+import { type ItemVisibility, itemShown } from './itemVisibility';
 import { SCENE_COLORS } from './palette';
 
 export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
 export type HighlightTarget = { bodyId: string; edge?: number } | { owner: string } | null;
-/** Items left out of the view: body items by body id, all others by owner feature. */
-export interface HiddenItems {
-  bodies: readonly string[];
-  owners: readonly string[];
-}
 
 /** A line or point of an item close to the pointer. */
 export interface LineCandidate {
@@ -45,9 +41,12 @@ export class ItemLayer {
   private previewToken = 0;
   private highlighted: HighlightTarget = null;
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
-  private bodyEdgesVisible = true;
-  private hiddenOwner: string | null = null;
-  private hidden = { bodies: new Set<string>(), owners: new Set<string>() };
+  private visibility: ItemVisibility = {
+    bodyEdges: true,
+    editedOwner: null,
+    hiddenBodies: new Set(),
+    hiddenOwners: new Set(),
+  };
 
   constructor(
     private readonly context: () => DisplayContext,
@@ -80,46 +79,42 @@ export class ItemLayer {
       this.items.set(item.key, object);
       this.group.add(object.object);
     }
-    this.applyEdgeVisibility();
+    this.applyVisibility();
     this.applyHighlight();
     this.invalidate();
   }
 
   /** Body edges (the seams between B-Rep faces) follow the display mode, as in CAD programs. */
   setBodyEdgesVisible(visible: boolean): void {
-    this.bodyEdgesVisible = visible;
-    this.applyEdgeVisibility();
+    this.visibility = { ...this.visibility, bodyEdges: visible };
+    this.applyVisibility();
     this.invalidate();
   }
 
   /** Hide the document items of one owner while a tool edits it in place. */
   setHiddenOwner(owner: string | null): void {
-    this.hiddenOwner = owner;
-    this.applyEdgeVisibility();
+    this.visibility = { ...this.visibility, editedOwner: owner };
+    this.applyVisibility();
     this.invalidate();
   }
 
-  /** Hide the items the project tree lists as hidden (by body, or by owner feature). */
-  setHiddenItems(hidden: HiddenItems): void {
-    this.hidden = { bodies: new Set(hidden.bodies), owners: new Set(hidden.owners) };
-    this.applyEdgeVisibility();
+  /** Hide bodies and the other items of features, as the project tree does. */
+  setHiddenObjects(hidden: HiddenObjects): void {
+    this.visibility = {
+      ...this.visibility,
+      hiddenBodies: new Set(hidden.bodies),
+      hiddenOwners: new Set(hidden.owners),
+    };
+    this.applyVisibility();
     this.invalidate();
   }
 
-  private shown(item: SceneItem): boolean {
-    if (item.owner === this.hiddenOwner) return false;
-    return item.bodyId !== null
-      ? !this.hidden.bodies.has(item.bodyId)
-      : !this.hidden.owners.has(item.owner);
-  }
-
-  private applyEdgeVisibility(): void {
+  private applyVisibility(): void {
     for (const object of this.items.values()) {
-      const edges = object.item.style !== 'bodyEdges' || this.bodyEdgesVisible;
-      object.object.visible = edges && this.shown(object.item);
+      object.object.visible = itemShown(object.item, this.visibility);
     }
     for (const object of [...this.previews.values()].flatMap((preview) => preview.objects)) {
-      if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;
+      if (object.item.style === 'bodyEdges') object.object.visible = this.visibility.bodyEdges;
     }
   }
 
@@ -148,7 +143,7 @@ export class ItemLayer {
     this.removePreview(owner);
     objects.forEach((object) => this.previewGroup.add(object.object));
     this.previews.set(owner, { objects, token });
-    this.applyEdgeVisibility();
+    this.applyVisibility();
     this.applyHighlight();
     this.invalidate();
   }

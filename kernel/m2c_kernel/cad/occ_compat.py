@@ -66,7 +66,7 @@ from OCP.collections import (
 from OCP.collections import IndexedMap_TopoDS_Shape_TopTools_ShapeMapHasher as ShapeMap
 from OCP.collections import List_TopoDS_Shape
 from OCP.GC import GC_MakeArcOfCircle, GC_MakeSegment
-from OCP.GeomAbs import GeomAbs_Plane
+from OCP.GeomAbs import GeomAbs_BSplineCurve, GeomAbs_BSplineSurface, GeomAbs_Plane
 from OCP.GeomAPI import GeomAPI_ProjectPointOnSurf
 from OCP.gp import (
     gp_Ax1,
@@ -139,6 +139,8 @@ __all__ = [
     "GC_MakeSegment",
     "GProp_GProps",
     "GeomAPI_ProjectPointOnSurf",
+    "GeomAbs_BSplineCurve",
+    "GeomAbs_BSplineSurface",
     "GeomAbs_Plane",
     "List_TopoDS_Shape",
     "ShapeFix_Shape",

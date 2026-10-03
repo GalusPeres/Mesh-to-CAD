@@ -15,6 +15,7 @@ import path from 'node:path';
 import { INSTANCE, automationClient } from '../automation/client.mjs';
 import { writeBlockPart } from './block.mjs';
 import { createDriver } from './driver.mjs';
+import { hideTest } from './hide.mjs';
 import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
@@ -30,6 +31,7 @@ const TESTS = {
   loft: loftTest,
   recognize: recognizeTest,
   sketch: sketchTest,
+  hide: hideTest,
   solid: solidTest,
   rounding: roundingTest,
 };
