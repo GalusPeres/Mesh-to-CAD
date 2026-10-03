@@ -61,7 +61,16 @@ is written by `npm run codegen` only.
    and looked at in screenshots. `M2C_INSTANCE=<issue> npm run usertest` does that on a
    synthetic part (`tools/usertest/`, one test per tool; add yours); also try a real scan.
    What looks wrong is fixed before anyone else sees it.
-3. Committed with `Closes #n`, pushed. No co-author or "generated with" lines.
+3. Every built body was compared with the scan the way the user does:
+   - **The heatmap, finished.** Prüfen → Abweichung, and wait until it has finished
+     computing. A screenshot while it says "Wird berechnet" does not count.
+   - **The largest deviation and where it is** (corner, edge, wall, top), not only RMS or
+     the share within tolerance. Averages hid 1–2 mm bulges at the remote's corners once.
+     Anything over the tolerance is fixed or explained in the pull request.
+   - **Close-ups of every corner and edge.** Take them three ways: bodies only with
+     colours off (Space, D), with the scan shown, and with the heatmap. Look for bulges,
+     steps, gaps, floating parts and construction drawn over the body.
+4. Committed with `Closes #n`, pushed. No co-author or "generated with" lines.
 
 ## Talking with the user
 
