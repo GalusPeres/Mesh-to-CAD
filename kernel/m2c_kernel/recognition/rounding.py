@@ -63,12 +63,12 @@ def outline_frames(plane: BasePlane, relief: Relief, count: int = SECTIONS) -> l
     boss = relief.kind == "boss"
     heights = relief.top_at(points) if boss else np.full(count, relief.level)
     corners = plane.from_plane(np.column_stack([points, heights]))
-    # The top runs inwards along its own (possibly inclined) plane.
-    rise = np.array(relief.slope) if boss else np.zeros(2)
+    # The top runs inwards along its own (possibly inclined or curved) surface.
+    rises = relief.top_gradient(points) if boss else np.zeros((count, 2))
     frame_axes = np.column_stack([plane.x_axis, plane.y_axis, plane.normal])
     down = -plane.normal
     frames = []
-    for corner, tangent, out in zip(corners, tangents, outward, strict=True):
+    for corner, tangent, out, rise in zip(corners, tangents, outward, rises, strict=True):
         across = -out if boss else out
         frames.append(
             CornerFrame(

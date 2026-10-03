@@ -134,7 +134,8 @@ def test_an_inclined_top_is_found_with_its_tilt() -> None:
     inclined = [i for i in _buttons() if found.features[i].relief.top == "inclined"]
     assert len(inclined) == 1
     relief = found.features[inclined[0]].relief
-    assert np.degrees(np.arctan(np.hypot(*relief.slope))) == pytest.approx(TILT_DEG, abs=0.5)
+    assert relief.top_surface is not None and relief.top_surface.planar
+    assert np.degrees(relief.tilt) == pytest.approx(TILT_DEG, abs=0.5)
     assert relief.height == pytest.approx(2.0, abs=0.1)
     # Its sharp top edge needs no fillet.
     assert found.radii[found.groups[inclined[0]]] == 0.0

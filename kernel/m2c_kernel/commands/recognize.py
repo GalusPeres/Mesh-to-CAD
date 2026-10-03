@@ -32,8 +32,8 @@ from m2c_kernel.protocol.registry import command
 from m2c_kernel.protocol.wire import F32Array, RawObject, U32Array
 from m2c_kernel.recognition.api import Recognition, recognize
 from m2c_kernel.recognition.build import FeaturePlan, plan_features, plane_faces
-from m2c_kernel.recognition.build_inclined import top_faces
 from m2c_kernel.recognition.build_rounding import fillet_ops
+from m2c_kernel.recognition.build_tops import top_faces
 from m2c_kernel.recognition.shapes import ShapeKind
 from m2c_kernel.segmentation.lod import LEVELS_OF_DETAIL
 from m2c_kernel.session.jobs import JobContext
@@ -205,12 +205,13 @@ def recognize_build(ctx: JobContext, params: BuildParams) -> BuildResult:
         document.next_id,
         params.target_body,
         names,
-        lambda index: top_faces(
+        lambda index, margin: top_faces(
             recognition.planes[recognition.features[index].plane],
             recognition.features[index].relief,
             centroids,
             mesh.face_normals,
             _noise(scan.noise),
+            margin,
         ),
     )
     ops = [
@@ -313,7 +314,7 @@ def _result(recognition: Recognition) -> RecognizeResult:
                 level=float(relief.level),
                 height=float(relief.height),
                 top=relief.top,
-                tilt=float(np.arctan(np.hypot(*relief.slope))),
+                tilt=relief.tilt,
                 rms=float(outline.rms),
                 parent=relief.parent,
                 group=group,

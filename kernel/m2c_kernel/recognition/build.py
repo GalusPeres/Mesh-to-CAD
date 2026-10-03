@@ -11,8 +11,8 @@ For every base plane with chosen features the document gets
   when the client gives names: bosses are added, pockets cut (through holes a
   little beyond the part), so the user edits one value per family; without a body
   every boss becomes a body of its own (a body is one solid);
-- for a feature with an inclined top, a plane fitted to its top and an extrusion up
-  to that plane of its own (`build_inclined.py`).
+- for a feature with an inclined or domed top, an extrusion of its own up to a plane
+  or patch fitted to its top (`build_tops.py`).
 
 The sketches compare themselves with the scan where the outlines were measured, at
 half the height (depth) of their features, not at the foot, which fillets widen.
@@ -28,14 +28,15 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Any
 
 import numpy as np
 
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.api import Feature, Recognition
-from m2c_kernel.recognition.build_inclined import inclined_extrusion
 from m2c_kernel.recognition.build_rounding import TopEdges, top_edges
+from m2c_kernel.recognition.build_tops import own_top, top_extrusion
 from m2c_kernel.recognition.planes import BasePlane
 from m2c_kernel.recognition.sketch_ops import SketchDraft, as_list, chain_entities
 
@@ -79,7 +80,7 @@ def plan_features(
     next_id: int,
     target_body: str | None,
     names: Mapping[int, str] | None = None,
-    top_faces: Callable[[int], np.ndarray] = lambda _: np.zeros(0, dtype=np.uint32),
+    top_faces: Callable[[int, float], np.ndarray] = lambda *_: np.zeros(0, dtype=np.uint32),
 ) -> FeaturePlan:
     """Plane, sketches and extrusions for the chosen features.
 
@@ -92,7 +93,8 @@ def plan_features(
             new bodies and leaves pockets out.
         names: Display names by feature index; a family's extrusions take the name
             of its first feature.
-        top_faces: The full scan's triangles of a feature's inclined top, by index.
+        top_faces: The full scan's triangles of a feature's top (by index), a margin
+            inside its outline.
     """
     planned: list[NewFeatureOp] = []
     skipped: list[int] = []
@@ -135,27 +137,27 @@ def plan_features(
         )
         shift = np.array([plane.origin @ plane.x_axis, plane.origin @ plane.y_axis])
         for stage in _stages(features, members):
-            inclined = [i for i in stage if features[i].relief.top == "inclined"]
-            flat = [i for i in stage if i not in inclined]
+            shaped = [i for i in stage if own_top(features[i])]
+            flat = [i for i in stage if i not in shaped]
             if flat:
                 edges += _extrusions(
                     add, plane, plane_id, shift, features, flat, target_body, names or {}
                 )
-            edges += [
-                inclined_extrusion(
-                    add,
-                    plane,
-                    plane_id,
-                    shift,
-                    index,
-                    features[index],
-                    top_faces(index),
-                    target_body,
-                    (names or {}).get(index),
-                    OVERLAP_MM,
+            for index in shaped:
+                edges.append(
+                    top_extrusion(
+                        add,
+                        plane,
+                        plane_id,
+                        shift,
+                        index,
+                        features[index],
+                        partial(top_faces, index),
+                        target_body,
+                        (names or {}).get(index),
+                        OVERLAP_MM,
+                    )
                 )
-                for index in inclined
-            ]
     return FeaturePlan(planned, skipped, edges)
 
 

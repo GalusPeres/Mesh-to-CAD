@@ -60,6 +60,7 @@ from m2c_kernel.recognition.measure import (
 from m2c_kernel.recognition.meshdata import MeshData
 from m2c_kernel.recognition.outline import Outline, fit_outline
 from m2c_kernel.recognition.planes import BasePlane
+from m2c_kernel.recognition.top_surface import TopSurface
 
 type IntArray = npt.NDArray[np.int64]
 type BoolArray = npt.NDArray[np.bool_]
@@ -98,7 +99,8 @@ class Relief:
             a pocket without a floor.
         contour: (k, 2) measured contour in the plane frame.
         vertices: Scan vertices of the feature.
-        slope: Rise of an inclined top per mm along u and v; (0, 0) otherwise.
+        top_surface: The heights of a flat, inclined or smoothly domed top (plane
+            frame), None for others; `height` holds at its centre.
         parent: Index of the enclosing pocket, if any.
     """
 
@@ -109,16 +111,33 @@ class Relief:
     top: TopKind
     contour: FloatArray
     vertices: IntArray
-    slope: tuple[float, float] = (0.0, 0.0)
+    top_surface: TopSurface | None = None
     parent: int | None = None
     children: list[int] = field(default_factory=list)
 
     def top_at(self, uv: FloatArray) -> FloatArray:
-        """Height of the top (a pocket's floor) above the base plane at (k, 2) points."""
+        """Height of the top (a pocket's floor) above the base plane at (k, 2) points.
+
+        The surface's shape at the feature's height (which design intent may round).
+        """
         sign = 1.0 if self.kind == "boss" else -1.0
-        centre = self.contour.mean(axis=0)
-        result: FloatArray = self.level + sign * self.height + (uv - centre) @ np.array(self.slope)
+        top = self.level + sign * self.height
+        if self.top_surface is None:
+            return np.full(len(uv), top)
+        surface = self.top_surface
+        result: FloatArray = top + surface.height(uv) - surface.coefficients[0]
         return result
+
+    def top_gradient(self, uv: FloatArray) -> FloatArray:
+        """(k, 2) rise of the top per mm along u and v."""
+        if self.top_surface is None:
+            return np.zeros((len(uv), 2))
+        return self.top_surface.gradient(uv)
+
+    @property
+    def tilt(self) -> float:
+        """Angle of an inclined top against the base plane at its centre (radians)."""
+        return self.top_surface.tilt() if self.top_surface and self.top == "inclined" else 0.0
 
 
 def find_reliefs(data: MeshData, plane: BasePlane, noise: float) -> list[Relief]:
@@ -278,11 +297,9 @@ def _measure(
         return None
     measured_at = height
     top = top_of(context, part, sign, level, height, area)
-    if top.plane is not None:
-        # The top itself at the contour's centre, free of the percentile's noise bias.
-        a, b, c = top.plane
-        centre = contour.mean(axis=0)
-        height = sign * (a * centre[0] + b * centre[1] + c - level)
+    if top.surface is not None:
+        # The top itself at its centre, free of the percentile's noise bias.
+        height = sign * (top.surface.coefficients[0] - level)
     if top.kind == "through":
         # Through: the hole ends at the far side; its points next to the far rim
         # (facing away from the plane) give the depth.
@@ -297,12 +314,6 @@ def _measure(
         if again is not None and abs(signed_area(again)) >= MIN_AREA_MM2:
             contour = again
     outline = fit_outline(contour, context.noise)
-    slope = (0.0, 0.0)
-    if top.kind == "inclined" and top.plane is not None:
-        a, b, c = top.plane
-        cx, cy = contour.mean(axis=0)
-        height = sign * (a * cx + b * cy + c - level)
-        slope = (a, b)
     return Relief(
         kind=kind,
         outline=outline,
@@ -310,7 +321,7 @@ def _measure(
         height=height,
         top=top.kind,
         contour=contour,
-        slope=slope,
+        top_surface=top.surface,
         vertices=part,
         parent=parent,
     )
