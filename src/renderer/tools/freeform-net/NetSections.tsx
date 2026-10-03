@@ -2,7 +2,15 @@
 // explanation in the tooltip, numbers instead of sentences. What the pointer does is
 // told in the status bar (freeformNet.status.tsx), not here.
 
-import { Magnet, Palette, RectangleHorizontal, Square, SquarePlus, Waves } from 'lucide-react';
+import {
+  ArrowUpToLine,
+  Magnet,
+  Palette,
+  RectangleHorizontal,
+  Square,
+  SquarePlus,
+  Waves,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
@@ -20,6 +28,7 @@ import { HEATMAP_TOLERANCES } from './heatmap';
 import type { NetEditor, NetEditorState } from './netEditor';
 import type { FaceMode } from './netFacePlacement';
 import { PointOptions, StrengthOptions } from './NetPointOptions';
+import { referenceCount, usePushReferences } from './netReferences';
 
 const KEY = 'tools:freeformNet';
 
@@ -109,7 +118,8 @@ export function ToolsSection({ editor, state }: SectionProps) {
     label: t(`${KEY}.tools.${name}.label`),
     description: t(`${KEY}.tools.${name}.description`),
   });
-  const fitting = state.job?.kind === 'fit' || state.job?.kind === 'smooth';
+  const fitting =
+    state.job?.kind === 'fit' || state.job?.kind === 'smooth' || state.job?.kind === 'push';
   return (
     <PanelSection title={t(`${KEY}.sections.build`)}>
       <div className={styles.toolbar}>
@@ -136,6 +146,7 @@ export function ToolsSection({ editor, state }: SectionProps) {
           data-testid="freeform-net-flatten"
           onClick={() => void editor.shape.flatten()}
         />
+        <PushButton editor={editor} state={state} />
       </div>
       <PointOptions editor={editor} state={state} />
       <StrengthOptions editor={editor} state={state} />
@@ -153,12 +164,32 @@ function ChoiceFacts({ state }: { state: NetEditorState }) {
       ? t(`${KEY}.chosenEdges`, { count: state.chosenEdges })
       : state.selected > 0 && t(`${KEY}.chosenPoints`, { count: state.selected }),
     state.pinned > 0 && t(`${KEY}.pinnedPoints`, { count: state.pinned }),
+    state.pushed &&
+      (state.pushed.moved > 0
+        ? t(`${KEY}.pushed`, { count: state.pushed.moved, faces: state.pushed.faces })
+        : t(`${KEY}.nothingPushed`)),
   ].filter(Boolean);
   if (facts.length === 0) return null;
   return (
     <p className={styles.facts} data-testid="freeform-net-choice">
       {facts.join(' · ')}
     </p>
+  );
+}
+
+/** Push the net's open border past the shown planes and bodies (before trimming). */
+function PushButton({ editor, state }: SectionProps) {
+  const { t } = useTranslation();
+  const references = usePushReferences();
+  return (
+    <IconButton
+      icon={ArrowUpToLine}
+      label={t(`${KEY}.tools.push.label`)}
+      description={t(`${KEY}.tools.push.description`)}
+      disabled={state.job !== null || !state.hasNet || referenceCount(references) === 0}
+      data-testid="freeform-net-push"
+      onClick={() => void editor.shape.pushPast(references)}
+    />
   );
 }
 

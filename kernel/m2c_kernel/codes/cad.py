@@ -43,6 +43,12 @@ class ErrorCode(StrEnum):
     """A primitive body needs a cylinder, cone, sphere or torus fit."""
     NO_EXTENT = "cad.noExtent"
     """The fit has no scan triangles to derive the body extent from."""
+    TRIM_NEEDS_SURFACE = "cad.trimNeedsSurface"
+    """Trimming needs at least one body or surface besides planes."""
+    NO_CLOSED_REGION = "cad.noClosedRegion"
+    """The trim inputs enclose no region (a surface does not reach past the others)."""
+    NO_PIECE_KEPT = "cad.noPieceKept"
+    """Every piece of a trim was removed."""
 
 
 class IssueCode(StrEnum):

@@ -26,7 +26,10 @@
     "toolsRequired": "Mindestens einen Werkzeugkörper wählen.",
     "toolIsTarget": "Der Zielkörper kann nicht zugleich Werkzeug sein.",
     "unsupportedFit": "Grundkörper brauchen einen eingepassten Zylinder, Kegel, Kugel oder Torus.",
-    "noExtent": "Die Länge ist aus dem Scan nicht bestimmbar: Keine Scan-Dreiecke liegen auf der eingepassten Fläche. Länge manuell eingeben."
+    "noExtent": "Die Länge ist aus dem Scan nicht bestimmbar: Keine Scan-Dreiecke liegen auf der eingepassten Fläche. Länge manuell eingeben.",
+    "trimNeedsSurface": "Zuschneiden braucht mindestens einen Körper oder eine Fläche, nicht nur Ebenen.",
+    "noClosedRegion": "Die gewählten Flächen schließen keinen Raum ein: Netz über die Ebenen hinausschieben oder eine fehlende Ebene wählen.",
+    "noPieceKept": "Alle Stücke sind entfernt: mindestens eines behalten."
   },
   "issues": {
     "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm).",

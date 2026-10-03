@@ -27,7 +27,8 @@
     "fit": "An den Scan anschmiegen",
     "smooth": "Glätten",
     "map": "Fläche vorbereiten",
-    "load": "Netz laden"
+    "load": "Netz laden",
+    "push": "Rand wird verschoben"
   },
   "tools": {
     "face": {
@@ -81,6 +82,10 @@
     "strength": {
       "label": "Zugstärke",
       "description": "Gezogene Punkte folgen der Maus nur zu diesem Anteil, für feines Nachjustieren."
+    },
+    "push": {
+      "label": "Über Bezugsflächen schieben",
+      "description": "Den offenen Rand 0,5 mm über die gezeigten Ebenen und Körper hinausschieben, an denen er endet; danach sauber zuschneiden."
     }
   },
   "chosenPoints_one": "{{count}} Punkt gewählt",
@@ -89,6 +94,9 @@
   "chosenEdges_other": "{{count}} Kanten gewählt",
   "pinnedPoints_one": "{{count}} fixiert",
   "pinnedPoints_other": "{{count}} fixiert",
+  "pushed_one": "{{count}} Randpunkt über {{faces}} Fläche(n) geschoben",
+  "pushed_other": "{{count}} Randpunkte über {{faces}} Fläche(n) geschoben",
+  "nothingPushed": "Kein Randpunkt liegt nahe einer gezeigten Ebene oder einem Körper (2 mm).",
   "heatmap": "Heatmap",
   "legend": "Grün: innerhalb der Toleranz · Gelb bis Rot: außerhalb des Scans · Blau: innerhalb · Grau: weit entfernt",
   "scale": "Farbskala (mm)",
@@ -134,7 +142,8 @@
     "pin": "Gewählte Punkte fixieren",
     "unpin": "Gewählte Punkte lösen",
     "neighbours": "Nachbarn nicht bewegen",
-    "strength": "Zugstärke"
+    "strength": "Zugstärke",
+    "push": "Über Bezugsflächen schieben (0,5 mm)"
   },
   "modes": {
     "face": "Fläche setzen: 4 Ecken klicken",

@@ -11,11 +11,14 @@ through `doc.apply` with a `freeformNet` feature.
   limit surface. It depends only on the quads, so the renderer asks again only after
   a topology change and redraws the surface itself while points are dragged.
 - `net.featureNet` returns the stored net of a feature for editing.
+- `net.pushPast` pushes the net's open border past planes and bodies, so that trimming
+  against them cuts cleanly.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from typing import Annotated
 
 import numpy as np
@@ -23,6 +26,7 @@ import numpy as np
 from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.codes.surfacing import ErrorCode, ProgressStage
 from m2c_kernel.document.rebuild import EvalMesh
+from m2c_kernel.document.results import Construction
 from m2c_kernel.features.types.freeform_net import FreeformNetParams, net_arrays
 from m2c_kernel.limits import MIN_FIT_FACES
 from m2c_kernel.mesh.child import ChildCallError
@@ -238,6 +242,64 @@ def net_feature_net(ctx: JobContext, params: FeatureNetParams) -> FeatureNetResu
         else ctx.session.blobs.get(stored.faces).astype(np.uint32, copy=False)
     )
     return FeatureNetResult(vertices, quads.astype(np.uint32), faces, document.scan.key)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PushPastParams:
+    vertices: F64Array
+    quads: U32Array
+    planes: list[str]
+    """Plane features or origin planes."""
+    bodies: list[str]
+    tolerance: Annotated[float, Range(0.01, 5.0)] = 0.5
+    """How far past the faces the border goes (mm)."""
+    reach: Annotated[float, Range(0.1, 50.0)] = 2.0
+    """Border points farther than this from every face stay (mm)."""
+    fixed: U8Array | None = None
+    """Per control point, 1 for pinned points (their limit points stay)."""
+
+
+@dataclass(frozen=True)
+class PushPastResult:
+    vertices: F64Array
+    moved: int
+    """Border points that were pushed."""
+    references: list[str]
+    """Planes and bodies that pushed at least one point."""
+
+
+@command("net.pushPast", lane=True)
+def net_push_past(ctx: JobContext, params: PushPastParams) -> PushPastResult:
+    """Push the net's open border past the given planes and bodies by `tolerance`."""
+    from m2c_kernel.cad.distance import signed_distance
+    from m2c_kernel.cad.references import reference_plane
+    from m2c_kernel.surfacing.push import Reference, plane_reference, push_past
+    from m2c_kernel.surfacing.subdivision import limit_matrix
+
+    cage, quads = _net(params.vertices, params.quads)
+    result = ctx.session.built(ctx).result
+    limits = limit_matrix(quads, len(cage)) @ cage
+
+    def construction(feature: str) -> Construction:
+        output = result.outputs.get(feature)
+        if output is None or output.construction is None:
+            raise KernelError(DocumentError.INPUT_UNAVAILABLE, {"feature": feature})
+        return output.construction
+
+    references = [
+        plane_reference(plane, *reference_plane(plane, construction), limits)
+        for plane in params.planes
+    ]
+    for body_id in params.bodies:
+        body = result.bodies.get(body_id)
+        if body is None:
+            raise KernelError(DocumentError.INPUT_UNAVAILABLE, {"feature": body_id})
+        references.append(Reference(body_id, partial(signed_distance, body.shape)))
+    fixed = None if params.fixed is None else np.asarray(params.fixed, dtype=bool)
+    pushed = push_past(
+        cage, quads, references, tolerance=params.tolerance, reach=params.reach, fixed=fixed
+    )
+    return PushPastResult(pushed.vertices, pushed.moved, list(pushed.references))
 
 
 def _scan(ctx: JobContext) -> EvalMesh:

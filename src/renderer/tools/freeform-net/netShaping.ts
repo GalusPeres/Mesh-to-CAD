@@ -1,7 +1,8 @@
 // Shaping the net as a whole or its chosen points: Snap to scan and Smooth (kernel
-// `net.fit`), Q, laying points on a plane, snapping the new points of an edit, and
-// placing dropped points exactly where they were dropped. Pinned points stay in all of
-// them (`fixed` for the kernel; NetEditor holds their limit points afterwards).
+// `net.fit`), Q, laying points on a plane, snapping the new points of an edit, placing
+// dropped points exactly where they were dropped, and pushing the border past planes
+// and bodies (`net.pushPast`). Pinned points stay in all of them (`fixed` for the
+// kernel; NetEditor holds their limit points afterwards).
 
 import type { LimitSurface } from './limitSurface';
 import { limitsOf, placeLimits } from './netDragSolve';
@@ -9,6 +10,8 @@ import type { NetJobs } from './netJobs';
 import { type Net, cloneNet, fitPlane, projectOntoPlane } from './netModel';
 import { fixedMask } from './netPins';
 import type { ChooseMode } from './netPoints';
+import type { PushReferences } from './netReferences';
+import type { NetEditorState } from './netState';
 import type { Edge } from './netTopology';
 
 /** Fairness of "Snap to scan" and the stronger one of "Smooth" (kernel `net.fit`). */
@@ -34,6 +37,8 @@ export interface ShapingHost {
   moved(): Promise<void>;
   /** Record the current net as a draft step. */
   record(): void;
+  /** Tell the panel what the last push did. */
+  report(pushed: NetEditorState['pushed']): void;
 }
 
 export class NetShaping {
@@ -68,6 +73,27 @@ export class NetShaping {
         'replace',
       );
     if (this.host.chosen().size > 0) await this.fit(true);
+  }
+
+  /**
+   * Push the net's open border 0.5 mm past the planes and bodies it ends at, so that
+   * trimming against them cuts cleanly (QuickSurface: Offset by reference surfaces).
+   */
+  async pushPast(references: PushReferences): Promise<void> {
+    const net = this.host.net();
+    if (!net || this.host.busy()) return;
+    const count = net.vertices.length / 3;
+    const result = await this.host.jobs.run('push', 'net.pushPast', {
+      vertices: net.vertices,
+      quads: net.quads,
+      planes: references.planes,
+      bodies: references.bodies,
+      fixed: fixedMask(count, this.host.pinned(), new Set()),
+    });
+    if (!result) return;
+    if (result.moved > 0)
+      await this.host.show({ vertices: result.vertices, quads: net.quads }, true);
+    this.host.report({ moved: result.moved, faces: result.references.length });
   }
 
   /**

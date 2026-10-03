@@ -75,11 +75,30 @@ export interface FeatureNetResult {
   scanKey: string;
 }
 
+export interface PushPastParams {
+  vertices: Float64Array;
+  quads: Uint32Array;
+  planes: string[];
+  bodies: string[];
+  tolerance?: number;
+  reach?: number;
+  fixed?: Uint8Array | null;
+}
+
+export const PUSH_PAST_PARAMS_RANGES = { tolerance: { min: 0.01, max: 5 }, reach: { min: 0.1, max: 50 } } as const;
+
+export interface PushPastResult {
+  vertices: Float64Array;
+  moved: number;
+  references: string[];
+}
+
 export interface NetMethods {
   'net.generate': { params: GenerateParams; result: NetData };
   'net.fit': { params: FitParams; result: FitResult };
   'net.limitMap': { params: LimitMapParams; result: LimitMapResult };
   'net.featureNet': { params: FeatureNetParams; result: FeatureNetResult };
+  'net.pushPast': { params: PushPastParams; result: PushPastResult };
 }
 
 export const NET_METHODS = {
@@ -87,4 +106,5 @@ export const NET_METHODS = {
   'net.fit': { lane: true, caller: 'renderer', exclusive: false },
   'net.limitMap': { lane: true, caller: 'renderer', exclusive: false },
   'net.featureNet': { lane: false, caller: 'renderer', exclusive: false },
+  'net.pushPast': { lane: true, caller: 'renderer', exclusive: false },
 } as const satisfies Record<keyof NetMethods, MethodInfo>;
