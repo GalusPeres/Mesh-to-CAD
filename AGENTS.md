@@ -52,8 +52,7 @@ is written by `npm run codegen` only.
    `M2C_INSTANCE=<issue> M2C_WINDOW=offscreen M2C_AUTOMATION=1 npm run dev`; automation
    clients (the MCP server, scripts) take the same `M2C_INSTANCE`.
 4. Pull request to `dev` (the integration branch; `main` takes releases) with `Closes #n`.
-   CI does not start by itself yet (#14): `gh workflow run CI --ref <branch>`. Merged when
-   CI is green.
+   CI starts by itself; merged when it is green.
 
 ## Done means
 

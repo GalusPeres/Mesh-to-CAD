@@ -14,12 +14,13 @@ import path from 'node:path';
 
 import { INSTANCE, automationClient } from '../automation/client.mjs';
 import { createDriver } from './driver.mjs';
+import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { sketchTest } from './sketch.mjs';
 import { writeTestPart } from './part.mjs';
 
 /** Every user test by name; add one per tool. */
-const TESTS = { net: netTest, sketch: sketchTest };
+const TESTS = { net: netTest, loft: loftTest, sketch: sketchTest };
 
 /** A new project with the synthetic part as its scan, no tool open. */
 async function startOver(client, d) {

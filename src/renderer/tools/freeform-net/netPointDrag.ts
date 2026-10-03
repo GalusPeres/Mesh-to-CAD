@@ -1,13 +1,14 @@
 // Dragging chosen control points of the net. The grabbed surface points follow the
-// pointer: with snapping each one lands on the scan where the pointer carries it on
-// screen (ray projection, as in QuickSurface), else in the view plane, or along the
-// surface normal. The control points move so that their limit
-// points get there (controlOffsets), and only the dense rows they influence are
-// re-evaluated and re-measured.
+// pointer, slowed down by the drag strength: with snapping each one lands on the scan
+// where the pointer carries it on screen (ray projection, as in QuickSurface), else in
+// the view plane, or along the surface normal. The control points move so that their
+// limit points get there while pinned points (and, if asked, the neighbours) hold
+// still (netDragSolve), and only the dense rows they influence are re-evaluated.
 
 import type { ScreenPoint, Vec3, Viewport } from '../../viewport/api';
 import type { LimitSurface } from './limitSurface';
-import { type Net, controlOffsets } from './netModel';
+import { type DragSet, dragOffsets, dragSet } from './netDragSolve';
+import type { Net } from './netModel';
 
 /** What a point drag needs of the editor that owns the net. */
 export interface PointDragHost {
@@ -16,7 +17,12 @@ export interface PointDragHost {
   /** The limit surface, or null while a kernel job runs (no dragging meanwhile). */
   surface(): LimitSurface | null;
   selection(): ReadonlySet<number>;
+  pinned(): ReadonlySet<number>;
   snap(): boolean;
+  /** Hold the limit points next to the dragged ones ("Don't move neighbours"). */
+  keepNeighbours(): boolean;
+  /** Share of the pointer's movement the points follow (1 = all of it). */
+  strength(): number;
   /** Re-evaluate, re-measure and redraw these dense rows. */
   refreshRows(rows: Uint32Array): void;
   /** Record the current net as a draft history step. */
@@ -26,9 +32,10 @@ export interface PointDragHost {
 }
 
 interface Drag {
-  controls: Uint32Array;
+  set: DragSet;
   rows: Uint32Array;
   startVertices: Float64Array;
+  /** Limit points of the dragged control points at the start. */
   startLimits: Float64Array;
   /** Screen positions of the grabbed surface points (null off screen). */
   startScreens: (ScreenPoint | null)[];
@@ -43,17 +50,23 @@ export class NetPointDrag {
   begin(): boolean {
     const surface = this.host.surface();
     const net = this.host.net();
-    const selection = this.host.selection();
-    if (!surface || !net || selection.size === 0) return false;
-    const controls = Uint32Array.from(selection);
-    const startLimits = new Float64Array(controls.length * 3);
-    controls.forEach((control, index) => startLimits.set(surface.limitPoint(control), index * 3));
+    if (!surface || !net) return false;
+    const set = dragSet(
+      surface,
+      this.host.selection(),
+      this.host.pinned(),
+      this.host.keepNeighbours(),
+    );
+    if (set.dragged === 0) return false;
+    const dragged = set.controls.subarray(0, set.dragged);
+    const startLimits = new Float64Array(set.dragged * 3);
+    dragged.forEach((control, index) => startLimits.set(surface.limitPoint(control), index * 3));
     this.drag = {
-      controls,
-      rows: surface.rowsOf(controls),
+      set,
+      rows: surface.rowsOf(set.controls),
       startVertices: net.vertices.slice(),
       startLimits,
-      startScreens: Array.from(controls, (control) =>
+      startScreens: Array.from(dragged, (control) =>
         this.host.viewport.worldToScreen(surface.limitPoint(control)),
       ),
     };
@@ -63,34 +76,36 @@ export class NetPointDrag {
   /**
    * Move the grabbed surface points: by `offset` in space, or (with snapping and a
    * screen `delta`) onto the scan under each point's screen position moved by `delta`;
-   * a point off the scan there moves by `offset`.
+   * a point off the scan there moves by `offset`. Both are scaled by the strength.
    */
   move(offset: Vec3, delta: ScreenPoint | null): void {
     const drag = this.drag;
     const surface = this.host.surface();
     const net = this.host.net();
     if (!drag || !surface || !net) return;
+    const strength = this.host.strength();
     const onScan = delta !== null && this.host.snap();
-    const wanted = new Float64Array(drag.controls.length * 3);
-    drag.controls.forEach((_, index) => {
+    const moves = new Float64Array(drag.set.dragged * 3);
+    for (let index = 0; index < drag.set.dragged; index += 1) {
       const o = index * 3;
       const start: Vec3 = [
         drag.startLimits[o] ?? 0,
         drag.startLimits[o + 1] ?? 0,
         drag.startLimits[o + 2] ?? 0,
       ];
-      let target: Vec3 = [start[0] + offset[0], start[1] + offset[1], start[2] + offset[2]];
+      let move: Vec3 = [offset[0] * strength, offset[1] * strength, offset[2] * strength];
       const screen = drag.startScreens[index];
       if (onScan && screen) {
-        const at = { x: screen.x + delta.x, y: screen.y + delta.y };
+        const at = { x: screen.x + delta.x * strength, y: screen.y + delta.y * strength };
         const hit = this.host.viewport.pick(at, { kinds: ['scan'] });
-        if (hit?.kind === 'scan') target = hit.point;
+        if (hit?.kind === 'scan')
+          move = [hit.point[0] - start[0], hit.point[1] - start[1], hit.point[2] - start[2]];
       }
-      wanted.set([target[0] - start[0], target[1] - start[1], target[2] - start[2]], o);
-    });
-    const offsets = controlOffsets(surface, drag.controls, wanted);
+      moves.set(move, o);
+    }
+    const offsets = dragOffsets(surface, drag.set, moves);
     net.vertices.set(drag.startVertices);
-    drag.controls.forEach((control, index) => {
+    drag.set.controls.forEach((control, index) => {
       for (let axis = 0; axis < 3; axis += 1) {
         const c = control * 3 + axis;
         net.vertices[c] = (drag.startVertices[c] ?? 0) + (offsets[index * 3 + axis] ?? 0);
@@ -106,7 +121,7 @@ export class NetPointDrag {
     this.drag = null;
     if (!drag || !net) return;
     if (keep) {
-      if (!this.host.dropped(drag.controls)) this.host.record();
+      if (!this.host.dropped(drag.set.controls.subarray(0, drag.set.dragged))) this.host.record();
       return;
     }
     net.vertices.set(drag.startVertices);

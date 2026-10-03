@@ -1,8 +1,9 @@
 // The net in the viewport: its limit surface (heatmap or plain colour, and faintly
 // where the scan covers it), the net lines
 // drawn on the surface, the outlines of the CAD faces it becomes (patch layout and
-// open border, in white), and the control points at their limit positions. All four
-// share the dense position buffer of the LimitSurface, so a drag updates one array.
+// open border, in white), and the control points at their limit positions (pinned ones
+// with a ring). All share the dense position buffer of the LimitSurface, so a drag
+// updates one array.
 
 import * as THREE from 'three';
 
@@ -11,27 +12,44 @@ import { NET_COLORS, SCENE_COLORS } from '../../viewport/palette';
 import type { LimitSurface } from './limitSurface';
 
 const POINT_SIZE_PX = 7;
+/** The ring around a pinned point. */
+const PIN_RING_PX = 15;
 /** Opacity of the surface where the scan covers it (a row over a rounding runs inside). */
 const GHOST_OPACITY = 0.35;
 /** Depth bias of the surface in units of the scene bias (bodies use 1). */
 const SURFACE_BIAS = 4;
 
-function circleTexture(): THREE.Texture {
+/** A disc, or a ring of the given width; the vertex or material colour tints it. */
+function circleTexture(ring = 0): THREE.Texture {
   const size = 64;
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   const context = canvas.getContext('2d');
   if (context) {
-    // A disc; the vertex colour tints it (plain, selected, hovered).
     context.beginPath();
-    context.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
-    context.fillStyle = NET_COLORS.pointRing;
-    context.fill();
+    context.arc(size / 2, size / 2, size / 2 - 2 - ring / 2, 0, Math.PI * 2);
+    if (ring > 0) {
+      context.lineWidth = ring;
+      context.strokeStyle = NET_COLORS.pointRing;
+      context.stroke();
+    } else {
+      context.fillStyle = NET_COLORS.pointRing;
+      context.fill();
+    }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+/** Which control points are marked, and which others are drawn (near the pointer). */
+export interface PointMarks {
+  chosen: ReadonlySet<number>;
+  pinned: ReadonlySet<number>;
+  hover: number | null;
+  shown: (control: number) => boolean;
+  irregular: ReadonlySet<number>;
 }
 
 function rgb(hex: string): [number, number, number] {
@@ -49,7 +67,10 @@ export class NetOverlay {
   private readonly pointColors: Float32Array;
   private readonly materials: THREE.Material[] = [];
   private readonly texture = circleTexture();
+  private readonly ringTexture = circleTexture(10);
+  private readonly pinGeometry = new THREE.BufferGeometry();
   private readonly points: THREE.Points;
+  private readonly pins: THREE.Points;
   private readonly lines: THREE.LineSegments;
 
   constructor(
@@ -131,8 +152,28 @@ export class NetOverlay {
     this.points = new THREE.Points(this.pointGeometry, pointMaterial);
     this.add(this.points, pointMaterial);
 
+    this.pinGeometry.setAttribute('position', this.position);
+    this.pinGeometry.setIndex([]);
+    const pinMaterial = new THREE.PointsMaterial({
+      size: PIN_RING_PX,
+      sizeAttenuation: false,
+      color: NET_COLORS.pinned,
+      map: this.ringTexture,
+      alphaTest: 0.5,
+    });
+    overlay.applyDepthBias(pinMaterial, SURFACE_BIAS + 1);
+    this.pins = new THREE.Points(this.pinGeometry, pinMaterial);
+    this.add(this.pins, pinMaterial);
+
     this.setSurfaceColors(null);
-    this.paintPoints(new Set(), null, () => false);
+    const none = new Set<number>();
+    this.paintPoints({
+      chosen: none,
+      pinned: none,
+      hover: null,
+      shown: () => false,
+      irregular: none,
+    });
   }
 
   /** The dense positions changed (all of them, or the given rows). */
@@ -156,32 +197,37 @@ export class NetOverlay {
   }
 
   /**
-   * Colour the control points: hovered, chosen, irregular (a warning, as in
-   * QuickSurface) or plain. Only chosen, irregular and hovered points and those `shown`
-   * (near the pointer) are drawn, so a dense net does not cover its heatmap with dots.
+   * Colour the control points: hovered, chosen, pinned, irregular (a warning, as in
+   * QuickSurface) or plain. Only marked and hovered points and those `shown` (near the
+   * pointer) are drawn, so a dense net does not cover its heatmap with dots.
    */
-  paintPoints(
-    selected: ReadonlySet<number>,
-    hover: number | null,
-    shown: (control: number) => boolean,
-    irregular: ReadonlySet<number> = new Set(),
-  ): void {
+  paintPoints(points: PointMarks): void {
     const plain = rgb(NET_COLORS.point);
     const chosen = rgb(SCENE_COLORS.selection);
     const hovered = rgb(NET_COLORS.hover);
+    const pinned = rgb(NET_COLORS.pinned);
     const warning = rgb(NET_COLORS.irregular);
     for (let i = 0; i < this.surface.controlCount; i += 1) {
-      const isChosen = selected.has(i);
-      const isIrregular = irregular.has(i);
-      const color = i === hover ? hovered : isChosen ? chosen : isIrregular ? warning : plain;
+      const color =
+        i === points.hover
+          ? hovered
+          : points.chosen.has(i)
+            ? chosen
+            : points.pinned.has(i)
+              ? pinned
+              : points.irregular.has(i)
+                ? warning
+                : plain;
       this.pointColors.set(color, i * 4);
-      this.pointColors[i * 4 + 3] = i === hover || isChosen || isIrregular || shown(i) ? 1 : 0;
+      this.pointColors[i * 4 + 3] = color !== plain || points.shown(i) ? 1 : 0;
     }
     (this.pointGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
+    this.pinGeometry.setIndex([...points.pinned]);
   }
 
   setNetVisible(visible: boolean): void {
     this.points.visible = visible;
+    this.pins.visible = visible;
     this.lines.visible = visible;
   }
 
@@ -197,8 +243,10 @@ export class NetOverlay {
     this.lineGeometry.dispose();
     this.borderGeometry.dispose();
     this.pointGeometry.dispose();
+    this.pinGeometry.dispose();
     this.materials.forEach((material) => material.dispose());
     this.texture.dispose();
+    this.ringTexture.dispose();
   }
 
   private add(object: THREE.Object3D, material: THREE.Material): void {

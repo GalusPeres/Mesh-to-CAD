@@ -41,6 +41,8 @@ export interface BuildHost {
   record(net: Net): Promise<void>;
   /** Show a net, then snap its new points to the scan: one undo step. */
   settle(net: Net, added: readonly number[]): Promise<void>;
+  /** Show a net whose new points stay exactly where they were dropped: one undo step. */
+  place(net: Net, added: readonly number[]): Promise<void>;
 }
 
 export type ChoiceMode = 'replace' | 'add' | 'remove' | 'toggle';
@@ -230,7 +232,7 @@ export class NetBuilder {
     this.draw();
   }
 
-  /** Drop the rows (add them and snap their new points to the scan) or cancel them. */
+  /** Drop the rows (their new points stay where they were dropped) or cancel them. */
   async endRows(keep: boolean): Promise<void> {
     const drop = keep ? this.rows.finish() : null;
     this.rows.cancel();
@@ -245,7 +247,7 @@ export class NetBuilder {
       added.push(...row.added);
     }
     this.chosen.clear();
-    if (added.length > 0) await this.host.settle(next, added);
+    if (added.length > 0) await this.host.place(next, added);
     else await this.host.record(next);
   }
 
