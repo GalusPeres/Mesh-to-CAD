@@ -39,6 +39,7 @@ import {
 } from './edges';
 import styles from './FilletPanel.module.css';
 import { radiusFromScan } from './radiusFromScan';
+import { useFilletInfo } from './useFilletInfo';
 import {
   useBodyEdgePayload,
   useEdgePayloads,
@@ -187,6 +188,8 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
     close,
   );
 
+  useFilletInfo({ edges: draft.edges.length, size, measurement, ready: previewOk });
+
   const body = bodies.find((item) => item.id === draft.body);
   return (
     <ToolPanel
@@ -241,6 +244,7 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
         {mode === 'fillet' && (
           <>
             <Button
+              data-testid="fillet-from-scan"
               disabled={draft.edges.length === 0 || !payload || measurement?.status === 'running'}
               onClick={measure}
             >

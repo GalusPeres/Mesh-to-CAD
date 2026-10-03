@@ -5,6 +5,10 @@ geometrically instead: the triangles whose centroids lie in a box, optionally
 only those facing a direction (the top of a part, one side wall). The result is
 a face selection like the renderer's, usable as `faces` of a fit or a region.
 Positions are part coordinates (after the alignment), in millimetres.
+
+`automation.scanVertices` hands out the scan's vertices themselves, in the order of
+the deviation map's values, so a client can sort the deviation into regions of its
+own (the remote pipeline in tools/usertest/remote).
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from m2c_kernel.document.rebuild import EvalMesh
 from m2c_kernel.geometry import Vec3, unit
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
-from m2c_kernel.protocol.wire import Range, U32Array
+from m2c_kernel.protocol.wire import F32Array, Range, U32Array
 from m2c_kernel.session.jobs import JobContext
 
 
@@ -48,6 +52,23 @@ class BoundsResult:
     min: Vec3
     max: Vec3
     faces: int
+
+
+@dataclass(frozen=True)
+class ScanVerticesParams:
+    every: Annotated[int, Range(1, None)] = 1
+    """Every n-th vertex, to keep the answer short; the indices are 0, n, 2n, ..."""
+
+
+@dataclass(frozen=True)
+class ScanVerticesResult:
+    positions: F32Array
+    """(k, 3) vertices in part coordinates, flat."""
+    normals: F32Array
+    """(k, 3) unit vertex normals, flat."""
+    count: int
+    """Vertices of the whole scan (the length of a deviation map)."""
+    every: int
 
 
 def _current_mesh(ctx: JobContext) -> EvalMesh:
@@ -87,4 +108,17 @@ def bounds(ctx: JobContext, params: BoundsParams) -> BoundsResult:
         min=_vec3(mesh.vertices.min(axis=0)),
         max=_vec3(mesh.vertices.max(axis=0)),
         faces=len(mesh.faces),
+    )
+
+
+@command("automation.scanVertices")
+def scan_vertices(ctx: JobContext, params: ScanVerticesParams) -> ScanVerticesResult:
+    """Every n-th vertex of the aligned scan with its normal, in deviation-map order."""
+    mesh = _current_mesh(ctx)
+    rows = slice(None, None, params.every)
+    return ScanVerticesResult(
+        positions=mesh.vertices[rows].astype(np.float32).ravel(),
+        normals=mesh.vertex_normals[rows].astype(np.float32).ravel(),
+        count=len(mesh.vertices),
+        every=params.every,
     )

@@ -8,8 +8,10 @@ import pytest
 from m2c_kernel.commands.automation import (
     BoundsParams,
     FacesInBoxParams,
+    ScanVerticesParams,
     bounds,
     faces_in_box,
+    scan_vertices,
 )
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.session.jobs import JobContext
@@ -49,6 +51,29 @@ def test_bounds_and_facing_faces_select_the_top_of_the_block(
     assert slab.count == 0
 
 
+def test_scan_vertices_come_in_deviation_map_order(
+    session: Session, job: JobContext, small_block: NoisyPart
+) -> None:
+    open_block_document(session, small_block, job)
+    mesh = session.built(job).result.mesh
+    assert mesh is not None
+
+    everything = scan_vertices(job, ScanVerticesParams())
+    assert everything.count == len(mesh.vertices)
+    np.testing.assert_allclose(everything.positions.reshape(-1, 3), mesh.vertices, atol=1e-4)
+    normals = everything.normals.reshape(-1, 3)
+    np.testing.assert_allclose(np.linalg.norm(normals, axis=1), 1.0, atol=1e-5)
+
+    # Every third vertex: rows 0, 3, 6, ... of the same arrays.
+    thinned = scan_vertices(job, ScanVerticesParams(every=3))
+    assert thinned.count == everything.count
+    np.testing.assert_array_equal(
+        thinned.positions.reshape(-1, 3), everything.positions.reshape(-1, 3)[::3]
+    )
+
+
 def test_queries_need_a_scan(job: JobContext) -> None:
     with pytest.raises(KernelError):
         bounds(job, BoundsParams())
+    with pytest.raises(KernelError):
+        scan_vertices(job, ScanVerticesParams())

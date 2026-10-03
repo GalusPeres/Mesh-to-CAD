@@ -25,12 +25,27 @@ export interface BoundsResult {
   faces: number;
 }
 
+export interface ScanVerticesParams {
+  every?: number;
+}
+
+export const SCAN_VERTICES_PARAMS_RANGES = { every: { min: 1, max: null } } as const;
+
+export interface ScanVerticesResult {
+  positions: Float32Array;
+  normals: Float32Array;
+  count: number;
+  every: number;
+}
+
 export interface AutomationMethods {
   'automation.facesInBox': { params: FacesInBoxParams; result: FacesInBoxResult };
   'automation.bounds': { params: BoundsParams; result: BoundsResult };
+  'automation.scanVertices': { params: ScanVerticesParams; result: ScanVerticesResult };
 }
 
 export const AUTOMATION_METHODS = {
   'automation.facesInBox': { lane: false, caller: 'renderer', exclusive: false },
   'automation.bounds': { lane: false, caller: 'renderer', exclusive: false },
+  'automation.scanVertices': { lane: false, caller: 'renderer', exclusive: false },
 } as const satisfies Record<keyof AutomationMethods, MethodInfo>;

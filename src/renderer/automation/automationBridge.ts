@@ -7,21 +7,32 @@ import type { AutomationAction } from '@shared/automation';
 
 import { allCommands, commandById, runCommand } from '../app/commands/registry';
 import { i18n } from '../i18n';
+import { deviationStore } from '../inspection/deviationStore';
 import { replaceSelection } from '../selection/api';
 import { selectionStore } from '../selection/selectionStore';
 import { documentStore } from '../state/documentStore';
 import { toolStore } from '../state/toolStore';
+import { viewStore } from '../state/viewStore';
 import { getViewport } from '../viewport/api';
 import { toolInfo } from './toolInfo';
 
 async function handle(action: AutomationAction): Promise<unknown> {
   switch (action.type) {
-    case 'state':
+    case 'state': {
+      const view = viewStore.getState();
       return {
         revision: documentStore.getState().snapshot?.revision ?? null,
         activeTool: toolStore.getState().activeToolId,
         selectedFaces: selectionStore.getState().count,
+        visibility: view.visibility,
+        displayMode: view.displayMode,
+        // The heatmap is finished when its revision is the document's.
+        deviation: {
+          shown: view.deviationVisible,
+          revision: deviationStore.getState().summary?.revision ?? null,
+        },
       };
+    }
     case 'listCommands':
       return allCommands().map((command) => ({
         id: command.id,
