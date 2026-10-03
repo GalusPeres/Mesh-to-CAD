@@ -24,6 +24,7 @@ from functools import cache
 from pathlib import Path
 
 from OCP.Bnd import Bnd_Box
+from OCP.BOPAlgo import BOPAlgo_MakerVolume
 from OCP.BRep import BRep_Tool
 from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Curve2d, BRepAdaptor_Surface
 from OCP.BRepAlgoAPI import (
@@ -43,6 +44,7 @@ from OCP.BRepBuilderAPI import (
 )
 from OCP.BRepCheck import BRepCheck_Analyzer
 from OCP.BRepClass import BRepClass_FaceClassifier
+from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer, BRepFilletAPI_MakeFillet
 from OCP.BRepGProp import BRepGProp
@@ -88,8 +90,10 @@ from OCP.TopAbs import (
     TopAbs_EDGE,
     TopAbs_FACE,
     TopAbs_IN,
+    TopAbs_OUT,
     TopAbs_REVERSED,
     TopAbs_ShapeEnum,
+    TopAbs_SHELL,
     TopAbs_SOLID,
     TopAbs_VERTEX,
 )
@@ -99,6 +103,7 @@ from OCP.TopoDS import TopoDS, TopoDS_Face, TopoDS_Shape
 
 __all__ = [
     "Array1_gp_Pnt2d",
+    "BOPAlgo_MakerVolume",
     "BRepAdaptor_Curve",
     "BRepAdaptor_Curve2d",
     "BRepAdaptor_Surface",
@@ -114,6 +119,7 @@ __all__ = [
     "BRepBuilderAPI_MakeWire",
     "BRepBuilderAPI_Transform",
     "BRepCheck_Analyzer",
+    "BRepClass3d_SolidClassifier",
     "BRepClass_FaceClassifier",
     "BRepExtrema_DistShapeShape",
     "BRepFilletAPI_MakeChamfer",
@@ -148,7 +154,9 @@ __all__ = [
     "TopAbs_EDGE",
     "TopAbs_FACE",
     "TopAbs_IN",
+    "TopAbs_OUT",
     "TopAbs_REVERSED",
+    "TopAbs_SHELL",
     "TopAbs_SOLID",
     "TopAbs_ShapeEnum",
     "TopAbs_VERTEX",

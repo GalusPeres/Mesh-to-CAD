@@ -27,7 +27,8 @@
     "fit": "Snapping to the scan",
     "smooth": "Smoothing",
     "map": "Preparing the surface",
-    "load": "Loading the net"
+    "load": "Loading the net",
+    "push": "Pushing the border"
   },
   "tools": {
     "face": {
@@ -81,6 +82,10 @@
     "strength": {
       "label": "Drag strength",
       "description": "Dragged points follow the mouse only by this share, for fine adjustments."
+    },
+    "push": {
+      "label": "Push past reference faces",
+      "description": "Push the open border 0.5 mm past the shown planes and bodies it ends at, so trimming cuts cleanly."
     }
   },
   "chosenPoints_one": "{{count}} point chosen",
@@ -89,6 +94,11 @@
   "chosenEdges_other": "{{count}} edges chosen",
   "pinnedPoints_one": "{{count}} pinned",
   "pinnedPoints_other": "{{count}} pinned",
+  "pushed_one": "{{count}} border point pushed",
+  "pushed_other": "{{count}} border points pushed",
+  "pushedFaces_one": "{{count}} reference face",
+  "pushedFaces_other": "{{count}} reference faces",
+  "nothingPushed": "No border point lies near a shown plane or body (2 mm).",
   "heatmap": "Heatmap",
   "legend": "Green: within tolerance · Yellow to red: outside the scan · Blue: inside · Grey: far away",
   "scale": "Colour scale (mm)",
@@ -134,7 +144,8 @@
     "pin": "Pin chosen points",
     "unpin": "Release chosen points",
     "neighbours": "Don't move neighbours",
-    "strength": "Drag strength"
+    "strength": "Drag strength",
+    "push": "Push past reference faces (0.5 mm)"
   },
   "modes": {
     "face": "Place face: click 4 corners",

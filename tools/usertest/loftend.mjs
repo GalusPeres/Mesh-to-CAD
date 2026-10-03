@@ -6,9 +6,9 @@
 // The loft is added as an operation: the automation cannot choose an entry of a select
 // field yet, so the panel is checked by opening the loft for editing.
 
-import { BLOCK, roundedBlockVolume } from './block.mjs';
+import { ROUNDED, roundedBlockVolume } from './rounded.mjs';
 
-const [LENGTH, WIDTH, HEIGHT] = BLOCK.size;
+const [LENGTH, WIDTH, HEIGHT] = ROUNDED.size;
 
 async function addFeature(d, feature, label) {
   const { revision } = await d.kernel('doc.get');
@@ -23,7 +23,7 @@ async function addFeature(d, feature, label) {
 
 /** A plane fitted to the flat part of the top, as Form einpassen adds it. */
 async function topPlane(d) {
-  const inset = BLOCK.top + 1;
+  const inset = ROUNDED.top + 1;
   const { faces } = await d.kernel('automation.facesInBox', {
     min: [inset, inset, HEIGHT - 0.2],
     max: [LENGTH - inset, WIDTH - inset, HEIGHT + 0.2],
@@ -61,7 +61,7 @@ export async function loftEndTest(d) {
   );
   let { doc, body } = await bodyOf(d, loft);
   d.check('the loft is a valid solid', body?.valid && doc.status.features[loft].state === 'ok');
-  const prism = (LENGTH * WIDTH - (4 - Math.PI) * BLOCK.corner ** 2) * HEIGHT;
+  const prism = (LENGTH * WIDTH - (4 - Math.PI) * ROUNDED.corner ** 2) * HEIGHT;
   const off = Math.abs(body.volume - prism) / prism;
   d.check(
     'it reaches both planes: the full block without its rounding',
@@ -94,7 +94,11 @@ export async function loftEndTest(d) {
     doc.status.features[fillet.id].state === 'ok',
     doc.status.features[fillet.id].state,
   );
-  d.check('with the default radius', fillet.params.size === BLOCK.top, `${fillet.params.size} mm`);
+  d.check(
+    'with the default radius',
+    fillet.params.size === ROUNDED.top,
+    `${fillet.params.size} mm`,
+  );
   const truth = roundedBlockVolume();
   const error = Math.abs(body.volume - truth) / truth;
   d.check(

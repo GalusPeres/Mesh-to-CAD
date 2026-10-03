@@ -1,111 +1,70 @@
-// The rounded block of the loft-to-plane test: a rectangle with rounded corners, its top
-// edge rounded too, written as binary STL with triangles of about 1 mm.
+// A synthetic part for a rounding the extrusion does not have: a block whose long top
+// edge at the back is rounded. A sketch and an extrusion give the sharp block; a net
+// laid on the rounding, pushed past the block's faces and trimmed with it, rounds the
+// edge (issue #7). Written as a binary STL with about 1 mm triangles.
 
-import { writeStl } from './part.mjs';
+import { writeBinaryStl } from './stl.mjs';
 
-/** The block from the origin, in millimetres. */
+/** Where things are on the block, in millimetres. */
 export const BLOCK = {
-  /** Length (x), width (y), height (z). */
-  size: [60, 30, 20],
-  /** Radius of the vertical corners. */
-  corner: 6,
-  /** Radius of the rounding along the top edge (the fillet tool's default). */
-  top: 2,
+  size: [60, 40, 20],
+  /** Radius of the rounded edge along x at the back (y = 40) of the top (z = 20). */
+  radius: 6,
 };
 
-const ARC_STEPS = 12;
-
-/** The outline `inset` mm inside the block's at height z, counter-clockwise. */
-function ring(inset, z) {
-  const [length, width] = BLOCK.size;
-  const radius = BLOCK.corner - inset;
-  const centres = [
-    [length - BLOCK.corner, width - BLOCK.corner],
-    [BLOCK.corner, width - BLOCK.corner],
-    [BLOCK.corner, BLOCK.corner],
-    [length - BLOCK.corner, BLOCK.corner],
-  ];
-  const points = [];
-  centres.forEach((centre, corner) => {
-    const next = centres[(corner + 1) % 4];
-    for (let i = 0; i < ARC_STEPS; i += 1) {
-      const angle = ((corner + i / ARC_STEPS) * Math.PI) / 2;
-      points.push([centre[0] + radius * Math.cos(angle), centre[1] + radius * Math.sin(angle), z]);
-    }
-    // The straight side to the next corner, about 1 mm per segment.
-    const angle = ((corner + 1) * Math.PI) / 2;
-    const from = [centre[0] + radius * Math.cos(angle), centre[1] + radius * Math.sin(angle)];
-    const to = [next[0] + radius * Math.cos(angle), next[1] + radius * Math.sin(angle)];
-    const steps = Math.max(1, Math.round(Math.hypot(to[0] - from[0], to[1] - from[1])));
-    for (let i = 0; i < steps; i += 1) {
-      const t = i / steps;
-      points.push([from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t, z]);
-    }
-  });
-  return points;
+/** The block's volume: the sharp block less the corner the rounding removes. */
+export function blockVolume() {
+  const [x, y, z] = BLOCK.size;
+  const r = BLOCK.radius;
+  return x * y * z - x * (r * r - (Math.PI * r * r) / 4);
 }
 
-/** Quads between two rings with the same number of points (outward for rising rings). */
-function band(triangles, lower, upper) {
-  lower.forEach((a, i) => {
-    const j = (i + 1) % lower.length;
-    triangles.push([a, lower[j], upper[j]], [a, upper[j], upper[i]]);
-  });
-}
-
-/** A flat cap over a ring: rings shrinking to the centre; `up` gives its normal. */
-function cap(triangles, outer, up) {
-  const [length, width] = BLOCK.size;
-  const centre = [length / 2, width / 2];
-  const steps = 15;
-  const scaled = (k) =>
-    outer.map(([x, y, z]) => [
-      centre[0] + ((x - centre[0]) * k) / steps,
-      centre[1] + ((y - centre[1]) * k) / steps,
-      z,
+/** The cross-section (y, z), counter-clockwise seen from +x, in about 1 mm steps. */
+function profile() {
+  const [, y, z] = BLOCK.size;
+  const r = BLOCK.radius;
+  const line = (a, b) => {
+    const steps = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1])));
+    return Array.from({ length: steps }, (_, i) => [
+      a[0] + ((b[0] - a[0]) * i) / steps,
+      a[1] + ((b[1] - a[1]) * i) / steps,
     ]);
-  for (let k = 0; k < steps; k += 1) {
-    const [inner, outerRing] = [scaled(k), scaled(k + 1)];
-    outerRing.forEach((a, i) => {
-      const j = (i + 1) % outerRing.length;
-      const quad = [
-        [inner[i], a, outerRing[j]],
-        [inner[i], outerRing[j], inner[j]],
-      ];
-      // The innermost ring is the centre: its quads are single triangles.
-      for (const triangle of k === 0 ? quad.slice(0, 1) : quad) {
-        triangles.push(up ? triangle : [...triangle].reverse());
-      }
-    });
-  }
+  };
+  const steps = 24;
+  const arc = Array.from({ length: steps }, (_, i) => {
+    const angle = (Math.PI / 2) * (i / steps);
+    return [y - r + r * Math.cos(angle), z - r + r * Math.sin(angle)];
+  });
+  return [
+    ...line([0, 0], [y, 0]),
+    ...line([y, 0], [y, z - r]),
+    ...arc,
+    ...line([y - r, z], [0, z]),
+    ...line([0, z], [0, 0]),
+  ];
 }
 
 /** Write the block to `file`; returns the number of triangles. */
-export function writeRoundedBlock(file) {
-  const height = BLOCK.size[2];
-  const { top } = BLOCK;
-  const rings = [];
-  for (let z = 0; z < height - top; z += 1) rings.push(ring(0, z));
-  for (let k = 0; k <= ARC_STEPS; k += 1) {
-    const angle = (k / ARC_STEPS) * (Math.PI / 2);
-    rings.push(ring(top * (1 - Math.cos(angle)), height - top + top * Math.sin(angle)));
-  }
+export function writeBlockPart(file) {
+  const [length, depth, height] = BLOCK.size;
+  const loop = profile();
+  const rows = length;
+  const at = (x, [y, z]) => [x, y, z];
   const triangles = [];
-  for (let k = 0; k + 1 < rings.length; k += 1) band(triangles, rings[k], rings[k + 1]);
-  cap(triangles, rings[0], false);
-  cap(triangles, rings[rings.length - 1], true);
-  return writeStl(file, triangles);
-}
-
-/** The block's true volume: the outline times the height, less the top rounding. */
-export function roundedBlockVolume() {
-  const [length, width, height] = BLOCK.size;
-  const { corner, top } = BLOCK;
-  const area = length * width - (4 - Math.PI) * corner * corner;
-  // The rounding removes (1 - pi/4) r^2 along a path through the removed area's centroid,
-  // which lies (10 - 3 pi) / (12 - 3 pi) r inside the walls (Pappus).
-  const inset = (top * (10 - 3 * Math.PI)) / (12 - 3 * Math.PI);
-  const path =
-    2 * (length - 2 * corner) + 2 * (width - 2 * corner) + 2 * Math.PI * (corner - inset);
-  return area * height - (1 - Math.PI / 4) * top * top * path;
+  loop.forEach((a, i) => {
+    const b = loop[(i + 1) % loop.length];
+    for (let k = 0; k < rows; k += 1) {
+      const x0 = (length * k) / rows;
+      const x1 = (length * (k + 1)) / rows;
+      triangles.push([at(x0, a), at(x0, b), at(x1, b)], [at(x0, a), at(x1, b), at(x1, a)]);
+    }
+  });
+  // End caps: fans from the middle of the convex section.
+  const centre = [depth / 2, height / 2];
+  loop.forEach((a, i) => {
+    const b = loop[(i + 1) % loop.length];
+    triangles.push([at(length, centre), at(length, a), at(length, b)]);
+    triangles.push([at(0, centre), at(0, b), at(0, a)]);
+  });
+  return writeBinaryStl(file, triangles, 'Mesh-to-CAD user test block');
 }

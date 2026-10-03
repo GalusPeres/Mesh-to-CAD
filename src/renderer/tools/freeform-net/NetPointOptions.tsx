@@ -22,7 +22,7 @@ interface OptionsProps {
   state: NetEditorState;
 }
 
-/** Snapping, pinning the chosen points and the neighbour toggle. */
+/** Snapping, pinning the chosen points and the neighbour toggle (icons in a toolbar). */
 export function PointOptions({ editor, state }: OptionsProps) {
   const { t } = useTranslation();
   const tool = (name: string) => ({
@@ -31,7 +31,7 @@ export function PointOptions({ editor, state }: OptionsProps) {
   });
   const unpin = state.selected > 0 && state.chosenPinned === state.selected;
   return (
-    <div className={styles.row}>
+    <>
       <IconButton
         icon={Crosshair}
         {...tool('snap')}
@@ -53,7 +53,7 @@ export function PointOptions({ editor, state }: OptionsProps) {
         data-testid="freeform-net-neighbours"
         onClick={() => editor.setDragOptions({ keepNeighbours: !state.keepNeighbours })}
       />
-    </div>
+    </>
   );
 }
 

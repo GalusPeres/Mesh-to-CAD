@@ -15,6 +15,8 @@ import type { DocumentStatus } from '@shared/protocol/generated/document-snapsho
 
 import type { Formatter } from '../i18n/format';
 import type { ObjectRef } from '../state/objectSelectionStore';
+import { shownStatus } from './featureState';
+import { usedFeatures } from './usedConstruction';
 
 export type ProjectNodeIcon =
   | 'scan'
@@ -277,10 +279,9 @@ export function alignmentEditTarget(document: Document): EditTarget {
 
 function historyNode(input: TreeModelInput): ProjectNode {
   const { document, status, t } = input;
+  const used = usedFeatures({ document });
   const features = document.features.map((feature): ProjectNode => {
-    const state: FeatureState = feature.suppressed
-      ? 'suppressed'
-      : (status.features[feature.id]?.state ?? 'ok');
+    const { state } = shownStatus(feature, status.features[feature.id], used);
     const toolId = input.editTools.get(feature.type);
     return {
       id: `feature:${feature.id}`,

@@ -84,6 +84,7 @@ export class NetEditor {
         await this.measureAll();
       },
       record: () => this.recordCurrent(),
+      report: (pushed) => this.update({ pushed }),
     });
     this.pointDrag = new NetPointDrag({
       viewport,
@@ -303,7 +304,7 @@ export class NetEditor {
     if (!this.net) return;
     this.history.push(this.net, [...this.points.pinned]);
     this.syncHistory();
-    this.update({ summary: this.scene.measure.summary(), ...this.points.counts() });
+    this.update({ summary: this.scene.measure.summary(), pushed: null, ...this.points.counts() });
   }
 
   /**
@@ -352,6 +353,7 @@ export class NetEditor {
       controlPoints: surface.controlCount,
       irregular: this.points.irregularCount,
       closed: !map.boundaryEdges.some((flag) => flag !== 0),
+      pushed: null,
       ...this.points.counts(),
     });
     await this.measureAll();

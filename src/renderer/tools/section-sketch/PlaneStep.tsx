@@ -247,6 +247,7 @@ export function PlaneStep(props: PlaneStepProps) {
             <Checkbox
               label={t(`${K}.flip`)}
               checked={section.flip}
+              testId="sketch-flip"
               onChange={(flip) => setSection({ ...section, flip })}
             />
           </>
