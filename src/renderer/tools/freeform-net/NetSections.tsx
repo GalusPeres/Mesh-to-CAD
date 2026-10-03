@@ -2,15 +2,7 @@
 // explanation in the tooltip, numbers instead of sentences. What the pointer does is
 // told in the status bar (freeformNet.status.tsx), not here.
 
-import {
-  Crosshair,
-  Magnet,
-  Palette,
-  RectangleHorizontal,
-  Square,
-  SquarePlus,
-  Waves,
-} from 'lucide-react';
+import { Magnet, Palette, RectangleHorizontal, Square, SquarePlus, Waves } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
@@ -27,6 +19,7 @@ import styles from './FreeformNetPanel.module.css';
 import { HEATMAP_TOLERANCES } from './heatmap';
 import type { NetEditor, NetEditorState } from './netEditor';
 import type { FaceMode } from './netFacePlacement';
+import { PointOptions, StrengthOptions } from './NetPointOptions';
 
 const KEY = 'tools:freeformNet';
 
@@ -127,40 +120,45 @@ export function ToolsSection({ editor, state }: SectionProps) {
           {...tool(`fit.${scope}`)}
           disabled={busy || !state.hasNet}
           data-testid="freeform-net-fit"
-          onClick={() => void editor.fit(false)}
+          onClick={() => void editor.shape.fit(false)}
         />
         <IconButton
           icon={Waves}
           {...tool(`smooth.${scope}`)}
           disabled={busy || !state.hasNet}
           data-testid="freeform-net-smooth"
-          onClick={() => void editor.fit(true)}
+          onClick={() => void editor.shape.fit(true)}
         />
         <IconButton
           icon={Square}
           {...tool('flatten')}
           disabled={busy || state.selected < 3}
           data-testid="freeform-net-flatten"
-          onClick={() => void editor.flatten()}
-        />
-        <span className={styles.separator} aria-hidden />
-        <IconButton
-          icon={Crosshair}
-          {...tool('snap')}
-          pressed={state.snap}
-          data-testid="freeform-net-snap"
-          onClick={() => editor.setSnap(!state.snap)}
+          onClick={() => void editor.shape.flatten()}
         />
       </div>
-      {(state.selected > 0 || state.chosenEdges > 0) && (
-        <p className={styles.facts}>
-          {state.chosenEdges > 0
-            ? t(`${KEY}.chosenEdges`, { count: state.chosenEdges })
-            : t(`${KEY}.chosenPoints`, { count: state.selected })}
-        </p>
-      )}
+      <PointOptions editor={editor} state={state} />
+      <StrengthOptions editor={editor} state={state} />
+      <ChoiceFacts state={state} />
       {fitting && <JobProgress editor={editor} state={state} />}
     </PanelSection>
+  );
+}
+
+/** The choice as one line: chosen edges or points, and the pinned points. */
+function ChoiceFacts({ state }: { state: NetEditorState }) {
+  const { t } = useTranslation();
+  const facts = [
+    state.chosenEdges > 0
+      ? t(`${KEY}.chosenEdges`, { count: state.chosenEdges })
+      : state.selected > 0 && t(`${KEY}.chosenPoints`, { count: state.selected }),
+    state.pinned > 0 && t(`${KEY}.pinnedPoints`, { count: state.pinned }),
+  ].filter(Boolean);
+  if (facts.length === 0) return null;
+  return (
+    <p className={styles.facts} data-testid="freeform-net-choice">
+      {facts.join(' · ')}
+    </p>
   );
 }
 

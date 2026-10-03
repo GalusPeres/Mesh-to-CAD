@@ -24,13 +24,6 @@
   gap: var(--space-6);
 }
 
-.separator {
-  width: 1px;
-  height: var(--control-height);
-  margin: 0 var(--space-4);
-  background: var(--border);
-}
-
 .facts {
   margin: var(--space-6) 0 0;
   color: var(--text-secondary);
@@ -91,4 +84,10 @@
 
 .placing .modeName {
   color: var(--accent-text);
+}
+
+/* An icon naming the control next to it (no button). */
+.icon {
+  display: inline-flex;
+  color: var(--text-secondary);
 }

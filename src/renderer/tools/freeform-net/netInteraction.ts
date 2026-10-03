@@ -128,7 +128,8 @@ export function createNetInteraction(
     const under = picked === null ? picking.edgeAt(at) : null;
     editor.setHover(picked, nearby);
     build.setHoverEdge(under?.edge ?? null);
-    setNetHint(picked !== null ? 'point' : under ? (under.border ? 'border' : 'edge') : 'idle');
+    const point = picked !== null && editor.isPinned(picked) ? 'pinned' : 'point';
+    setNetHint(picked !== null ? point : under ? (under.border ? 'border' : 'edge') : 'idle');
   };
 
   const placeCorner = (at: ScreenPoint) => {
@@ -175,7 +176,7 @@ export function createNetInteraction(
     const delta = { x: at.x - current.start.x, y: at.y - current.start.y };
     if (!current.drag) {
       if (!far(at, current.start, DRAG_THRESHOLD_PX)) return;
-      if (current.duplicate && current.border && build.beginRows(current.edge))
+      if (current.duplicate && current.border && build.beginRows(current.edge, current.start))
         current.drag = 'rows';
       else if (beginEdgePoints(current.edge)) current.drag = 'points';
       else {
@@ -333,7 +334,7 @@ export function createNetInteraction(
         return true;
       }
       if (plain && key === 'q' && editor.getState().selected + editor.getState().chosenEdges > 0) {
-        void editor.smoothChosen();
+        void editor.shape.smoothChosen();
         return true;
       }
       if (plain && key === 's') {

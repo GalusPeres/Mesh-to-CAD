@@ -73,6 +73,17 @@ export class LimitSurface {
     return Uint32Array.from(result);
   }
 
+  /** The control points whose limit positions move when this control point moves. */
+  limitReaders(control: number): number[] {
+    const result: number[] = [];
+    const end = this.readersStart[control + 1] ?? 0;
+    for (let k = this.readersStart[control] ?? 0; k < end; k += 1) {
+      const row = this.readers[k] ?? 0;
+      if (row < this.controlCount) result.push(row);
+    }
+    return result;
+  }
+
   /** Weight of control point i in its own limit position (dense vertex i). */
   ownWeight(control: number): number {
     for (let k = this.rows[control] ?? 0; k < (this.rows[control + 1] ?? 0); k += 1) {

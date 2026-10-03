@@ -23,6 +23,12 @@ Several apps can run side by side (one per agent, each from its own git worktree
 `Mesh-to-CAD-automation-<name>` and the dev server a free port. Start the MCP server or any
 other automation client with the same `M2C_INSTANCE`, and it talks to that app only.
 
+Clients in the repository share `tools/automation/client.mjs` (finding the app, requests).
+The user tests in `tools/usertest/` drive such an app like a user on a synthetic part and
+save screenshots to `test-results/usertest/<name>/`: `M2C_INSTANCE=<name> npm run usertest`
+(or `-- net` for one test). They refuse to run without `M2C_INSTANCE`, because each run
+starts a new project in that app.
+
 The app then listens on `127.0.0.1` with a random port and a random token and writes both
 to `%APPDATA%\Mesh-to-CAD\automation.json`. The file is removed when the app closes or the
 setting is turned off. Requests without the token, and requests from web pages (with an

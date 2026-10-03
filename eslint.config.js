@@ -47,7 +47,7 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
-    files: ['scripts/**', 'tests/**', '**/*.config.ts', '**/*.config.js'],
+    files: ['scripts/**', 'tests/**', 'tools/usertest/**', '**/*.config.ts', '**/*.config.js'],
     rules: { 'no-console': 'off' },
   },
   prettier,

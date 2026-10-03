@@ -52,15 +52,15 @@ is written by `npm run codegen` only.
    `M2C_INSTANCE=<issue> M2C_WINDOW=offscreen M2C_AUTOMATION=1 npm run dev`; automation
    clients (the MCP server, scripts) take the same `M2C_INSTANCE`.
 4. Pull request to `dev` (the integration branch; `main` takes releases) with `Closes #n`.
-   CI does not start by itself yet (#14): `gh workflow run CI --ref <branch>`. Merged when
-   CI is green.
+   CI starts by itself; merged when it is green.
 
 ## Done means
 
 1. `npm run check` is green.
-2. The tool was used in the running app like a user would (automation RPC, a real scan
-   such as the remote control), every step checked by numbers and looked at in
-   screenshots. What looks wrong is fixed before anyone else sees it.
+2. The tool was used in the running app like a user would, every step checked by numbers
+   and looked at in screenshots. `M2C_INSTANCE=<issue> npm run usertest` does that on a
+   synthetic part (`tools/usertest/`, one test per tool; add yours); also try a real scan.
+   What looks wrong is fixed before anyone else sees it.
 3. Committed with `Closes #n`, pushed. No co-author or "generated with" lines.
 
 ## Talking with the user
