@@ -11,73 +11,13 @@
 // same as the application shows.
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+import { automationClient } from '../automation/client.mjs';
 import { registerRecognitionTools } from './recognition.mjs';
-
-const PRODUCT = 'Mesh-to-CAD';
-/**
- * Profiles the app may run with: the user's and the automation profile, or with
- * `M2C_INSTANCE` only that instance's automation profile (several apps side by side).
- */
-const PROFILES = process.env.M2C_INSTANCE
-  ? [`${PRODUCT}-automation-${process.env.M2C_INSTANCE.replace(/[^\w-]/g, '')}`]
-  : [PRODUCT, `${PRODUCT}-automation`];
-
-/**
- * Where the app may have published automation.json. Besides %APPDATA%, apps that
- * run inside an MSIX package (such as the Claude desktop app, which may also have
- * started Mesh-to-CAD) see a per-package copy of AppData.
- */
-function infoCandidates() {
-  if (process.env.M2C_AUTOMATION_INFO) return [process.env.M2C_AUTOMATION_INFO];
-  const home = os.homedir();
-  const appData = process.env.APPDATA ?? path.join(home, 'AppData', 'Roaming');
-  const localAppData = process.env.LOCALAPPDATA ?? path.join(home, 'AppData', 'Local');
-  const candidates = PROFILES.map((profile) => path.join(appData, profile, 'automation.json'));
-  const packages = path.join(localAppData, 'Packages');
-  if (existsSync(packages)) {
-    for (const name of readdirSync(packages)) {
-      for (const profile of PROFILES) {
-        candidates.push(
-          path.join(packages, name, 'LocalCache', 'Roaming', profile, 'automation.json'),
-        );
-      }
-    }
-  }
-  return candidates;
-}
-
-function processAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Port and token of the running app: the newest automation.json whose process is alive. */
-function connection() {
-  const live = infoCandidates()
-    .filter((file) => existsSync(file))
-    .map((file) => ({ info: JSON.parse(readFileSync(file, 'utf8')), time: statSync(file).mtimeMs }))
-    .filter(({ info }) => processAlive(info.pid))
-    .sort((a, b) => b.time - a.time);
-  if (live.length === 0) {
-    throw new Error(
-      `${PRODUCT} is not reachable. Start the app and enable "Steuerung durch KI-Assistenten ` +
-        `erlauben (MCP)" in Datei > Einstellungen > Automatisierung.`,
-    );
-  }
-  return live[0].info;
-}
 
 /**
  * The abort signal of the running tool call. When the client gives up (its request
@@ -85,29 +25,7 @@ function connection() {
  * instead of letting it block every later edit.
  */
 const callSignal = new AsyncLocalStorage();
-
-/** One request to the application's automation interface. */
-async function rpc(method, params = {}) {
-  const { port, token } = connection();
-  const response = await fetch(`http://127.0.0.1:${port}/rpc`, {
-    method: 'POST',
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ method, params }),
-    signal: callSignal.getStore(),
-  });
-  const body = await response.json();
-  if (!body.ok) throw new Error(body.error ?? `request failed (${response.status})`);
-  return body.result;
-}
-
-/** A kernel method; kernel errors become exceptions with their code and parameters. */
-async function kernel(method, params = {}, lane) {
-  const answer = await rpc('kernel.call', { method, params, lane });
-  if (!answer.ok) throw new Error(`${method}: ${JSON.stringify(answer.error)}`);
-  return answer.result;
-}
-
-const ui = (action) => rpc('ui', { action });
+const { rpc, kernel, ui } = automationClient(() => callSignal.getStore());
 const uint32 = (values) => ({ $typed: 'uint32', values });
 
 async function applyOps(ops, label) {
