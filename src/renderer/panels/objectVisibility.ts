@@ -2,9 +2,7 @@
 //
 // The scan is shown or hidden through viewStore.visibility, the same switch that
 // Space cycles, so both stay consistent. Single bodies and feature items (fitted
-// shapes, sketches) are hidden through `Viewport.setHiddenObjects`; that member is
-// an open interface request (.work/interface-requests/T9.md), so the tree only offers
-// hiding them when the mounted viewport provides it.
+// shapes, sketches, loft sections) are hidden through `Viewport.setHiddenObjects`.
 
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
@@ -13,26 +11,9 @@ import type { DocumentSnapshot } from '@shared/protocol/generated/document-snaps
 
 import type { ObjectRef } from '../state/objectSelectionStore';
 import { setVisibility, viewStore, type Visibility } from '../state/viewStore';
-import { getViewport, type Viewport } from '../viewport/api';
+import type { HiddenObjects, Viewport } from '../viewport/api';
 
-/**
- * Objects the viewport leaves out. A body item is hidden by its body id, any other
- * item (construction, sketch) by its owner feature.
- */
-export interface HiddenObjects {
-  bodies: readonly string[];
-  owners: readonly string[];
-}
-
-interface ObjectHiding {
-  setHiddenObjects(hidden: HiddenObjects): void;
-}
-
-export function supportsObjectHiding(
-  viewport: Viewport | null,
-): viewport is Viewport & ObjectHiding {
-  return typeof (viewport as Partial<ObjectHiding> | null)?.setHiddenObjects === 'function';
-}
+export type { HiddenObjects };
 
 export const EMPTY_HIDDEN: HiddenObjects = { bodies: [], owners: [] };
 
@@ -42,10 +23,9 @@ export function useHiddenObjects<T>(selector: (state: HiddenObjects) => T): T {
   return useStore(objectVisibilityStore, selector);
 }
 
-/** Whether the tree can hide this kind of object in the current viewport. */
-export function canHide(ref: ObjectRef, viewport: Viewport | null = getViewport()): boolean {
-  if (ref.kind === 'scan') return true;
-  return (ref.kind === 'body' || ref.kind === 'feature') && supportsObjectHiding(viewport);
+/** Whether the tree can hide this kind of object. */
+export function canHide(ref: ObjectRef): boolean {
+  return ref.kind === 'scan' || ref.kind === 'body' || ref.kind === 'feature';
 }
 
 export function isHidden(ref: ObjectRef, hidden: HiddenObjects, visibility: Visibility): boolean {
@@ -131,8 +111,7 @@ export function somethingHidden(hidden: HiddenObjects, visibility: Visibility): 
 }
 
 /** Forward the hidden lists to the viewport whenever they or the viewport change. */
-export function connectObjectVisibility(viewport: Viewport | null): () => void {
-  if (!supportsObjectHiding(viewport)) return () => undefined;
+export function connectObjectVisibility(viewport: Viewport): () => void {
   viewport.setHiddenObjects(objectVisibilityStore.getState());
   return objectVisibilityStore.subscribe((hidden) => viewport.setHiddenObjects(hidden));
 }
