@@ -199,6 +199,19 @@ def _vec3(values: np.ndarray) -> Vec3:
     return float(values[0]), float(values[1]), float(values[2])
 
 
+def _label_point(head: np.ndarray, holds_features: bool) -> np.ndarray:
+    """Where a feature's label goes: the centre of its top.
+
+    A feature holding others (a recess around a button) has it on its rim, farthest
+    from the centre, which the labels of the features inside take.
+    """
+    centre: np.ndarray = head.mean(axis=0)
+    if not holds_features:
+        return centre
+    rim: np.ndarray = head[np.argmax(np.linalg.norm(head - centre, axis=1))]
+    return rim
+
+
 def _result(recognition: Recognition) -> RecognizeResult:
     groups: dict[tuple[object, ...], int] = {}
     features: list[RecognizedFeature] = []
@@ -233,7 +246,7 @@ def _result(recognition: Recognition) -> RecognizeResult:
                 rms=float(outline.rms),
                 parent=relief.parent,
                 group=group,
-                label=_vec3(head.mean(axis=0)),
+                label=_vec3(_label_point(head, bool(relief.children))),
             )
         )
     sizes = [len(ring) for ring in rings]

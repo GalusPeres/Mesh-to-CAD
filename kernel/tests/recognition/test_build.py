@@ -165,7 +165,11 @@ def test_recognised_features_build_the_part_on_a_plate(session: Session, job: Jo
     )
 
     found = recognize_run(job, RecognizeParams(scan_key="scan:panel"))
-    chosen = [i for i, feature in enumerate(found.features) if feature.shape != "profile"]
+    # The recess's label sits on its rim, clear of the button inside it.
+    inner = next(f for f in found.features if f.parent is not None)
+    recess = found.features[inner.parent or 0]
+    assert np.hypot(*np.subtract(recess.label, inner.label)[:2]) == pytest.approx(6.0, abs=0.3)
+    chosen = list(range(len(found.features)))
     built = recognize_build(
         job,
         BuildParams(
