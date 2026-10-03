@@ -1,15 +1,17 @@
 """How a new solid combines with the existing bodies (`operation`, `targetBody`).
 
 `newBody` adds a body whose id is the feature id (ARCHITECTURE.md 4.4); `add`,
-`cut` and `intersect` change the target body, which keeps its id.
+`cut` and `intersect` change the target body, which keeps its id. A feature may
+create several islands (separate profiles): a new body must be one solid, while
+`add`, `cut` and `intersect` take all islands at once.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Literal
 
-from m2c_kernel.cad.booleans import boolean
+from m2c_kernel.cad.booleans import boolean, fuse_all
 from m2c_kernel.codes.cad import ErrorCode
 from m2c_kernel.document.results import Body, BodyUpdate, FeatureOutput
 from m2c_kernel.protocol.errors import KernelError
@@ -28,12 +30,13 @@ def solid_output(
     feature_id: str,
     operation: BodyOperation,
     target_body: str | None,
-    created: Body,
+    created: Body | Sequence[Body],
     body_of: Callable[[str], Body],
 ) -> FeatureOutput:
-    """Feature output for a created solid under `operation`."""
+    """Feature output for a created solid (or its islands) under `operation`."""
+    islands = [created] if isinstance(created, Body) else list(created)
     target_id = require_target(operation, target_body)
     if target_id is None or operation == "newBody":
-        return FeatureOutput(bodies=BodyUpdate(changed={feature_id: created}))
-    result = boolean(operation, body_of(target_id), [created])
+        return FeatureOutput(bodies=BodyUpdate(changed={feature_id: fuse_all(islands)}))
+    result = boolean(operation, body_of(target_id), islands)
     return FeatureOutput(bodies=BodyUpdate(changed={target_id: result.body}), issues=result.issues)

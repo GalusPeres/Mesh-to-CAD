@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from m2c_kernel.cad.operations import solid_output
 from m2c_kernel.cad.profiles import sketch_line, sketch_profiles
 from m2c_kernel.cad.references import reference_axis
-from m2c_kernel.cad.solids import revolve
+from m2c_kernel.cad.solids import revolve_islands
 from m2c_kernel.codes.cad import ProgressStage
 from m2c_kernel.features.common import BodyOperation, StandardAxis, feature_refs
 from m2c_kernel.features.registry import Refs, feature_type
@@ -77,9 +77,9 @@ class Revolve:
             case GlobalAxis(axis=axis):
                 point, direction = reference_axis(axis, ctx.construction)
         with ctx.job.native(ProgressStage.MODELLING):
-            body = revolve(
+            islands = revolve_islands(
                 profiles, sketch.frame, point, direction, params.angle_deg, ctx.feature_id
             )
             return solid_output(
-                ctx.feature_id, params.operation, params.target_body, body, ctx.body
+                ctx.feature_id, params.operation, params.target_body, islands, ctx.body
             )

@@ -156,6 +156,34 @@ def test_extrude_operations_change_the_target_body(session: Session, job: JobCon
     assert _error(result, "f6") == ("cad.targetRequired", {"operation": "add"})
 
 
+def test_separate_profiles_join_and_cut_the_target_together(
+    session: Session, job: JobContext
+) -> None:
+    # Two buttons on the plate and two holes through it, one feature each.
+    pair = feature("f3", "testSketch", rects=[rect("a", 5, 5, 5, 5), rect("b", 25, 5, 5, 5)])
+    holes = feature("f5", "testSketch", rects=[rect("c", 12, 12, 2, 2), rect("d", 30, 12, 2, 2)])
+    doc = document(
+        _plate_sketch(),
+        _extrude("f2"),
+        pair,
+        _extrude(
+            "f4",
+            sketch="f3",
+            extent={"type": "distance", "forward": 12.0, "backward": 1.0},
+            operation="add",
+            target_body="f2",
+        ),
+        holes,
+        _extrude("f6", sketch="f5", operation="cut", target_body="f2"),
+    )
+    result = _run(session, job, doc)
+    assert result.statuses["f4"].state == "ok"
+    assert result.statuses["f6"].state == "ok"
+    assert result.body_checks["f2"].solids == 1
+    # Each button stands 2 above and 1 below the plate (z = -1..12); the holes go through.
+    assert _volume(result, "f2") == pytest.approx(8000 + 2 * 25 * 3 - 2 * 4 * 10, abs=EXACT)
+
+
 def test_extrude_intersect_keeps_the_common_part(session: Session, job: JobContext) -> None:
     cross = feature("f3", "testSketch", rects=[rect("c", 30, -5, 20, 30)])
     doc = document(

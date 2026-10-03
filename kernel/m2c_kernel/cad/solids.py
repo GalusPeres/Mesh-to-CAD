@@ -8,6 +8,10 @@ Every function returns a `Body` whose faces carry tags (`cad/tags.py`):
 | revolve   | `<tag>:rev:<edge name>`; `<tag>:cap:start/end` below 360 degrees  |
 | primitive | `<tag>:surface`; cylinders and cones also `<tag>:cap:start/end`   |
 
+Separate profiles give separate islands. The `*_islands` functions return one solid
+per profile, so a feature can add or cut all of them at once (two buttons, two
+holes); the plain functions fuse them into one body and fail if they stay apart.
+
 The rebuild checks every result with `cad.check.check_solid`. Methods and
 measured volumes: `.work/research/algorithms-cad.md` 2.1-2.3.
 """
@@ -19,7 +23,7 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from m2c_kernel.cad.booleans import boolean
+from m2c_kernel.cad.booleans import boolean, fuse_all
 from m2c_kernel.cad.occ_compat import (
     BRepAdaptor_Surface,
     BRepBuilderAPI_Transform,
@@ -62,14 +66,6 @@ def _translated(shape: TopoDS_Shape, offset: FloatArray) -> TopoDS_Shape:
     return BRepBuilderAPI_Transform(shape, move, True).Shape()
 
 
-def _fuse_all(bodies: list[Body]) -> Body:
-    """Several profiles give one body; separate islands are an error (one solid per body)."""
-    result = bodies[0]
-    for body in bodies[1:]:
-        result = boolean("add", result, [body]).body
-    return result
-
-
 # --- Extrude -------------------------------------------------------------------------------
 
 
@@ -77,6 +73,13 @@ def extrude(
     profiles: Sequence[Profile], direction: FloatArray, forward: float, backward: float, tag: str
 ) -> Body:
     """Extrude planar profiles `forward` along `direction` and `backward` against it."""
+    return fuse_all(extrude_islands(profiles, direction, forward, backward, tag))
+
+
+def extrude_islands(
+    profiles: Sequence[Profile], direction: FloatArray, forward: float, backward: float, tag: str
+) -> list[Body]:
+    """`extrude`, one solid per profile."""
     unit_direction = unit(direction)
     length = forward + backward
     if length <= _LENGTH_EPSILON_MM:
@@ -96,7 +99,7 @@ def extrude(
         for edge, name in zip(profile_edges(face), profile.edge_names, strict=True):
             collector.set_all(maker.Generated(edge), f"{tag}:side:{name}")
         bodies.append(collector.body())
-    return _fuse_all(bodies)
+    return bodies
 
 
 def extrude_to_plane(
@@ -106,6 +109,17 @@ def extrude_to_plane(
     plane_normal: FloatArray,
     tag: str,
 ) -> Body:
+    """Extrude until the plane (`extrude_to_plane_islands`), one body."""
+    return fuse_all(extrude_to_plane_islands(profiles, direction, plane_origin, plane_normal, tag))
+
+
+def extrude_to_plane_islands(
+    profiles: Sequence[Profile],
+    direction: FloatArray,
+    plane_origin: FloatArray,
+    plane_normal: FloatArray,
+    tag: str,
+) -> list[Body]:
     """Extrude until the plane: over-extrude, then keep the half-space on the profile side.
 
     The face on the plane is tagged `<tag>:cap:end`, like the end of a distance extrusion.
@@ -120,11 +134,11 @@ def extrude_to_plane(
     if reach.max() <= _LENGTH_EPSILON_MM:
         raise KernelError(ErrorCode.PLANE_BEHIND)
     size = float(np.linalg.norm(points.max(axis=0) - points.min(axis=0)))
-    overshoot = extrude(profiles, unit_direction, float(reach.max()) + size + 1.0, 0.0, tag)
+    overshoot = extrude_islands(profiles, unit_direction, float(reach.max()) + size + 1.0, 0.0, tag)
     # The kept side is the one the extrusion comes from.
     keep_normal = -normal if along > 0 else normal
     limit = half_space(np.asarray(plane_origin), keep_normal, f"{tag}:cap:end")
-    return boolean("intersect", overshoot, [limit]).body
+    return [boolean("intersect", island, [limit]).body for island in overshoot]
 
 
 # --- Revolve -------------------------------------------------------------------------------
@@ -139,6 +153,18 @@ def revolve(
     tag: str,
 ) -> Body:
     """Revolve planar profiles about an axis in their plane, counter-clockwise about it."""
+    return fuse_all(revolve_islands(profiles, frame, axis_point, axis_direction, angle_deg, tag))
+
+
+def revolve_islands(
+    profiles: Sequence[Profile],
+    frame: PlaneFrame,
+    axis_point: FloatArray,
+    axis_direction: FloatArray,
+    angle_deg: float,
+    tag: str,
+) -> list[Body]:
+    """`revolve`, one solid per profile."""
     if angle_deg <= 1e-6:
         raise KernelError(ErrorCode.ZERO_LENGTH)
     point, direction = _axis_in_plane(frame, axis_point, axis_direction)
@@ -170,7 +196,7 @@ def revolve(
             collector.set_all(maker.Generated(edge), f"{tag}:rev:{name}")
         _tag_swept_faces(collector, edges, frame, point, direction, tag)
         bodies.append(collector.body())
-    return _fuse_all(bodies)
+    return bodies
 
 
 def _tag_swept_faces(

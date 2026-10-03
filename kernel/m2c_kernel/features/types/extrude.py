@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from m2c_kernel.cad.operations import solid_output
 from m2c_kernel.cad.profiles import sketch_profiles
 from m2c_kernel.cad.references import reference_plane
-from m2c_kernel.cad.solids import extrude, extrude_to_plane
+from m2c_kernel.cad.solids import extrude_islands, extrude_to_plane_islands
 from m2c_kernel.codes.cad import ErrorCode, ProgressStage
 from m2c_kernel.features.common import BodyOperation, feature_refs
 from m2c_kernel.features.registry import Refs, feature_type
@@ -74,18 +74,20 @@ class Extrude:
         normal = sketch.frame.normal if params.direction != "reversed" else -sketch.frame.normal
         extent = params.extent
         with ctx.job.native(ProgressStage.MODELLING):
-            body: Body
+            islands: list[Body]
             if isinstance(extent, DistanceExtent):
                 forward, backward = extent.forward, extent.backward
                 if params.direction == "symmetric":
                     forward = backward = extent.forward / 2
-                body = extrude(profiles, normal, forward, backward, ctx.feature_id)
+                islands = extrude_islands(profiles, normal, forward, backward, ctx.feature_id)
             else:
                 if params.direction == "symmetric":
                     raise KernelError(ErrorCode.SYMMETRIC_TO_PLANE)
                 origin, plane_normal = reference_plane(extent.feature, ctx.construction)
                 shifted = origin + plane_normal * extent.offset
-                body = extrude_to_plane(profiles, normal, shifted, plane_normal, ctx.feature_id)
+                islands = extrude_to_plane_islands(
+                    profiles, normal, shifted, plane_normal, ctx.feature_id
+                )
             return solid_output(
-                ctx.feature_id, params.operation, params.target_body, body, ctx.body
+                ctx.feature_id, params.operation, params.target_body, islands, ctx.body
             )

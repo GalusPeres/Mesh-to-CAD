@@ -13,6 +13,7 @@ the history (`cad/tags.py`).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -98,6 +99,14 @@ def boolean(kind: BooleanKind, target: Body, tools: list[Body]) -> BooleanResult
         collector.fill_by_proximity(sources)
         return BooleanResult(collector.body())
     return BooleanResult(_tagged(raw, None, sources), (Issue(IssueCode.SPLIT_FACES_KEPT),))
+
+
+def fuse_all(bodies: Sequence[Body]) -> Body:
+    """Islands made by one feature as one body; islands that stay apart are an error."""
+    result = bodies[0]
+    for body in bodies[1:]:
+        result = boolean("add", result, [body]).body
+    return result
 
 
 def _check_effect(kind: BooleanKind, target: Body, result: TopoDS_Shape) -> None:
