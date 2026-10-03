@@ -18,7 +18,11 @@ function DiscardDialog() {
       }}
       footer={
         <>
-          <Button variant="primary" onClick={() => question?.answer(true)}>
+          <Button
+            variant="primary"
+            data-testid="discard-confirm"
+            onClick={() => question?.answer(true)}
+          >
             {t('discardDraft.discard')}
           </Button>
           <Button onClick={() => question?.answer(false)}>{t('common:actions.cancel')}</Button>

@@ -72,6 +72,12 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
+  /** The window's state: revision, open tool, selection, what is shown, the heatmap. */
+  const state = () => ui({ type: 'state' });
+
+  /** Select scan triangles like a selection tool (an empty list clears the selection). */
+  const select = (faces) => ui({ type: 'selectFaces', faces: Array.from(faces) });
+
   /** What the pointer finds at a screen point: scan, body, edge or item. */
   const pick = (screen) => ui({ type: 'pick', x: screen.x, y: screen.y });
 
@@ -123,6 +129,8 @@ export function createDriver(client, out) {
     press,
     command,
     toolInfo,
+    state,
+    select,
     pick,
     settle,
     until,
