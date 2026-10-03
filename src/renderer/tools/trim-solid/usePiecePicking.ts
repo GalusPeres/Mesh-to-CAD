@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import type { PieceChoice } from '@shared/protocol/generated/feature-trim-solid';
 
-import { getViewport } from '../../viewport/api';
+import { type PickHit, getViewport } from '../../viewport/api';
 import { setTrimHint } from './trimSession';
 
 /** Whose preview the clicks act on: the trim's result body and its feature (ghosts). */
@@ -28,16 +28,22 @@ export function usePiecePicking(
   useEffect(() => {
     const viewport = getViewport();
     if (!viewport) return;
+    // The nearest hit first; a coplanar plane or the input net in front of the result
+    // must not swallow the click, so then the body and the ghosts are asked alone.
     const choiceAt = (screen: { x: number; y: number }): PieceChoice | null => {
-      const hit = viewport.pick(screen, { kinds: ['body', 'item'] });
       const { body, feature } = latest.current.targets;
-      if (hit?.kind === 'body' && body && hit.bodyId === body) {
-        return { point: [...hit.point], keep: false };
-      }
-      if (hit?.kind === 'item' && feature && hit.owner === feature) {
-        return { point: [...hit.point], keep: true };
-      }
-      return null;
+      const own = (hit: PickHit | null): PieceChoice | null => {
+        if (hit?.kind === 'body' && body && hit.bodyId === body)
+          return { point: [...hit.point], keep: false };
+        if (hit?.kind === 'item' && feature && hit.owner === feature)
+          return { point: [...hit.point], keep: true };
+        return null;
+      };
+      return (
+        own(viewport.pick(screen, { kinds: ['body', 'item'] })) ??
+        own(viewport.pick(screen, { kinds: ['body'] })) ??
+        own(viewport.pick(screen, { kinds: ['item'] }))
+      );
     };
     setTrimHint('pick');
     const remove = viewport.addInteraction({

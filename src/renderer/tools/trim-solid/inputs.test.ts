@@ -23,9 +23,7 @@ function snapshot(
       })),
     },
     status: {
-      features: Object.fromEntries(
-        features.map(({ id, state }) => [id, { state: state ?? 'ok' }]),
-      ),
+      features: Object.fromEntries(features.map(({ id, state }) => [id, { state: state ?? 'ok' }])),
       bodies: bodies.map((id) => ({ id })),
     },
   } as never;

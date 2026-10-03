@@ -26,6 +26,7 @@ import {
   trimCandidates,
 } from './inputs';
 import { usePiecePicking } from './usePiecePicking';
+import { useTrimAutomation } from './useTrimAutomation';
 
 const KEY = 'tools:trimSolid';
 const KINDS: readonly InputKind[] = ['surfaces', 'planes', 'bodies'];
@@ -79,8 +80,15 @@ export function TrimSolidPanel({ editTarget, close }: ToolPanelProps) {
   usePiecePicking({ body: inputs.bodies[0] ?? featureId, feature: featureId }, (choice) =>
     setPieces((current) => [...current, choice]),
   );
+  useTrimAutomation({ inputs, pieces, preview, canCommit: previewOk });
 
   const stats = preview.status === 'ok' ? preview.result.status?.stats : undefined;
+  const failed = preview.status === 'ok' ? preview.result.status?.error?.code : undefined;
+  const piecesText = () => {
+    if (failed === 'cad.noPieceKept') return t(`${KEY}.noneKept`);
+    if (stats?.pieces == null) return t(`${KEY}.noPieces`);
+    return t(`${KEY}.kept`, { count: stats.pieces, kept: stats.kept ?? 0 });
+  };
   const label = (kind: InputKind, id: string) => {
     if (kind === 'bodies') {
       const body = bodyNumbers.get(id);
@@ -120,9 +128,7 @@ export function TrimSolidPanel({ editTarget, close }: ToolPanelProps) {
       <PanelSection title={t(`${KEY}.pieces`)}>
         <div className={styles.row}>
           <span className={styles.facts} data-testid="trim-solid-pieces">
-            {stats?.pieces != null
-              ? t(`${KEY}.kept`, { count: stats.pieces, kept: stats.kept ?? 0 })
-              : t(`${KEY}.noPieces`)}
+            {piecesText()}
           </span>
           <IconButton
             icon={RotateCcw}

@@ -125,6 +125,8 @@ export function ToolsSection({ editor, state }: SectionProps) {
       <div className={styles.toolbar}>
         <FaceButton editor={editor} state={state} mode="quad" />
         <FaceButton editor={editor} state={state} mode="rectangle" />
+      </div>
+      <div className={styles.icons}>
         <IconButton
           icon={Magnet}
           {...tool(`fit.${scope}`)}
@@ -147,8 +149,9 @@ export function ToolsSection({ editor, state }: SectionProps) {
           onClick={() => void editor.shape.flatten()}
         />
         <PushButton editor={editor} state={state} />
+        <span className={styles.separator} aria-hidden />
+        <PointOptions editor={editor} state={state} />
       </div>
-      <PointOptions editor={editor} state={state} />
       <StrengthOptions editor={editor} state={state} />
       <ChoiceFacts state={state} />
       {fitting && <JobProgress editor={editor} state={state} />}
@@ -166,7 +169,7 @@ function ChoiceFacts({ state }: { state: NetEditorState }) {
     state.pinned > 0 && t(`${KEY}.pinnedPoints`, { count: state.pinned }),
     state.pushed &&
       (state.pushed.moved > 0
-        ? t(`${KEY}.pushed`, { count: state.pushed.moved, faces: state.pushed.faces })
+        ? `${t(`${KEY}.pushed`, { count: state.pushed.moved })} · ${t(`${KEY}.pushedFaces`, { count: state.pushed.faces })}`
         : t(`${KEY}.nothingPushed`)),
   ].filter(Boolean);
   if (facts.length === 0) return null;

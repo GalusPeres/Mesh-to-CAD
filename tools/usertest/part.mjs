@@ -1,7 +1,7 @@
 // The synthetic part the user tests run on: a plate with a round boss, written as a
 // binary STL with about 1 mm triangles, so every position is known in advance.
 
-import { writeFileSync } from 'node:fs';
+import { writeBinaryStl } from './stl.mjs';
 
 /** Where things are on the part, in millimetres (the part is not aligned or moved). */
 export const PART = {
@@ -61,13 +61,5 @@ export function writeTestPart(file) {
   grid(triangles, [0, 0, 0], [0, 0, z], [0, y, 0], z, y);
   grid(triangles, [x, 0, 0], [0, y, 0], [0, 0, z], y, z);
   boss(triangles);
-  const buffer = Buffer.alloc(84 + triangles.length * 50);
-  buffer.write('Mesh-to-CAD user test part', 0, 'ascii');
-  buffer.writeUInt32LE(triangles.length, 80);
-  triangles.forEach((triangle, index) => {
-    const offset = 84 + index * 50 + 12;
-    triangle.flat().forEach((value, k) => buffer.writeFloatLE(value, offset + k * 4));
-  });
-  writeFileSync(file, buffer);
-  return triangles.length;
+  return writeBinaryStl(file, triangles, 'Mesh-to-CAD user test part');
 }

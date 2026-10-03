@@ -6,6 +6,7 @@
   "kept_one": "{{kept}} von {{count}} Stück behalten",
   "kept_other": "{{kept}} von {{count}} Stücken behalten",
   "noPieces": "Noch keine Stücke",
+  "noneKept": "Kein Stück behalten",
   "automatic": {
     "label": "Automatisch",
     "description": "Wieder die Stücke im Scan behalten; die Klicks entfallen."

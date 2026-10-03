@@ -6,6 +6,7 @@
   "kept_one": "{{kept}} of {{count}} piece kept",
   "kept_other": "{{kept}} of {{count}} pieces kept",
   "noPieces": "No pieces yet",
+  "noneKept": "No piece kept",
   "automatic": {
     "label": "Automatic",
     "description": "Keep the pieces inside the scan again; the clicks are dropped."
