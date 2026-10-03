@@ -1,16 +1,17 @@
 """Shape recognition: the base planes of the scan and the features on them.
 
 `recognize.run` reads the aligned scan like a designer (`recognition/api.py`): flat
-faces, and on them buttons, bosses, pockets, recesses and holes with fitted outlines
-and design intent. Scans up to `FULL_DETAIL_FACES` are read as they are (a reduced
-copy loses small buttons and makes flat tops look domed); larger ones from the
-reduced copy the segmentation also uses. The result carries the outlines in part
-coordinates for the viewport (a ring at the foot and one at the top of every
-feature) and the numbers for the panel and for automation clients.
+faces, and on them buttons, bosses, pockets, recesses and holes with outlines of
+lines and arcs, named by a template where one fits, and design intent. Scans up to
+`FULL_DETAIL_FACES` are read as they are (a reduced copy loses small buttons and makes
+flat tops look domed); larger ones from the reduced copy the segmentation also uses.
+The result carries the outlines in part coordinates for the viewport (their lines and
+arcs at the foot and at the top of every feature) and the numbers for the panel and
+for automation clients.
 
-`recognize.build` turns chosen features of the last recognition into editable
-features (`recognition/build.py`): a plane, sketches and extrusions, added to a body
-or as new bodies, in one undoable step.
+`recognize.build` turns chosen features of the last recognition, free profiles
+included, into editable features (`recognition/build.py`): a plane, sketches and
+extrusions, added to a body or as new bodies, in one undoable step.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from m2c_kernel.protocol.registry import command
 from m2c_kernel.protocol.wire import F32Array, RawObject, U32Array
 from m2c_kernel.recognition.api import Recognition, recognize
 from m2c_kernel.recognition.build import plan_features, plane_faces
-from m2c_kernel.recognition.outline import ShapeKind
+from m2c_kernel.recognition.shapes import ShapeKind
 from m2c_kernel.segmentation.lod import LEVELS_OF_DETAIL
 from m2c_kernel.session.jobs import JobContext
 
@@ -59,7 +60,9 @@ class RecognizedFeature:
     plane: int
     kind: Literal["boss", "pocket"]
     shape: ShapeKind
+    """The template that names the outline; "profile": free lines and arcs."""
     params: dict[str, float]
+    """The template's parameters; a free profile's centre and extent (width, height)."""
     level: float
     """Height of the plane the feature stands on, above its base plane."""
     height: float
@@ -139,7 +142,7 @@ class BuildResult:
     added: list[str]
     """Ids of the added features."""
     skipped: list[int]
-    """Chosen features that were not built (free profiles; pockets without a body)."""
+    """Chosen features that were not built (pockets and holes without a body)."""
 
 
 @command("recognize.build", lane=True, exclusive=True)
@@ -196,6 +199,19 @@ def _vec3(values: np.ndarray) -> Vec3:
     return float(values[0]), float(values[1]), float(values[2])
 
 
+def _label_point(head: np.ndarray, holds_features: bool) -> np.ndarray:
+    """Where a feature's label goes: the centre of its top.
+
+    A feature holding others (a recess around a button) has it on its rim, farthest
+    from the centre, which the labels of the features inside take.
+    """
+    centre: np.ndarray = head.mean(axis=0)
+    if not holds_features:
+        return centre
+    rim: np.ndarray = head[np.argmax(np.linalg.norm(head - centre, axis=1))]
+    return rim
+
+
 def _result(recognition: Recognition) -> RecognizeResult:
     groups: dict[tuple[object, ...], int] = {}
     features: list[RecognizedFeature] = []
@@ -230,7 +246,7 @@ def _result(recognition: Recognition) -> RecognizeResult:
                 rms=float(outline.rms),
                 parent=relief.parent,
                 group=group,
-                label=_vec3(head.mean(axis=0)),
+                label=_vec3(_label_point(head, bool(relief.children))),
             )
         )
     sizes = [len(ring) for ring in rings]

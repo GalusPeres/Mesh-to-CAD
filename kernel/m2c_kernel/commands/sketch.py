@@ -29,7 +29,7 @@ from m2c_kernel.sketch.api import (
     fit_tolerance,
     section_geometry,
 )
-from m2c_kernel.sketch.autofit import section_noise, suggested_tolerance
+from m2c_kernel.sketch.noise import section_noise, suggested_tolerance
 from m2c_kernel.sketch.params import SketchParams, SketchSection
 from m2c_kernel.sketch.section import Section
 

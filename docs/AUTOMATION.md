@@ -74,7 +74,7 @@ test uses this).
 | `apply_ops`                    | Apply document operations as one undoable step                                                   |
 | `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                        |
 | `list_commands`, `run_command` | Run app commands: views, undo, tools                                                             |
-| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, with fitted outlines                |
+| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, outlines of lines and arcs          |
 | `build_shapes`                 | Build recognised shapes as plane, sketches and extrusions, joined to or cut from a body          |
 | `click`                        | Click a control by its `data-testid` or a button by its label or aria-label                      |
 | `press_key`                    | Press a key: Escape, Enter, tool shortcuts                                                       |
