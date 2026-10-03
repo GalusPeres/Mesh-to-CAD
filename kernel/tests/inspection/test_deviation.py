@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 
 import numpy as np
@@ -28,6 +27,7 @@ from m2c_kernel.inspection.api import (
 from m2c_kernel.inspection.distance import closest_on_triangles
 from m2c_kernel.session.jobs import JobContext
 from tests.inspection.scene import NoisyScan, _block_shape, noisy_block
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -174,8 +174,8 @@ def test_preview_summary_is_fast_and_consistent(scan: NoisyScan) -> None:
     start = time.perf_counter()
     stats, points = deviation_summary(scan.vertices, [body], TOLERANCE, 2.0, rng)
     elapsed = time.perf_counter() - start
-    # Interactive budget: one second here; shared CI runners are about twice as slow.
-    assert elapsed < (2.0 if os.environ.get("CI") else 1.0)
+    # Interactive budget: one second.
+    assert elapsed < budget(1.0)
     assert points == 50_000
     assert stats.count == points
     assert stats.std == pytest.approx(np.std(scan.offset), abs=0.003)

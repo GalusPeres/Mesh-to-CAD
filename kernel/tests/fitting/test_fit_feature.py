@@ -26,6 +26,7 @@ from m2c_kernel.protocol.wire import RawObject, to_json
 from m2c_kernel.session.jobs import JobContext
 from m2c_kernel.session.session import Session
 from tests.fitting.helpers import combine, noisy_patch, scan_document
+from tests.timing import budget
 
 
 def fit_input(faces: np.ndarray, **params: Any) -> RawObject:
@@ -226,7 +227,7 @@ def test_fit_preview_of_100k_faces_takes_less_than_300_ms(
         timings.append(time.perf_counter() - start)
     assert isinstance(result.primitive, Cylinder)
     assert result.primitive.radius == 20.0
-    assert min(timings) < 0.3, timings
+    assert min(timings) < budget(0.3), timings
 
 
 def test_fixed_values_outside_their_range_are_rejected(session: Session, job: JobContext) -> None:

@@ -16,6 +16,7 @@ from m2c_kernel.session.jobs import JobContext
 from m2c_kernel.session.session import Session
 from tests.features.helpers import document, feature, rect, scan_of, upstream_test_types
 from tests.synthetic import add_scanner_noise, primitive_patch
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -511,4 +512,4 @@ def test_twenty_feature_history_rebuilds_within_a_second(session: Session, job: 
     elapsed = time.perf_counter() - started
     assert all(status.state == "ok" for status in changed.statuses.values())
     assert _volume(changed, "f2") == pytest.approx(30 * 20 * 12 - 9 * 1.5 * 1.5 * 12, abs=EXACT)
-    assert elapsed < 1.0
+    assert elapsed < budget(1.0)

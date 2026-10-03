@@ -17,6 +17,7 @@ from m2c_kernel.protocol.wire import RawObject
 from m2c_kernel.session.jobs import JobContext
 from m2c_kernel.session.session import Session
 from tests.features.helpers import document, feature, rect, upstream_test_types
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -50,7 +51,7 @@ def test_extrude_preview_with_display_is_fast(session: Session, job: JobContext)
     assert preview.status is not None and preview.status.state == "ok"
     (body,) = preview.bodies
     assert body.volume == pytest.approx((6000 - 4 * np.pi * 25) * 12, abs=1e-3)
-    assert elapsed < 0.5
+    assert elapsed < budget(0.5)
     assert {item.style for item in preview.items} == {"previewBody", "bodyEdges"}
     mesh = next(p for p in fetched.payloads if isinstance(p, MeshPayload))
     lines = next(p for p in fetched.payloads if isinstance(p, LinesPayload))

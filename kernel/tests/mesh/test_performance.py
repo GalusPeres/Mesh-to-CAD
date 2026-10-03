@@ -17,6 +17,7 @@ from m2c_kernel.commands.mesh import (
 from m2c_kernel.session.jobs import JobContext, seeded_rng
 from m2c_kernel.session.session import Session
 from tests.synthetic import add_scanner_noise, write_binary_stl
+from tests.timing import budget
 
 
 def _noisy_torus(around: int, tube: int) -> tuple[np.ndarray, np.ndarray]:
@@ -53,4 +54,4 @@ def test_a_two_million_face_stl_imports_with_repair_in_under_ten_seconds(
     assert scan is not None and scan.face_count == 2_000_000
     assert result.counts["mergedVertices"] == 6_000_000 - 1_000_000
     assert report.noise["mm"] is not None and 0.02 < report.noise["mm"] < 0.045
-    assert elapsed < 10.0, f"import took {elapsed:.1f} s"
+    assert elapsed < budget(10.0), f"import took {elapsed:.1f} s"
