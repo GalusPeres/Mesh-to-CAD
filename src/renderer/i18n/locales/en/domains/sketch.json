@@ -4,7 +4,9 @@
     "notAPlane": "Cannot sketch: the chosen item is not a plane.",
     "notAnAxis": "Cannot sketch: the chosen item has no axis.",
     "invalidGeometry": "Sketch is damaged: an entity refers to a missing point.",
-    "tooFewPoints": "Cannot fit an entity: too few points ({{count, count}})."
+    "tooFewPoints": "Cannot fit an entity: too few points ({{count, count}}).",
+    "noOutline": "No closed outline here.",
+    "noCorner": "No corner to round: the entities meet smoothly, or the scan is sharp there."
   },
   "issues": {
     "profileOpen_one": "Profile open: {{count}} gap.",

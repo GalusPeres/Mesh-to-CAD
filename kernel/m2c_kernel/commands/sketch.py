@@ -1,6 +1,6 @@
-"""Section sketches: cut the scan, fit a sketch, fit single entities.
+"""Section sketches: cut the scan, fit a sketch, fit single entities, shapes and fillets.
 
-All three methods run in the tool's lane and never commit; the sketch tool
+All methods run in the tool's lane and never commit; the sketch tool
 commits the finished sketch with `doc.apply`. They read the current document:
 the aligned scan and the planes and axes of earlier features.
 """
@@ -23,14 +23,18 @@ from m2c_kernel.sketch.api import (
     EntityFit,
     FitResult,
     SectionGeometry,
+    assess,
     auto_fit,
     cut,
     fit_entity,
     fit_tolerance,
     section_geometry,
 )
-from m2c_kernel.sketch.autofit import section_noise, suggested_tolerance
-from m2c_kernel.sketch.params import SketchParams, SketchSection
+from m2c_kernel.sketch.autofit import fit_points
+from m2c_kernel.sketch.fillet import fillet_corner
+from m2c_kernel.sketch.gestures import fit_outline
+from m2c_kernel.sketch.noise import section_noise, suggested_tolerance
+from m2c_kernel.sketch.params import ShapeKind, SketchParams, SketchSection
 from m2c_kernel.sketch.section import Section
 
 MAX_FOLDED_DISPLAY = 20_000
@@ -185,7 +189,7 @@ def sketch_auto_fit(ctx: JobContext, params: AutoFitParams) -> AutoFitResult:
     """
     geometry, section = _section(ctx, params.sketch.section)
     units = ctx.session.document.settings.snap_units
-    fitted = auto_fit(params.sketch, section, units, params.refit)
+    fitted = auto_fit(params.sketch, section, units, params.refit, ctx.check_cancelled)
     return _result(fitted, geometry)
 
 
@@ -214,4 +218,64 @@ def sketch_fit_entity(ctx: JobContext, params: FitEntityParams) -> FitEntityResu
     _, tolerance = fit_tolerance(params.sketch, section)
     return FitEntityResult(
         sketch=sketch, entity=entity, max_distance=max_distance, tolerance=tolerance
+    )
+
+
+@dataclass(frozen=True)
+class FitOutlineParams:
+    sketch: SketchParams
+    point: tuple[float, float]
+    """A point inside the closed section outline, in sketch coordinates."""
+
+
+@dataclass(frozen=True)
+class FitOutlineResult:
+    fit: AutoFitResult
+    entities: list[str]
+    """The entities fitted to the outline."""
+    kind: ShapeKind | None
+    """The recognised shape; None when the outline was split into lines and arcs."""
+
+
+@command("sketch.fitOutline", lane=True)
+def sketch_fit_outline(ctx: JobContext, params: FitOutlineParams) -> FitOutlineResult:
+    """Fit the closed section outline around a point as a shape with design values.
+
+    Entities already fitted to that outline are replaced; the rest of the sketch stays.
+    """
+    geometry, section = _section(ctx, params.sketch.section)
+    noise, tolerance = fit_tolerance(params.sketch, section)
+    units = ctx.session.document.settings.snap_units
+    point = np.asarray(params.point, dtype=np.float64)
+    outcome = fit_outline(params.sketch, section, point, units, tolerance, noise)
+    fitted = assess(outcome.params, section, noise, tolerance)
+    return FitOutlineResult(_result(fitted, geometry), outcome.entities, outcome.kind)
+
+
+@dataclass(frozen=True)
+class FilletParams:
+    sketch: SketchParams
+    point: str
+    """The sketch point where the two entities meet."""
+
+
+@dataclass(frozen=True)
+class SketchFilletResult:
+    fit: AutoFitResult
+    entity: str
+    radius: float
+    measured: float
+    """The radius fitted to the scan, before snapping to a design value."""
+
+
+@command("sketch.fillet", lane=True)
+def sketch_fillet(ctx: JobContext, params: FilletParams) -> SketchFilletResult:
+    """Round a corner with an arc tangent to both entities, its radius measured on the scan."""
+    geometry, section = _section(ctx, params.sketch.section)
+    noise, tolerance = fit_tolerance(params.sketch, section)
+    units = ctx.session.document.settings.snap_units
+    outcome = fillet_corner(params.sketch, fit_points(section), params.point, tolerance, units)
+    fitted = assess(outcome.params, section, noise, tolerance)
+    return SketchFilletResult(
+        _result(fitted, geometry), outcome.entity, outcome.radius, outcome.measured
     )

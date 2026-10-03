@@ -12,23 +12,58 @@ import { SCENE_MIX } from '../../viewport/palette';
 import { type ViewportPointerEvent, useViewport } from '../../viewport/api';
 import { commands as sketchCommands } from './sketch.commands';
 import { PaintStroke, type Project } from './sketchPicking';
-import { type SectionDrawing, SketchScene } from './sketchScene';
-import { type Vec2, type Vec3, rayToSketch } from './sketchMath';
+import { type SectionDrawing, type SketchHighlight, SketchScene } from './sketchScene';
+import { type Vec2, type Vec3, distance, rayToSketch, toPart } from './sketchMath';
 
-export interface SketchHighlight {
-  selected: string | null;
-  pending: readonly string[];
-  points: readonly Vec2[];
-  gaps: readonly Vec2[];
+export type { SketchHighlight } from './sketchScene';
+
+/** Where the pointer is: screen position, the point on the sketch plane, modifiers. */
+export interface SketchPointer {
+  cursor: Vec2;
+  atPlane: Vec2 | null;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
 }
 
 export interface SketchPointerHandlers {
-  /** A left click in sketch mode (not a painting stroke). */
-  click: (cursor: Vec2, atPlane: Vec2 | null, alt: boolean) => void;
+  /** A left click in sketch mode (not a stroke), Ctrl held or not. */
+  click: (pointer: SketchPointer) => void;
   /** Section points collected by a Shift+drag stroke. */
   paint: (points: Vec2[]) => void;
+  /** The screen path of a Ctrl+drag stroke. */
+  stroke?: (path: Vec2[]) => void;
+  /** The pointer moved without a button pressed. */
+  hover?: (pointer: SketchPointer) => void;
   /** Esc with a drawing step in progress; returns false when there is none. */
   abort: () => boolean;
+}
+
+/** A Ctrl stroke shorter than this (px) is a Ctrl click. */
+const CLICK_PX = 4;
+/** The camera turns to the sketch plane in 250 ms (DESIGN.md 6.5), then frames the section. */
+const TURN_MS = 300;
+
+/** Bounding box of the section in part coordinates, and its centre. */
+function sectionBox(
+  section: SectionDrawing | null,
+  frame: SketchFrame | null,
+): { min: Vec3; max: Vec3; center: Vec3 } | null {
+  const points = sectionPoints(section);
+  if (!frame || points.length === 0) return null;
+  const us = points.map((p) => p[0]);
+  const vs = points.map((p) => p[1]);
+  const corners = [Math.min(...us), Math.max(...us)].flatMap((u) =>
+    [Math.min(...vs), Math.max(...vs)].map((v) => toPart(frame, [u, v])),
+  );
+  const axis = (k: 0 | 1 | 2) => corners.map((corner) => corner[k]);
+  const min: Vec3 = [Math.min(...axis(0)), Math.min(...axis(1)), Math.min(...axis(2))];
+  const max: Vec3 = [Math.max(...axis(0)), Math.max(...axis(1)), Math.max(...axis(2))];
+  return {
+    min,
+    max,
+    center: [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2],
+  };
 }
 
 export interface SketchViewportInput {
@@ -123,10 +158,20 @@ export function useSketchViewport(input: SketchViewportInput): { project: Projec
   useEffect(() => {
     if (!viewport || !frameKey) return;
     const [origin, normal, xDir] = JSON.parse(frameKey) as [Vec3, Vec3, Vec3];
-    viewport.camera.lookAlong(origin, normal, xDir);
+    const box = sectionBox(latest.current.section, latest.current.frame);
+    viewport.camera.lookAlong(box ? box.center : origin, normal, xDir);
     viewport.camera.setOrbitLocked(true);
     viewport.scan.setOpacity(SCENE_MIX.sketchGhostOpacity);
+    // The plane's fill would cover the section: the sketch takes its place.
+    const plane = latest.current.sketch?.section;
+    const source =
+      plane?.type === 'planar' && plane.plane.type === 'feature' ? plane.plane.feature : null;
+    if (source) viewport.setOwnerHidden(source);
+    // Frame the section once the camera has turned (fitting keeps the orientation).
+    const fit = box ? setTimeout(() => viewport.camera.fitBox(box.min, box.max), TURN_MS) : 0;
     return () => {
+      clearTimeout(fit);
+      if (source) viewport.setOwnerHidden(null);
       viewport.camera.setOrbitLocked(false);
       viewport.scan.setOpacity(1);
     };
@@ -137,7 +182,19 @@ export function useSketchViewport(input: SketchViewportInput): { project: Projec
   useEffect(() => {
     if (!viewport || step !== 'sketch') return;
     let stroke: PaintStroke | null = null;
+    let path: Vec2[] | null = null;
     const cursorOf = (event: ViewportPointerEvent): Vec2 => [event.screen.x, event.screen.y];
+    const pointerOf = (event: ViewportPointerEvent): SketchPointer => {
+      const frame = latest.current.frame;
+      const ray = viewport.screenToRay(event.screen);
+      return {
+        cursor: cursorOf(event),
+        atPlane: frame ? rayToSketch(frame, ray.origin, ray.direction) : null,
+        ctrl: event.ctrl,
+        alt: event.alt,
+        shift: event.shift,
+      };
+    };
     return viewport.addInteraction({
       cursor: 'crosshair',
       onPointerDown: (event) => {
@@ -150,17 +207,35 @@ export function useSketchViewport(input: SketchViewportInput): { project: Projec
           stroke.add(cursorOf(event));
           return true;
         }
-        const ray = viewport.screenToRay(event.screen);
-        const atPlane = rayToSketch(current.frame, ray.origin, ray.direction);
-        current.handlers.click(cursorOf(event), atPlane, event.alt);
+        if (event.ctrl) {
+          path = [cursorOf(event)];
+          return true;
+        }
+        current.handlers.click(pointerOf(event));
         return true;
       },
       onPointerMove: (event) => {
-        if (!stroke) return false;
-        stroke.add(cursorOf(event));
-        return true;
+        if (stroke) {
+          stroke.add(cursorOf(event));
+          return true;
+        }
+        if (path) {
+          path.push(cursorOf(event));
+          return true;
+        }
+        if (event.buttons === 0) latest.current.handlers.hover?.(pointerOf(event));
+        return false;
       },
-      onPointerUp: () => {
+      onPointerUp: (event) => {
+        if (path) {
+          const done = path;
+          path = null;
+          const start = done[0] as Vec2;
+          const short = done.every((cursor) => distance(cursor, start) < CLICK_PX);
+          if (short) latest.current.handlers.click(pointerOf(event));
+          else latest.current.handlers.stroke?.(done);
+          return true;
+        }
         if (!stroke) return false;
         const points = stroke.collected();
         stroke = null;

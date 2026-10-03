@@ -570,9 +570,12 @@ region looks like the selection blue.
 | Handles (arrow, arc, plane, point) | Axis colour for axis-bound handles, otherwise `--text`; active handle `#3F87EE`; 1 px outline in `--bg-app` for legibility |
 | Section plane gizmo                | 1 px `--accent` rectangle, normal arrow, two rotation arcs; hatched body caps (P1) in the body colour at 45°               |
 
-Sketch mode: the camera turns normal to the sketch plane (250 ms), orbit is locked (`Alt` + right
-drag unlocks temporarily), the scan is ghosted to 15 % opacity, section points are drawn as dots,
-and the tool row shows only the sketch tools. The panel footer holds **Skizze beenden** (primary)
+Sketch mode: the camera turns normal to the sketch plane (250 ms) and frames the section, orbit is
+locked (`Alt` + right drag unlocks temporarily), the scan is ghosted to 15 % opacity, the plane the
+sketch lies on is hidden, section points are drawn as dots under the entities, and the tool row
+shows only the sketch tools. What a click would act on is highlighted (the outline in
+`--accent-text`, a joint as a dot); every shape and free profile carries its largest deviation
+as a label in pass/fail colour, per entity while it is hovered or selected. The panel footer holds **Skizze beenden** (primary)
 and _Abbrechen_.
 
 ### 6.6 Deviation colour map and legend
@@ -686,7 +689,9 @@ generated from it.
 | Modelling   | `A`, `S`, `E`, `R`                           | Fit shape, sketch, extrude, revolve                             |
 | Inspect     | `M`, `D`                                     | Measure, deviation display                                      |
 | Sketch mode | `K`, `L`, `C`                                | Form corner (_Ecke bilden_), line between points, circle        |
-|             | `Shift` + drag, hold `Alt`                   | Fit through points, suspend snapping                            |
+|             | Click inside an outline                      | Fit its shape (circle, slot, rectangle, ring arm)               |
+|             | `Shift` + drag, hold `Alt`                   | Fit a line or arc through points, suspend snapping              |
+|             | `Ctrl` + click a joint, `Ctrl` + drag        | Fillet with the radius from the scan; corner of two entities    |
 | Settings    | `Ctrl+,`, `Ctrl+/`                           | Settings, shortcut help                                         |
 
 ### 7.3 Status bar hints
@@ -697,7 +702,9 @@ while a modifier is held. Examples:
 - Brush: "Linke Maustaste: hinzufügen · Strg: entfernen · [ ]: Pinselgröße · Rechte Maustaste:
   drehen"
 - Smart select: "Klicken: Fläche hinzufügen · Strg+Klicken: entfernen · Strg+Mausrad: Toleranz"
-- Sketch mode: "Umschalt+Ziehen: Element anpassen · Alt: Fangen aus · Esc: Werkzeug abbrechen"
+- Sketch mode: "Klick in Kontur: Form einpassen · Umschalt+Ziehen: Linie/Bogen · Strg: Ecke verrunden
+  · Esc: Abbrechen"; with `Ctrl` held: "Strg+Klick auf Ecke: verrunden · Strg+Ziehen über zwei
+  Elemente: Ecke bilden"
 
 ---
 

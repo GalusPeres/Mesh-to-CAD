@@ -4,7 +4,9 @@
     "notAPlane": "Skizze nicht möglich: Das gewählte Element ist keine Ebene.",
     "notAnAxis": "Skizze nicht möglich: Das gewählte Element hat keine Achse.",
     "invalidGeometry": "Skizze fehlerhaft: Ein Element verweist auf einen fehlenden Punkt.",
-    "tooFewPoints": "Element nicht einpassbar: zu wenige Punkte ({{count, count}})."
+    "tooFewPoints": "Element nicht einpassbar: zu wenige Punkte ({{count, count}}).",
+    "noOutline": "Keine geschlossene Kontur an dieser Stelle.",
+    "noCorner": "Keine Ecke zum Verrunden: Die Elemente gehen glatt ineinander über, oder der Scan ist dort scharfkantig."
   },
   "issues": {
     "profileOpen_one": "Profil offen: {{count}} Lücke.",

@@ -20,6 +20,8 @@ import type { PreviewState } from '../framework/hooks';
 import {
   GLOBAL_AXES,
   PLANE_KINDS,
+  featureCut,
+  featureSection,
   type PlaneKind,
   planeKindOf,
   providesAxis,
@@ -32,7 +34,15 @@ import type { SketchDraft } from './useSketchDraft';
 import { useSketchViewport } from './useSketchViewport';
 
 const K = 'sectionSketch';
-const NO_HIGHLIGHT = { selected: null, pending: [], points: [], gaps: [] };
+const NO_HIGHLIGHT = {
+  selected: [],
+  pending: [],
+  points: [],
+  gaps: [],
+  outline: null,
+  joint: null,
+  labels: [],
+};
 const NO_HANDLERS = { click: () => undefined, paint: () => undefined, abort: () => false };
 
 interface PlaneStepProps {
@@ -41,10 +51,14 @@ interface PlaneStepProps {
   editTarget: string | null;
   names: ReadonlyMap<string, string>;
   preview: PreviewState<SectionResult>;
+  /** OK fits every contour of the section; otherwise the sketch starts empty. */
+  fitAll: boolean;
+  onFitAllChange: (fitAll: boolean) => void;
 }
 
 /** Step 1: plane, cut position and tolerance, with the live section in the viewport. */
-export function PlaneStep({ sketch, features, editTarget, names, preview }: PlaneStepProps) {
+export function PlaneStep(props: PlaneStepProps) {
+  const { sketch, features, editTarget, names, preview, fitAll, onFitAllChange } = props;
   const { t } = useTranslation(['tools', 'common']);
   const format = useFormatter();
   const viewport = useViewport();
@@ -65,7 +79,9 @@ export function PlaneStep({ sketch, features, editTarget, names, preview }: Plan
   const chooseKind = (next: PlaneKind) => {
     const axis = section.type === 'rotational' ? section.axis : 'Z';
     const center = scanCenter(documentStore.getState().snapshot?.scene.scan);
-    setSection(sectionFor(next, section, { plane: planes[0]?.id ?? null, axis }, center));
+    const plane = planes[0];
+    const choices = { plane: plane?.id ?? null, axis, planeCut: featureCut(plane) };
+    setSection(sectionFor(next, section, choices, center));
   };
 
   // A plane feature clicked in the project tree or the viewport becomes the sketch plane.
@@ -77,7 +93,7 @@ export function PlaneStep({ sketch, features, editTarget, names, preview }: Plan
         section.plane.type === 'feature' &&
         planes.some((p) => p.id === id)
       ) {
-        setSection({ ...section, plane: { type: 'feature', feature: id } });
+        setSection(featureSection(planes.find((p) => p.id === id) as Feature));
       }
     };
   });
@@ -174,7 +190,7 @@ export function PlaneStep({ sketch, features, editTarget, names, preview }: Plan
                   value={section.plane.feature}
                   options={planes.map((p) => ({ value: p.id, label: names.get(p.id) ?? p.id }))}
                   onChange={(feature) =>
-                    setSection({ ...section, plane: { type: 'feature', feature } })
+                    setSection(featureSection(planes.find((p) => p.id === feature) as Feature))
                   }
                 />
               </PropertyRow>
@@ -247,6 +263,12 @@ export function PlaneStep({ sketch, features, editTarget, names, preview }: Plan
       </PanelSection>
 
       <PanelSection title={t('common:sections.options')}>
+        <Checkbox
+          label={t(`${K}.fitAll`)}
+          checked={fitAll}
+          testId="sketch-fit-all"
+          onChange={onFitAllChange}
+        />
         <Checkbox
           label={t(`${K}.toleranceAuto`)}
           checked={draft.tolerance === null}

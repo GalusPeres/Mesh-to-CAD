@@ -25,15 +25,26 @@ interface SketchResultProps {
   state: FitState | null;
   current: boolean;
   error: KernelFailure | null;
+  /** Entities whose constraints and snaps are listed (the selection); null lists counts. */
+  focus: readonly string[] | null;
   onEdit: (next: SketchParams) => void;
 }
 
-/** Ergebnis: profile state, fit quality, removable constraints and snapped values. */
-export function SketchResult({ sketch, labels, state, current, error, onEdit }: SketchResultProps) {
+/**
+ * Ergebnis: profile state and fit quality; the constraints and snapped values of the
+ * selection, removable (without a selection only their counts, so no long lists).
+ */
+export function SketchResult(props: SketchResultProps) {
+  const { sketch, labels, state, current, error, focus, onEdit } = props;
   const { t } = useTranslation(['tools', 'common']);
   const format = useFormatter();
   const judged = state?.fits.filter((fit) => fit.passed !== null) ?? [];
   const passed = judged.filter((fit) => fit.passed).length;
+  const concerns = (ids: readonly string[]) => !focus || ids.some((id) => focus.includes(id));
+  const constraints = sketch.constraints
+    .map((constraint, index) => ({ constraint, index }))
+    .filter(({ constraint }) => concerns(constraint.refs));
+  const snaps = sketch.snaps.filter((snap) => concerns([snap.entity, ...snap.members]));
   return (
     <PanelSection title={t('common:sections.result')}>
       <InlineMessage severity={profileSeverity(state?.profile ?? null)}>
@@ -59,11 +70,17 @@ export function SketchResult({ sketch, labels, state, current, error, onEdit }: 
           {describeError(error, t)}
         </InlineMessage>
       )}
-      {sketch.constraints.length > 0 && (
+      {!focus && sketch.entities.length > 0 && (
+        <>
+          <PropertyValue label={t(`${K}.constraints`)} value={String(sketch.constraints.length)} />
+          <PropertyValue label={t(`${K}.snaps`)} value={String(sketch.snaps.length)} />
+        </>
+      )}
+      {focus && constraints.length > 0 && (
         <>
           <h3 className={styles.subheading}>{t(`${K}.constraints`)}</h3>
           <ul className={styles.list} aria-label={t(`${K}.constraints`)}>
-            {sketch.constraints.map((constraint, index) => {
+            {constraints.map(({ constraint, index }) => {
               const text = constraintText(constraint, labels, t);
               return (
                 <li
@@ -82,11 +99,15 @@ export function SketchResult({ sketch, labels, state, current, error, onEdit }: 
           </ul>
         </>
       )}
-      {sketch.snaps.length > 0 && <h3 className={styles.subheading}>{t(`${K}.snaps`)}</h3>}
-      <SnapList
-        items={sketch.snaps.map((snap) => snapItem(snap, labels, format, t))}
-        onRemove={(id) => onEdit(removeSnap(sketch, id))}
-      />
+      {focus && snaps.length > 0 && (
+        <>
+          <h3 className={styles.subheading}>{t(`${K}.snaps`)}</h3>
+          <SnapList
+            items={snaps.map((snap) => snapItem(snap, labels, format, t))}
+            onRemove={(id) => onEdit(removeSnap(sketch, id))}
+          />
+        </>
+      )}
     </PanelSection>
   );
 }

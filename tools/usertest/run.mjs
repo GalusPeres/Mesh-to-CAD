@@ -14,18 +14,27 @@ import path from 'node:path';
 
 import { INSTANCE, automationClient } from '../automation/client.mjs';
 import { createDriver } from './driver.mjs';
+import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
-import { writeTestPart } from './part.mjs';
+import { writeButtonsPart, writeTestPart } from './part.mjs';
+import { recognizeTest } from './recognize.mjs';
+import { sketchTest } from './sketch.mjs';
 import { solidTest } from './solid.mjs';
 import { writeTubPart } from './tub.mjs';
 
-/** Every user test by name with the synthetic part it runs on; add one per tool. */
+/** Every user test by name; add one per tool. */
 const TESTS = {
-  net: { run: netTest, part: writeTestPart },
-  solid: { run: solidTest, part: writeTubPart },
+  net: netTest,
+  loft: loftTest,
+  recognize: recognizeTest,
+  sketch: sketchTest,
+  solid: solidTest,
 };
 
-/** A new project with the synthetic part as its scan, no tool open. */
+/** The part a test runs on, when it is not the plate with the boss. */
+const PARTS = { recognize: writeButtonsPart, solid: writeTubPart };
+
+/** A new project with a synthetic part as its scan, no tool open. */
 async function startOver(client, d, writePart) {
   await d.key('Escape');
   await client.kernel('project.new');
@@ -59,8 +68,8 @@ async function main() {
   for (const name of names) {
     console.log(`\n== ${name}`);
     try {
-      await startOver(client, d, TESTS[name].part);
-      await TESTS[name].run(d);
+      await startOver(client, d, PARTS[name] ?? writeTestPart);
+      await TESTS[name](d);
     } catch (error) {
       d.check(`${name} ran to the end`, false, error instanceof Error ? error.message : error);
       await d.shot(`${name}-error`).catch(() => undefined);

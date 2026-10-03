@@ -1,7 +1,7 @@
 {
   "label": "Sketch",
   "tooltip": "Section of the scan as a sketch of lines, arcs and circles",
-  "help": "Choose the plane and where to cut; the section through the scan appears in green. OK fits lines, arcs and circles with constraints and snapped values. Change values in the entity list and add missing edges with Form corner, Line or Circle. Finish sketch adds the sketch to the history.",
+  "help": "Choose the plane and where to cut; the section through the scan appears in green. With Fit all contours, OK fits the whole section; otherwise the sketch starts empty. A click inside an outline fits a circle, slot, rectangle or ring arm with design values, Shift+drag fits a line or an arc, Ctrl at a corner rounds it with the radius from the scan. Finish sketch adds the sketch to the history.",
   "noScan": "No scan loaded.",
   "planeKind": {
     "label": "Plane",
@@ -34,7 +34,8 @@
     "entitiesInTolerance": "In tolerance",
     "entitiesInToleranceValue": "{{passed}} of {{total}}",
     "empty": "The section does not meet the scan. Change where to cut.",
-    "folded": "Points of all angles averaged"
+    "folded": "Points of all angles averaged",
+    "deviation": "Deviation max."
   },
   "sketchPlane": "Sketch plane",
   "cut": "Section",
@@ -74,13 +75,6 @@
     "addCircle": "Add circle",
     "cancelMode": "Cancel"
   },
-  "mode": {
-    "cornerFirst": "Form corner: click the first entity.",
-    "cornerSecond": "Form corner: click the second entity.",
-    "lineFirst": "Line: click the first point.",
-    "lineSecond": "Line: click the second point.",
-    "circle": "Circle: click the centre or type it."
-  },
   "painted": "Entity fitted, deviation max. {{value}}.",
   "editFailed": {
     "noIntersection": "Cannot form the corner: the entities do not intersect.",
@@ -117,7 +111,8 @@
     "centerX": "{{entity}}: centre X {{value}}",
     "centerY": "{{entity}}: centre Y {{value}}",
     "junction": "{{entity}}: corner at {{value}}",
-    "boltCircle": "Bolt circle ⌀ {{value}}, {{count}} × {{pitch}}"
+    "boltCircle": "Bolt circle ⌀ {{value}}, {{count}} × {{pitch}}",
+    "length": "{{entity}}: length {{value}}"
   },
   "caption": {
     "title": "{{name}} · {{plane}}",
@@ -125,5 +120,39 @@
     "axisNormal": "Perpendicular to {{axis}}",
     "rotational": "Rotational profile about {{axis}}"
   },
-  "statusHint": "Shift+drag: fit entity · Alt: snapping off · Esc: cancel tool"
+  "fitAll": "Fit all contours",
+  "hint": {
+    "idle": "Click inside an outline: fit its shape · Shift+drag: line/arc · Ctrl: round a corner · Esc: cancel",
+    "idleCtrl": "Ctrl+click a corner: round it · Ctrl+drag across two entities: form a corner",
+    "outline": "Click: fit the outline's shape · Shift+drag: line/arc",
+    "select": "Click: select · Delete: delete",
+    "fillet": "Ctrl+click: round the corner with the radius from the scan",
+    "corner": "Form corner",
+    "working": "Fitting …",
+    "cornerFirst": "Form corner: click the first entity · Esc: cancel",
+    "cornerSecond": "Form corner: click the second entity · Esc: cancel",
+    "lineFirst": "Line: click the first point · Esc: cancel",
+    "lineSecond": "Line: click the second point · Esc: cancel",
+    "circle": "Circle: click the centre or type it · Alt: snapping off · Esc: cancel"
+  },
+  "shape": {
+    "circle": "Circle",
+    "slot": "Slot",
+    "roundedRect": "Rectangle",
+    "ringArm": "Ring arm"
+  },
+  "size": {
+    "diameter": "Diameter",
+    "length": "Length",
+    "width": "Width",
+    "corner": "Corner radius",
+    "outer": "Outer radius",
+    "inner": "Inner radius"
+  },
+  "fitted": "{{shape}}: {{size}} · deviation max. {{value}}",
+  "fittedFree": "Free outline: {{count}} entities · deviation max. {{value}}",
+  "filleted": "Fillet R {{value}} (measured {{measured}})",
+  "profileRow": "Profile {{number}}",
+  "entityCount_one": "{{count}} entity",
+  "entityCount_other": "{{count}} entities"
 }

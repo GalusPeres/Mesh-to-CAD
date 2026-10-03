@@ -88,6 +88,22 @@ def test_sections_outside_the_scan_fail_with_their_position() -> None:
     assert raised.value.params["position"] == pytest.approx(70.0)
 
 
+def test_a_section_at_a_small_hole_moves_past_it() -> None:
+    vertices, faces = tube()
+    heights = vertices[faces][:, :, 2]
+    centres = vertices[faces].mean(axis=1)
+    crossing = (
+        (heights.min(axis=1) < 30.0)
+        & (heights.max(axis=1) > 30.0)
+        & (centres[:, 0] > 0.0)
+        & (np.abs(centres[:, 1]) < 2.0)
+    )
+    holed = np.delete(faces, np.flatnonzero(crossing)[:1], axis=0)
+    assert section_loops(vertices, holed, np.zeros(3), Z, 30.0) == []
+    loft = loft_scan(vertices, holed, LoftAxis(np.zeros(3), Z), 10.0, 50.0, 5)
+    assert check_solid(loft.solid.shape).valid
+
+
 def test_an_empty_range_is_rejected() -> None:
     vertices, faces = tube()
     with pytest.raises(KernelError) as raised:

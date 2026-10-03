@@ -6,6 +6,8 @@ export const SKETCH_ERROR_CODES = [
   'sketch.notAnAxis',
   'sketch.invalidGeometry',
   'sketch.tooFewPoints',
+  'sketch.noOutline',
+  'sketch.noCorner',
 ] as const;
 export type SketchErrorCode = (typeof SKETCH_ERROR_CODES)[number];
 

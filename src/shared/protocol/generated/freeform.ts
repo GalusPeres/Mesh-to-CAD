@@ -47,6 +47,8 @@ export interface LoftAxisResult {
   direction: Vec3;
   low: number;
   high: number;
+  start: number;
+  end: number;
 }
 
 export interface FreeformMethods {
