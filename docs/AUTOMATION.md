@@ -15,7 +15,13 @@ For automated checks while someone keeps using the PC, a development build can r
 screen: `M2C_AUTOMATION=1 M2C_WINDOW=offscreen npm run dev` opens the window outside the
 visible screen, without focus or taskbar button, and with a profile of its own
 (`%APPDATA%\Mesh-to-CAD-automation`), so it never touches the user's settings, recent files
-or unsaved work. Screenshots still show the window as usual.
+or unsaved work. Screenshots still show the window as usual. `M2C_WINDOW=demo` shows the
+same profile in a normal window, without taking the focus.
+
+Several apps can run side by side (one per agent, each from its own git worktree):
+`M2C_INSTANCE=<name>` gives the automation window the profile
+`Mesh-to-CAD-automation-<name>` and the dev server a free port. Start the MCP server or any
+other automation client with the same `M2C_INSTANCE`, and it talks to that app only.
 
 The app then listens on `127.0.0.1` with a random port and a random token and writes both
 to `%APPDATA%\Mesh-to-CAD\automation.json`. The file is removed when the app closes or the

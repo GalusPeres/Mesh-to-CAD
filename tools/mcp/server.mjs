@@ -22,8 +22,13 @@ import { z } from 'zod';
 import { registerRecognitionTools } from './recognition.mjs';
 
 const PRODUCT = 'Mesh-to-CAD';
-/** Profiles the app may run with: the user's, and the off-screen automation profile. */
-const PROFILES = [PRODUCT, `${PRODUCT}-automation`];
+/**
+ * Profiles the app may run with: the user's and the automation profile, or with
+ * `M2C_INSTANCE` only that instance's automation profile (several apps side by side).
+ */
+const PROFILES = process.env.M2C_INSTANCE
+  ? [`${PRODUCT}-automation-${process.env.M2C_INSTANCE.replace(/[^\w-]/g, '')}`]
+  : [PRODUCT, `${PRODUCT}-automation`];
 
 /**
  * Where the app may have published automation.json. Besides %APPDATA%, apps that

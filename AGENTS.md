@@ -27,6 +27,32 @@ step; STEP out. Every tool also works over the automation interface (MCP).
 - Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), design:
   [docs/DESIGN.md](docs/DESIGN.md), automation: [docs/AUTOMATION.md](docs/AUTOMATION.md).
 
+## Where things live
+
+| Area                     | Folder (one unit each)                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| Tools in the app         | `src/renderer/tools/<tool>/` with its `locales/`; found by the app, no central list            |
+| Features in the history  | `src/renderer/features/<type>/` (view) and `kernel/m2c_kernel/features/types/<type>.py`        |
+| Kernel commands          | `kernel/m2c_kernel/commands/<group>.py`                                                        |
+| Algorithms               | `kernel/m2c_kernel/<recognition, surfacing, sketch, fitting, mesh, alignment, inspection, …>/` |
+| Status bar, view overlay | `*.status.tsx`, `*.overlay.tsx` next to the tool that shows them                               |
+
+**Shared contracts** change only in a small pull request of their own (CONTRIBUTING.md):
+`src/renderer/viewport/api.ts`, `src/renderer/tools/framework/`, `src/shared/`,
+`kernel/m2c_kernel/protocol/`, `kernel/m2c_kernel/document/`. `src/shared/protocol/generated/`
+is written by `npm run codegen` only.
+
+## Working in parallel
+
+1. Take an issue: assign it to yourself and add the label `in progress`.
+2. Work in a worktree on a branch of your own:
+   `git worktree add ../m2c-<issue> -b feat/<issue>-<topic> main`, then `npm ci` there;
+   `M2C_PYTHON` may point to the main checkout's `.venv\Scripts\python.exe`.
+3. Run your own app next to the others:
+   `M2C_INSTANCE=<issue> M2C_WINDOW=offscreen M2C_AUTOMATION=1 npm run dev`; automation
+   clients (the MCP server, scripts) take the same `M2C_INSTANCE`.
+4. Pull request to `main` with `Closes #n`; merged when CI is green.
+
 ## Done means
 
 1. `npm run check` is green.

@@ -25,8 +25,17 @@ export const demoMode = process.env.M2C_WINDOW === 'demo' && !app.isPackaged;
 /** The window is driven by automation and keeps its data in a profile of its own. */
 export const automationWindow = offscreenMode || demoMode;
 
+/**
+ * `M2C_INSTANCE=<name>` (development only): an automation window with a profile of its
+ * own per instance (settings, sessions, single-instance lock, automation.json), so
+ * several agents can run apps side by side, each from its own worktree.
+ */
+const instance = app.isPackaged ? '' : (process.env.M2C_INSTANCE ?? '').replace(/[^\w-]/g, '');
+
 /** Folder name of the profile in %APPDATA% and %LOCALAPPDATA%. */
-export const PROFILE = automationWindow ? 'Mesh-to-CAD-automation' : 'Mesh-to-CAD';
+export const PROFILE = automationWindow
+  ? `Mesh-to-CAD-automation${instance ? `-${instance}` : ''}`
+  : 'Mesh-to-CAD';
 
 /** Repository root in development; unused when packaged. */
 export function repositoryRoot(): string {
