@@ -33,7 +33,8 @@
   },
   "issues": {
     "highTolerance": "Der Körper hat ungenaue Kanten (Toleranz über 0,0001 mm).",
-    "splitFacesKept": "Ergebnis enthält geteilte Flächen, die nicht zusammengeführt werden konnten."
+    "splitFacesKept": "Ergebnis enthält geteilte Flächen, die nicht zusammengeführt werden konnten.",
+    "filletNarrowed": "Verrundung an Biegungen enger als der Radius schmaler (bis {{smallest, length}})."
   },
   "progress": {
     "tessellating": "Darstellung wird berechnet",

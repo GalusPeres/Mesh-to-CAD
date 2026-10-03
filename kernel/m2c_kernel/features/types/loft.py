@@ -1,5 +1,8 @@
 """Loft: a solid through sections of the scan along an axis.
 
+An end may name a plane (a plane feature or an origin plane), like Extrude's
+"Bis Ebene": the walls continue straight up to it and the end lies in it.
+
 Face tags: the lateral faces are `<id>:loft:<n>` (one per edge of the section wires,
 normally a single face) and the caps `<id>:cap:start` and `<id>:cap:end`.
 """
@@ -13,6 +16,7 @@ from typing import TYPE_CHECKING, Annotated
 import numpy as np
 
 from m2c_kernel.cad.operations import solid_output
+from m2c_kernel.cad.references import reference_plane
 from m2c_kernel.cad.tags import TagCollector
 from m2c_kernel.codes.freeform import ErrorCode, ProgressStage
 from m2c_kernel.document.results import Body, Construction, DisplaySource, FeatureOutput
@@ -20,6 +24,7 @@ from m2c_kernel.features.common import BodyOperation, StandardAxis, feature_refs
 from m2c_kernel.features.registry import ReadSet, Refs, feature_type
 from m2c_kernel.fitting.primitives import Cone, Cylinder, Plane, Torus
 from m2c_kernel.freeform.api import LoftAxis, ScanLoft, loft_scan
+from m2c_kernel.freeform.ends import PlaneEnd
 from m2c_kernel.geometry import unit
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.wire import BlobRef, Range, U32Array
@@ -45,6 +50,9 @@ class LoftParams:
     """Only these scan triangles are sectioned (a region); None sections the whole scan."""
     operation: BodyOperation = "newBody"
     target_body: str | None = None
+    start_plane: str | None = None
+    end_plane: str | None = None
+    """Planes (a plane feature or `XY`, `YZ`, `XZ`) the ends reach and lie in."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -56,6 +64,8 @@ class LoftInput:
     faces: U32Array | None = None
     operation: BodyOperation = "newBody"
     target_body: str | None = None
+    start_plane: str | None = None
+    end_plane: str | None = None
 
 
 def _store(value: LoftInput, blobs: BlobStore) -> LoftParams:
@@ -68,6 +78,8 @@ def _store(value: LoftInput, blobs: BlobStore) -> LoftParams:
         faces=faces,
         operation=value.operation,
         target_body=value.target_body,
+        start_plane=value.start_plane,
+        end_plane=value.end_plane,
     )
 
 
@@ -117,7 +129,10 @@ def section_display(loft: ScanLoft) -> DisplaySource:
 class Loft:
     @staticmethod
     def references(params: LoftParams) -> Refs:
-        return Refs(features=feature_refs(params.path), bodies=feature_refs(params.target_body))
+        return Refs(
+            features=feature_refs(params.path, params.start_plane, params.end_plane),
+            bodies=feature_refs(params.target_body),
+        )
 
     @staticmethod
     def evaluate(ctx: EvalContext, params: LoftParams) -> FeatureOutput:
@@ -127,6 +142,10 @@ class Loft:
         if params.faces is not None:
             subset = ctx.face_set(params.faces)
             faces = faces[subset[(subset >= 0) & (subset < len(faces))]]
+        ends = {
+            role: None if plane is None else PlaneEnd(*reference_plane(plane, ctx.construction))
+            for role, plane in (("start", params.start_plane), ("end", params.end_plane))
+        }
         ctx.job.progress(None, ProgressStage.SECTIONING)
         with ctx.job.native(ProgressStage.LOFTING):
             loft = loft_scan(
@@ -137,8 +156,10 @@ class Loft:
                 params.end,
                 params.section_count,
                 ctx.job.check_cancelled,
+                start_plane=ends["start"],
+                end_plane=ends["end"],
             )
-        body = tagged_body(loft, ctx.feature_id)
+            body = tagged_body(loft, ctx.feature_id)
         output = solid_output(ctx.feature_id, params.operation, params.target_body, body, ctx.body)
         stats: dict[str, float | None] = {
             "freeform.stats.sections": float(len(loft.sections)),

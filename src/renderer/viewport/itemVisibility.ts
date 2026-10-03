@@ -24,3 +24,15 @@ export function itemShown(item: SceneItem, visibility: ItemVisibility): boolean 
     ? !visibility.hiddenBodies.has(item.bodyId ?? '')
     : !visibility.hiddenOwners.has(item.owner);
 }
+
+/**
+ * Body edges that only the display mode hides: a fillet still picks the edge under the
+ * pointer in the shaded view. Edges of a hidden body or of the edited feature are not.
+ */
+export function edgesOnlyModeHides(item: SceneItem, visibility: ItemVisibility): boolean {
+  return (
+    item.style === 'bodyEdges' &&
+    !visibility.bodyEdges &&
+    itemShown(item, { ...visibility, bodyEdges: true })
+  );
+}

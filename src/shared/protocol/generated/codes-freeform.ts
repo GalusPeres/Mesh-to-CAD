@@ -9,6 +9,8 @@ export const FREEFORM_ERROR_CODES = [
   'freeform.notAnAxis',
   'freeform.noSection',
   'freeform.sectionJump',
+  'freeform.planeNotReached',
+  'freeform.planeCutsRange',
   'freeform.loftFailed',
   'freeform.notAFreeformFeature',
 ] as const;

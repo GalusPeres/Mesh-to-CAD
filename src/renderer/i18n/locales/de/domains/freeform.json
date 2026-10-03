@@ -8,6 +8,8 @@
     "notAnAxis": "Loft nicht möglich: Das gewählte Element hat keine Achse. Achse, Zylinder, Kegel oder Ebene wählen.",
     "noSection": "Loft nicht möglich: Bei {{position, length}} ergibt der Scan keine geschlossene Kontur. Anfang und Ende in den Scan legen oder Löcher füllen.",
     "sectionJump": "Loft nicht möglich: Bei {{position, length}} wächst oder schrumpft der Schnitt sprunghaft, etwa an einer Taste oder einer flachen Schräge. Anfang und Ende in den durchgehenden Körper legen.",
+    "planeNotReached": "Loft nicht möglich: Die Wände laufen nicht auf die Ebene zu. Eine Ebene quer zur Achse wählen.",
+    "planeCutsRange": "Loft nicht möglich: Die Ebene schneidet den Bereich fast ganz ab. Anfang und Ende zwischen die Ebenen legen.",
     "loftFailed": "Loft fehlgeschlagen: Die Schnitte lassen sich nicht zu einem Körper verbinden. Schnittzahl oder Bereich ändern.",
     "notAFreeformFeature": "Das Element ist keine Freiformfläche und kein Loft."
   },

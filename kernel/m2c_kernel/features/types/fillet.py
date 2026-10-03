@@ -3,7 +3,9 @@
 Edges are referenced by the face tags on both sides plus a point on the edge
 (ARCHITECTURE.md 4.6), so the references still resolve after upstream changes
 such as a new extrusion height. _Radius aus Scan_ is a helper of the tool, not
-a parameter: the stored size is what the user accepted.
+a parameter: the stored size is what the user accepted. Where the faces bend
+tighter than the radius, the fillet narrows there and the feature says how far
+(`cad.filletNarrowed`).
 """
 
 from __future__ import annotations
@@ -13,8 +15,8 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 from m2c_kernel.cad.edges import resolve_edges
 from m2c_kernel.cad.fillet import fillet_edges
-from m2c_kernel.codes.cad import ProgressStage
-from m2c_kernel.document.results import BodyUpdate, FeatureOutput
+from m2c_kernel.codes.cad import IssueCode, ProgressStage
+from m2c_kernel.document.results import BodyUpdate, FeatureOutput, Issue
 from m2c_kernel.features.common import feature_refs
 from m2c_kernel.features.registry import Refs, feature_type
 from m2c_kernel.geometry import Vec3
@@ -57,4 +59,11 @@ class Fillet:
         edges = resolve_edges(body, [(edge.faces, edge.point) for edge in params.edges])
         with ctx.job.native(ProgressStage.FILLET):
             rounded = fillet_edges(body, edges, params.size, params.mode, ctx.feature_id)
-        return FeatureOutput(bodies=BodyUpdate(changed={params.target_body: rounded}))
+        issues = (
+            ()
+            if rounded.smallest is None
+            else (Issue(IssueCode.FILLET_NARROWED, {"smallest": round(rounded.smallest, 3)}),)
+        )
+        return FeatureOutput(
+            bodies=BodyUpdate(changed={params.target_body: rounded.body}), issues=issues
+        )

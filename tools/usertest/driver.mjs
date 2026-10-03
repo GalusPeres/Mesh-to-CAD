@@ -91,6 +91,9 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
+  /** Revision, open tool and selected triangle count of the app. */
+  const state = () => ui({ type: 'state' });
+
   /** What the pointer finds at a screen point: scan, body, edge or item. */
   const pick = (screen) => ui({ type: 'pick', x: screen.x, y: screen.y });
 
@@ -145,6 +148,7 @@ export function createDriver(client, out) {
     select,
     pause,
     toolInfo,
+    state,
     pick,
     settle,
     until,
