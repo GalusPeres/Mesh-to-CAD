@@ -188,7 +188,7 @@ def sketch_auto_fit(ctx: JobContext, params: AutoFitParams) -> AutoFitResult:
     """
     geometry, section = _section(ctx, params.sketch.section)
     units = ctx.session.document.settings.snap_units
-    fitted = auto_fit(params.sketch, section, units, params.refit)
+    fitted = auto_fit(params.sketch, section, units, params.refit, ctx.check_cancelled)
     return _result(fitted, geometry)
 
 

@@ -287,13 +287,14 @@ def refit(
     dimensions: Sequence[SketchDimension],
     section: Section,
     tolerance: float,
+    check_cancelled: Callable[[], None] | None = None,
 ) -> None:
     """Move the fitted carriers of an edited sketch to the section, keeping all fixed values."""
     assigned = assign_points(sketch, fit_points(section), max(3.0 * tolerance, 0.3))
     sketch.samples = {eid: pts for eid, pts in assigned.items() if len(pts) >= 3}
     fixed = [f for s in snaps for f in fixed_values(sketch, s)]
     fixed += dimension_values(sketch, dimensions)
-    solve(sketch, constraints, fixed)
+    solve(sketch, constraints, fixed, check_cancelled=check_cancelled)
     update_points(sketch, constraints)
 
 

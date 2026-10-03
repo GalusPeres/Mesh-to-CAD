@@ -196,7 +196,13 @@ def fit_tolerance(params: SketchParams, section: Section) -> tuple[float, float]
     return noise, tolerance
 
 
-def auto_fit(params: SketchParams, section: Section, units: SnapUnits, refit: bool) -> FitResult:
+def auto_fit(
+    params: SketchParams,
+    section: Section,
+    units: SnapUnits,
+    refit: bool,
+    check_cancelled: Callable[[], None] | None = None,
+) -> FitResult:
     """A new fit of the section, or (`refit`) the edited sketch moved onto the section.
 
     A new fit replaces entities, constraints, snaps and typed dimensions; rejected
@@ -210,12 +216,14 @@ def auto_fit(params: SketchParams, section: Section, units: SnapUnits, refit: bo
         known = set(sketch.entities)
         snaps = [s for s in params.snaps if s.entity in known]
         dimensions = [d for d in params.dimensions if d.entity in known]
-        autofit.refit(sketch, constraints, snaps, dimensions, section, tolerance)
+        autofit.refit(sketch, constraints, snaps, dimensions, section, tolerance, check_cancelled)
         result = replace(
             to_params(params, sketch, constraints, snaps), dimensions=dimensions, noise=noise
         )
     else:
-        outcome = autofit.fit_section(section, params.tolerance, units, params.rejected_snaps)
+        outcome = autofit.fit_section(
+            section, params.tolerance, units, params.rejected_snaps, check_cancelled=check_cancelled
+        )
         sketch, noise, tolerance = outcome.sketch, outcome.noise, outcome.tolerance
         base = replace(params, noise=noise, dimensions=[])
         result = to_params(base, sketch, outcome.constraints, outcome.snaps)
