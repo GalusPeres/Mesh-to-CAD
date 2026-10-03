@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
+import { setToolInfoProvider } from '../../automation/toolInfo';
 import { isSelectionModeId } from '../../selection/selectionRuntime';
 import { documentStore } from '../../state/documentStore';
 import { setDraftHistoryHandler } from '../../state/historyStore';
@@ -38,12 +39,14 @@ export function useNetEditor(editTarget: string | null): {
       }),
     );
     setDraftHistoryHandler({ undo: () => editor.undo(), redo: () => editor.redo() });
+    const removeInfo = setToolInfoProvider(() => editor.automationInfo());
     if (editTarget) {
       viewport.setOwnerHidden(editTarget);
       if (!editor.getState().hasNet) void editor.load(editTarget);
     }
     return () => {
       removeInteraction();
+      removeInfo();
       setDraftHistoryHandler(null);
       viewport.setOwnerHidden(null);
       editor.detach();

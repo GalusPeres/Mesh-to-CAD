@@ -3,7 +3,7 @@ import { BrowserWindow, app, nativeTheme, screen } from 'electron';
 import type { Settings } from '@shared/settings';
 import { TITLE_BAR_COLORS, type ThemeName } from '@shared/theme';
 
-import { offscreenMode, preloadPath } from './paths';
+import { automationWindow, offscreenMode, preloadPath } from './paths';
 
 export function resolvedTheme(settings: Settings): ThemeName {
   if (settings.theme === 'system') return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
@@ -38,10 +38,10 @@ export function createMainWindow(settings: Settings, url: string): BrowserWindow
       webSecurity: true,
       spellcheck: false,
       devTools: !app.isPackaged,
-      backgroundThrottling: !offscreenMode,
+      backgroundThrottling: !automationWindow,
     },
   });
-  window.once('ready-to-show', () => (offscreenMode ? window.showInactive() : window.show()));
+  window.once('ready-to-show', () => (automationWindow ? window.showInactive() : window.show()));
   void window.loadURL(url);
   return window;
 }

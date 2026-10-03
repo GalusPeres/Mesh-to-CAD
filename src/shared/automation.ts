@@ -27,7 +27,9 @@ export type AutomationAction =
   /** Where part-coordinate points appear in the 3D view (null when behind the camera). */
   | { type: 'project'; points: readonly (readonly [number, number, number])[] }
   /** What is under a point of the 3D view: scan, body, edge or item, with its 3D point. */
-  | { type: 'pick'; x: number; y: number };
+  | { type: 'pick'; x: number; y: number }
+  /** What the open tool lets the user grab in the 3D view, with screen positions. */
+  | { type: 'toolInfo' };
 
 export interface AutomationRequest {
   requestId: number;

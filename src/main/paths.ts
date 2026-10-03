@@ -15,8 +15,18 @@ export const testMode = process.env.M2C_E2E === '1';
  */
 export const offscreenMode = process.env.M2C_WINDOW === 'offscreen' && !app.isPackaged;
 
+/**
+ * `M2C_WINDOW=demo` (development only): a normal window, shown without taking the
+ * focus, in the same separate profile, so automation can show the user something in
+ * the running app without touching their own settings or unsaved work.
+ */
+export const demoMode = process.env.M2C_WINDOW === 'demo' && !app.isPackaged;
+
+/** The window is driven by automation and keeps its data in a profile of its own. */
+export const automationWindow = offscreenMode || demoMode;
+
 /** Folder name of the profile in %APPDATA% and %LOCALAPPDATA%. */
-export const PROFILE = offscreenMode ? 'Mesh-to-CAD-automation' : 'Mesh-to-CAD';
+export const PROFILE = automationWindow ? 'Mesh-to-CAD-automation' : 'Mesh-to-CAD';
 
 /** Repository root in development; unused when packaged. */
 export function repositoryRoot(): string {

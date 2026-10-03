@@ -14,6 +14,7 @@ import { locateKernel } from './kernel/locate';
 import { FileLogger } from './logging';
 import {
   PROFILE,
+  automationWindow,
   logDirectory,
   offscreenMode,
   rendererDirectory,
@@ -45,8 +46,8 @@ if (testMode) {
 if (offscreenMode) {
   // Windows stops painting windows it considers covered; an off-screen one would be.
   app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
-  app.setPath('userData', path.join(app.getPath('appData'), PROFILE));
 }
+if (automationWindow) app.setPath('userData', path.join(app.getPath('appData'), PROFILE));
 
 registerAppScheme();
 

@@ -71,6 +71,6 @@
     "placing": "Place corner {{count}} of 4 …",
     "startHint": "Place face, then click four corners on the scan. Then drag a border edge: a new row grows on, aligned with the one before.",
     "faceHint": "Click four corners on the scan, in order around the face. Backspace takes the last one back, Esc cancels.",
-    "growHint": "Grab a border edge and drag: a new row grows on; with Shift the whole border up to the next corner. S over an edge inserts a row across it (more resolution, e.g. at fillets). New points snap to the scan."
+    "growHint": "Grab a border edge and drag: a new row grows outward along the surface, over edges and fillets too; with Shift the whole side up to the next corner. With Ctrl+Shift every border side facing the drag grows: dragged towards a corner of the part, the net wraps round the corner. S over an edge inserts a row across it (more resolution, e.g. at fillets). New points snap to the scan."
   }
 }

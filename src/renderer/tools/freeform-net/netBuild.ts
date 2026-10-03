@@ -82,9 +82,10 @@ export function addQuad(net: Net | null, corners: readonly Vec3[], outward: Vec3
 
 /**
  * The border chain through a border edge: the border edges before and after it up to
- * the net's corners (border points with one quad) or all the way round a closed border.
+ * the net's corners (border points with one quad), or with `aroundCorners` the whole
+ * border loop it belongs to.
  */
-export function borderChain(net: Net, edge: Edge): Edge[] {
+export function borderChain(net: Net, edge: Edge, aroundCorners = false): Edge[] {
   const border = borderEdges(net);
   const starting = new Map<number, Edge>();
   const ending = new Map<number, Edge>();
@@ -95,7 +96,7 @@ export function borderChain(net: Net, edge: Edge): Edge[] {
   const quadsAt = new Map<number, number>();
   for (const vertex of net.quads) quadsAt.set(vertex, (quadsAt.get(vertex) ?? 0) + 1);
   // A corner of the net (one quad) ends the chain; a regular border point has two.
-  const passes = (vertex: number) => (quadsAt.get(vertex) ?? 0) === 2;
+  const passes = (vertex: number) => aroundCorners || (quadsAt.get(vertex) ?? 0) === 2;
   const chain: Edge[] = [edge];
   const seen = new Set([key(edge.a, edge.b)]);
   for (let current = edge; passes(current.b);) {
@@ -215,4 +216,140 @@ export function splitRing(net: Net, a: number, b: number): { net: Net; added: nu
     net: { vertices, quads: Uint32Array.from(quads) },
     added: Array.from({ length: middles.size }, (_, i) => base + i),
   };
+}
+
+const cross = (u: Vec3, v: Vec3): Vec3 => [
+  u[1] * v[2] - u[2] * v[1],
+  u[2] * v[0] - u[0] * v[2],
+  u[0] * v[1] - u[1] * v[0],
+];
+
+function unit(v: Vec3): Vec3 {
+  const length = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / length, v[1] / length, v[2] / length];
+}
+
+/**
+ * The direction a border edge grows in: along the surface, away from its quad (the
+ * quad lies left of a -> b seen from outside, along `normal`).
+ */
+export function edgeOutward(a: Vec3, b: Vec3, normal: Vec3): Vec3 {
+  return unit(cross([b[0] - a[0], b[1] - a[1], b[2] - a[2]], normal));
+}
+
+/**
+ * Per chain point the step of a new row of unit width: the mean outward direction of
+ * its chain edges, lengthened at a corner (a mitre) so the new row keeps its width.
+ */
+export function outwardSteps(
+  chain: readonly Edge[],
+  pointOf: (vertex: number) => Vec3,
+  normalOf: (vertex: number) => Vec3,
+): Map<number, Vec3> {
+  const directions = new Map<number, Vec3[]>();
+  for (const { a, b } of chain) {
+    const normal = unit(
+      normalOf(a).map((value, axis) => value + (normalOf(b)[axis] ?? 0)) as unknown as Vec3,
+    );
+    const outward = edgeOutward(pointOf(a), pointOf(b), normal);
+    for (const vertex of [a, b]) {
+      const list = directions.get(vertex);
+      if (list) list.push(outward);
+      else directions.set(vertex, [outward]);
+    }
+  }
+  const steps = new Map<number, Vec3>();
+  for (const [vertex, list] of directions) {
+    const sum = list.reduce<Vec3>(
+      (total, d) => [total[0] + d[0], total[1] + d[1], total[2] + d[2]],
+      [0, 0, 0],
+    );
+    const mean = unit(sum);
+    // Mitre: the step keeps distance 1 from every edge it belongs to.
+    const reach = Math.min(...list.map((d) => d[0] * mean[0] + d[1] * mean[1] + d[2] * mean[2]));
+    const scale = 1 / Math.max(reach, 0.35);
+    steps.set(vertex, [mean[0] * scale, mean[1] * scale, mean[2] * scale]);
+  }
+  return steps;
+}
+
+/**
+ * The run of `loop` (a border chain in order) through `edge` whose edges are all kept,
+ * wrapping round a closed loop: the sides of a border that face one way.
+ */
+export function keptRun(loop: readonly Edge[], kept: readonly boolean[], edge: Edge): Edge[] {
+  const count = loop.length;
+  const at = loop.findIndex((item) => item.a === edge.a && item.b === edge.b);
+  if (at < 0 || !kept[at]) return [];
+  if (kept.every(Boolean)) return [...loop];
+  const closed = count > 2 && loop[0]?.a === loop[count - 1]?.b;
+  // Back from the edge while kept (round the start of a closed loop), then forward.
+  let first = at;
+  for (let step = 1; step < count; step += 1) {
+    const previous = first - 1;
+    if (previous < 0 && !closed) break;
+    if (!kept[(previous + count) % count]) break;
+    first = previous;
+  }
+  const run: Edge[] = [];
+  for (let i = first; run.length < count; i += 1) {
+    if (i >= count && !closed) break;
+    const index = ((i % count) + count) % count;
+    if (!kept[index]) break;
+    run.push(loop[index] as Edge);
+  }
+  return run;
+}
+
+/** Step length of a walk on the scan (mm). */
+export const WALK_STEP_MM = 0.25;
+
+export interface SurfacePoint {
+  point: Vec3;
+  normal: Vec3;
+}
+
+/**
+ * The point `length` along a surface from `start`, setting out in `direction`: small
+ * steps, each pulled back onto the surface, the heading kept tangent to it. Over a
+ * rounded edge the walk follows the rounding and goes on down the wall, where a step
+ * straight out would leave the surface and fall back onto the edge.
+ */
+export function walkOnSurface(
+  start: Vec3,
+  direction: Vec3,
+  length: number,
+  closest: (point: Vec3) => SurfacePoint | null,
+  step = WALK_STEP_MM,
+): Vec3 {
+  let point = start;
+  let heading = unit(direction);
+  const count = Math.max(1, Math.ceil(length / step));
+  const each = length / count;
+  for (let i = 0; i < count; i += 1) {
+    const ahead: Vec3 = [
+      point[0] + heading[0] * each,
+      point[1] + heading[1] * each,
+      point[2] + heading[2] * each,
+    ];
+    const hit = closest(ahead);
+    if (!hit) {
+      point = ahead;
+      continue;
+    }
+    const n = hit.normal;
+    const tangent = (v: Vec3): Vec3 => {
+      const along = v[0] * n[0] + v[1] * n[1] + v[2] * n[2];
+      return [v[0] - along * n[0], v[1] - along * n[1], v[2] - along * n[2]];
+    };
+    let onward = tangent([
+      hit.point[0] - point[0],
+      hit.point[1] - point[1],
+      hit.point[2] - point[2],
+    ]);
+    if (Math.hypot(onward[0], onward[1], onward[2]) < 1e-9) onward = tangent(heading);
+    heading = unit(onward);
+    point = hit.point;
+  }
+  return point;
 }

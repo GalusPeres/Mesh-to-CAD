@@ -21,7 +21,18 @@ import {
 } from './heatmap';
 import { GuideOverlay } from './GuideOverlay';
 import { LimitSurface } from './limitSurface';
-import { type Edge, addQuad, borderChain, borderEdges, extrudeEdges, splitRing } from './netBuild';
+import {
+  type Edge,
+  addQuad,
+  borderChain,
+  borderEdges,
+  edgeOutward,
+  extrudeEdges,
+  keptRun,
+  outwardSteps,
+  splitRing,
+  walkOnSurface,
+} from './netBuild';
 import { type NetEditorState, type NetJobKind, initialNetState } from './netState';
 import { NetOverlay } from './NetOverlay';
 import {
@@ -42,6 +53,10 @@ export const FREEFORM_NET_TOOL_ID = 'freeform-net';
 export const SNAP_SMOOTHING = 0.002;
 export const SMOOTH_SMOOTHING = 0.05;
 const FIT_ITERATIONS = 4;
+/** How far a step of a walk on the scan may look for the surface (mm). */
+const WALK_SEARCH_MM = 1;
+/** A border side grows with a drag when it faces the drag direction this much (cosine). */
+const FACING_COSINE = 0.3;
 /** Dense vertices measured per animation frame after a change of the whole net. */
 const MEASURE_CHUNK = 6000;
 
@@ -324,31 +339,129 @@ export class NetEditor {
     this.drawGuides();
   }
 
-  /** The border edges a drag of `edge` extends: it alone, or its whole border chain. */
-  extrusionChain(edge: Edge, whole: boolean): Edge[] {
-    return whole && this.net ? borderChain(this.net, edge) : [edge];
+  /**
+   * The border edges a drag of `edge` extends: it alone, its border up to the corners,
+   * or its whole border loop around the corners.
+   */
+  extrusionChain(edge: Edge, extent: 'edge' | 'side' | 'loop'): Edge[] {
+    if (extent === 'edge' || !this.net) return [edge];
+    return borderChain(this.net, edge, extent === 'loop');
   }
 
-  /** Show the row an extrusion by `offset` would add (null clears the preview). */
-  previewExtrusion(chain: readonly Edge[] | null, offset: Vec3): void {
+  /**
+   * The sides of `edge`'s border loop that face `direction` (a drag towards a corner
+   * gives the two sides meeting there), as one run through `edge`.
+   */
+  facingChain(edge: Edge, direction: Vec3): Edge[] {
+    if (!this.net) return [edge];
+    const loop = borderChain(this.net, edge, true);
+    const length = Math.hypot(direction[0], direction[1], direction[2]);
+    if (length === 0) return [edge];
+    const kept = loop.map((item) => {
+      const outward = this.outwardOf(item);
+      const cosine =
+        (outward[0] * direction[0] + outward[1] * direction[1] + outward[2] * direction[2]) /
+        length;
+      return cosine > FACING_COSINE || (item.a === edge.a && item.b === edge.b);
+    });
+    const run = keptRun(loop, kept, edge);
+    return run.length > 0 ? run : [edge];
+  }
+
+  /**
+   * The net for automation clients: its border edges with the screen position of their
+   * middle and the screen direction they grow in, and the point and quad counts.
+   */
+  automationInfo(): unknown {
+    const net = this.net;
+    if (!net || !this.surface) return { tool: FREEFORM_NET_TOOL_ID, net: null, state: this.state };
+    const border = borderEdges(net).map((edge) => {
+      const a = this.limitPoint(edge.a);
+      const b = this.limitPoint(edge.b);
+      const middle: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+      const outward = this.outwardOf(edge);
+      const screen = this.viewport.worldToScreen(middle);
+      const ahead = this.viewport.worldToScreen([
+        middle[0] + outward[0],
+        middle[1] + outward[1],
+        middle[2] + outward[2],
+      ]);
+      return {
+        edge,
+        middle,
+        outward,
+        screen,
+        screenOutwardPerMm:
+          screen && ahead ? { x: ahead.x - screen.x, y: ahead.y - screen.y } : null,
+      };
+    });
+    return {
+      tool: FREEFORM_NET_TOOL_ID,
+      quads: net.quads.length / 4,
+      points: net.vertices.length / 3,
+      border,
+      state: this.state,
+    };
+  }
+
+  /** The direction a border edge grows in: along the surface, away from its quad. */
+  outwardOf(edge: Edge): Vec3 {
+    const [na, nb] = [this.normalAt(edge.a), this.normalAt(edge.b)];
+    const normal: Vec3 = [na[0] + nb[0], na[1] + nb[1], na[2] + nb[2]];
+    return edgeOutward(this.limitPoint(edge.a), this.limitPoint(edge.b), normal);
+  }
+
+  /** Show the row an extrusion by `distance` would add (null clears the preview). */
+  previewExtrusion(chain: readonly Edge[] | null, distance: number): void {
     const segments: number[] = [];
-    for (const { a, b } of chain ?? []) {
-      const [pa, pb] = [this.limitPoint(a), this.limitPoint(b)];
-      const [qa, qb] = [this.extrudedPoint(a, offset), this.extrudedPoint(b, offset)];
-      segments.push(...pa, ...qa, ...qa, ...qb, ...qb, ...pb);
+    if (chain) {
+      const place = this.rowPlacement(chain, distance);
+      for (const { a, b } of chain) {
+        const [pa, pb] = [this.limitPoint(a), this.limitPoint(b)];
+        const [qa, qb] = [place(a), place(b)];
+        segments.push(...pa, ...qa, ...qa, ...qb, ...qb, ...pb);
+      }
     }
     this.extrusionPreview = segments;
     this.drawGuides();
   }
 
-  /** Add a row of quads along border edges, moved by `offset`, and snap it to the scan. */
-  async extrude(chain: readonly Edge[], offset: Vec3): Promise<void> {
+  /**
+   * Add a row of quads along border edges, `distance` outward along the surface (over
+   * an edge or a fillet it follows the scan), and snap it to the scan.
+   */
+  async extrude(chain: readonly Edge[], distance: number): Promise<void> {
     const net = this.net;
     this.extrusionPreview = [];
     this.drawGuides();
-    if (!net || this.state.job || chain.length === 0) return;
-    const result = extrudeEdges(net, chain, (vertex) => this.extrudedPoint(vertex, offset));
+    if (!net || this.state.job || chain.length === 0 || distance <= 0) return;
+    const result = extrudeEdges(net, chain, this.rowPlacement(chain, distance));
     await this.settle(result.net, result.added);
+  }
+
+  /** Where the new points of a row `distance` outward go. */
+  private rowPlacement(chain: readonly Edge[], distance: number): (vertex: number) => Vec3 {
+    const steps = outwardSteps(
+      chain,
+      (vertex) => this.limitPoint(vertex),
+      (vertex) => this.normalAt(vertex),
+    );
+    return (vertex) => {
+      const step = steps.get(vertex) ?? [0, 0, 0];
+      const start = this.limitPoint(vertex);
+      const reach = Math.hypot(step[0], step[1], step[2]) * distance;
+      if (!this.state.snap || reach === 0) {
+        return [
+          start[0] + step[0] * distance,
+          start[1] + step[1] * distance,
+          start[2] + step[2] * distance,
+        ];
+      }
+      // Along the scan: over an edge or a fillet the row follows it down the wall.
+      return walkOnSurface(start, step, reach, (point) =>
+        this.viewport.scanSurface.closest(point, WALK_SEARCH_MM),
+      );
+    };
   }
 
   /** Split the ring of quads crossing an edge with a new loop, snapped to the scan. */
@@ -369,14 +482,6 @@ export class NetEditor {
       this.history.push(this.net);
       this.syncHistory();
     }
-  }
-
-  /** A border point moved by `offset`, onto the scan when snapping. */
-  private extrudedPoint(vertex: number, offset: Vec3): Vec3 {
-    const [x, y, z] = this.limitPoint(vertex);
-    const moved: Vec3 = [x + offset[0], y + offset[1], z + offset[2]];
-    if (!this.state.snap) return moved;
-    return this.viewport.scanSurface.closest(moved, Infinity)?.point ?? moved;
   }
 
   private drawGuides(): void {

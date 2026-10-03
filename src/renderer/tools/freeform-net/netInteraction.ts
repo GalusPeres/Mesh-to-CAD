@@ -3,7 +3,10 @@
 // and choose points with a rectangle. Building by hand: while placing a face, clicks
 // on the scan set its corners; dragging a border edge adds a row of quads (with
 // Shift the whole border chain); S over an edge splits the ring of quads crossing
-// it. Empty-space gestures are left to an active selection mode, so triangles can
+// it. Rows grow outward along the surface, so they follow it over edges and fillets
+// (Ctrl+Shift grows the border sides that face the drag, around the corner between
+// them: drag towards a corner of the part to wrap the net round it). Empty-space
+// gestures are left to an active selection mode, so triangles can
 // still be selected while the tool is open.
 
 import type { ScreenPoint, Vec3, Viewport, ViewportInteraction } from '../../viewport/api';
@@ -43,11 +46,15 @@ type Gesture =
   | { kind: 'box'; start: ScreenPoint; mode: 'replace' | 'add' | 'remove' }
   | {
       kind: 'edge';
+      edge: Edge;
+      /** Grow the sides facing the drag (Ctrl+Shift) instead of a fixed chain. */
+      facing: boolean;
       chain: Edge[];
       start: ScreenPoint;
       moved: boolean;
       plane: { origin: Vec3; normal: Vec3 };
-      offset: Vec3 | null;
+      outward: Vec3;
+      distance: number;
     };
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
@@ -235,8 +242,10 @@ export function createNetInteraction(
         const denominator = dot(normal, ray.direction);
         if (Math.abs(denominator) < 1e-9) return true;
         const s = dot(normal, sub(origin, ray.origin)) / denominator;
-        gesture.offset = sub(add(ray.origin, ray.direction, s), origin);
-        editor.previewExtrusion(gesture.chain, gesture.offset);
+        const offset = sub(add(ray.origin, ray.direction, s), origin);
+        if (gesture.facing) gesture.chain = editor.facingChain(gesture.edge, offset);
+        gesture.distance = Math.max(0, dot(offset, gesture.outward));
+        editor.previewExtrusion(gesture.chain, gesture.distance);
         return true;
       }
       const distance = Math.hypot(
@@ -283,19 +292,23 @@ export function createNetInteraction(
       }
       const under = edgeAt(event.screen);
       if (under?.border) {
-        const chain = editor.extrusionChain(under.edge, event.shift);
+        const facing = event.shift && event.ctrl;
+        const chain = editor.extrusionChain(under.edge, event.shift && !facing ? 'side' : 'edge');
         const a = editor.limitPoint(under.edge.a);
         const b = editor.limitPoint(under.edge.b);
         const middle: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
         gesture = {
           kind: 'edge',
+          edge: under.edge,
+          facing,
           chain,
           start: event.screen,
           moved: false,
           plane: viewPlane(middle),
-          offset: null,
+          outward: editor.outwardOf(under.edge),
+          distance: 0,
         };
-        editor.previewExtrusion(chain, [0, 0, 0]);
+        editor.previewExtrusion(chain, 0);
         return true;
       }
       if (hooks.selectionModeActive()) return false;
@@ -307,8 +320,8 @@ export function createNetInteraction(
       gesture = null;
       if (!done) return false;
       if (done.kind === 'edge') {
-        if (done.moved && done.offset) void editor.extrude(done.chain, done.offset);
-        else editor.previewExtrusion(null, [0, 0, 0]);
+        if (done.moved && done.distance > 0) void editor.extrude(done.chain, done.distance);
+        else editor.previewExtrusion(null, 0);
         return true;
       }
       if (done.kind === 'box') {
@@ -337,7 +350,7 @@ export function createNetInteraction(
         return false;
       }
       if (gesture?.kind === 'edge' && event.key === 'Escape') {
-        editor.previewExtrusion(null, [0, 0, 0]);
+        editor.previewExtrusion(null, 0);
         gesture = null;
         return true;
       }

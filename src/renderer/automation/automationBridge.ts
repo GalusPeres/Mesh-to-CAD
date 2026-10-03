@@ -12,6 +12,7 @@ import { selectionStore } from '../selection/selectionStore';
 import { documentStore } from '../state/documentStore';
 import { toolStore } from '../state/toolStore';
 import { getViewport } from '../viewport/api';
+import { toolInfo } from './toolInfo';
 
 async function handle(action: AutomationAction): Promise<unknown> {
   switch (action.type) {
@@ -53,6 +54,8 @@ async function handle(action: AutomationAction): Promise<unknown> {
       if (!viewport) throw new Error('no viewport');
       return action.points.map((point) => viewport.worldToScreen(point));
     }
+    case 'toolInfo':
+      return toolInfo();
     case 'pick': {
       const viewport = getViewport();
       if (!viewport) throw new Error('no viewport');
