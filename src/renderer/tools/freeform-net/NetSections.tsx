@@ -105,6 +105,27 @@ function JobProgress({ editor, state }: { editor: NetEditor; state: NetEditorSta
   );
 }
 
+/** Building the net by hand: a face by four clicks, rows dragged out of border edges. */
+export function BuildSection({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
+  const { t } = useTranslation();
+  return (
+    <PanelSection title={t(`${KEY}.sections.build`)}>
+      <Button
+        variant={state.facing ? 'primary' : 'secondary'}
+        className={styles.wide}
+        disabled={state.job !== null}
+        data-testid="freeform-net-add-face"
+        onClick={() => editor.setFacing(!state.facing)}
+      >
+        {t(`${KEY}.build.${state.facing ? 'placing' : 'addFace'}`, { count: state.facePoints + 1 })}
+      </Button>
+      <p className={styles.hint}>
+        {t(`${KEY}.build.${state.facing ? 'faceHint' : state.hasNet ? 'growHint' : 'startHint'}`)}
+      </p>
+    </PanelSection>
+  );
+}
+
 export function EditSection({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
   const { t } = useTranslation();
   const format = useFormatter();

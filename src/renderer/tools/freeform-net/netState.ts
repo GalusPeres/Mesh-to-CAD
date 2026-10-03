@@ -23,6 +23,10 @@ export interface NetEditorState {
   tolerance: number;
   canUndo: boolean;
   canRedo: boolean;
+  /** A face is being placed by clicks on the scan. */
+  facing: boolean;
+  /** Corners of that face clicked so far (0..3). */
+  facePoints: number;
 }
 
 export function initialNetState(tolerance: number): NetEditorState {
@@ -42,5 +46,7 @@ export function initialNetState(tolerance: number): NetEditorState {
     tolerance,
     canUndo: false,
     canRedo: false,
+    facing: false,
+    facePoints: 0,
   };
 }

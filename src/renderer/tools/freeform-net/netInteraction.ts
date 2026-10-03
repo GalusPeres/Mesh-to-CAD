@@ -1,15 +1,21 @@
 // Pointer handling of the freeform-net tool: hover and pick control points in
 // screen space, drag them (in the view plane, or along the surface normal with Alt),
-// and choose points with a rectangle. Empty-space gestures are left to an active
-// selection mode, so triangles can still be selected while the tool is open.
+// and choose points with a rectangle. Building by hand: while placing a face, clicks
+// on the scan set its corners; dragging a border edge adds a row of quads (with
+// Shift the whole border chain); S over an edge splits the ring of quads crossing
+// it. Empty-space gestures are left to an active selection mode, so triangles can
+// still be selected while the tool is open.
 
 import type { ScreenPoint, Vec3, Viewport, ViewportInteraction } from '../../viewport/api';
+import type { Edge } from './netBuild';
 import type { NetEditor } from './netEditor';
 
 const PICK_RADIUS_PX = 10;
 /** Control points within this distance of the pointer are drawn. */
 const NEARBY_RADIUS_PX = 150;
 const DRAG_THRESHOLD_PX = 3;
+/** An edge within this distance of the pointer is under it. */
+const EDGE_RADIUS_PX = 7;
 /** Points whose surface faces away from the viewer more than this are not pickable. */
 const FACING_LIMIT = 0.15;
 
@@ -34,7 +40,15 @@ type Gesture =
       moved: boolean;
       plane: { origin: Vec3; normal: Vec3 };
     }
-  | { kind: 'box'; start: ScreenPoint; mode: 'replace' | 'add' | 'remove' };
+  | { kind: 'box'; start: ScreenPoint; mode: 'replace' | 'add' | 'remove' }
+  | {
+      kind: 'edge';
+      chain: Edge[];
+      start: ScreenPoint;
+      moved: boolean;
+      plane: { origin: Vec3; normal: Vec3 };
+      offset: Vec3 | null;
+    };
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -43,6 +57,16 @@ const add = (a: Vec3, b: Vec3, scale = 1): Vec3 => [
   a[1] + b[1] * scale,
   a[2] + b[2] * scale,
 ];
+
+/** Distance of a point to the segment a-b on screen. */
+function segmentDistance(at: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length = dx * dx + dy * dy;
+  const t =
+    length > 0 ? Math.max(0, Math.min(1, ((at.x - a.x) * dx + (at.y - a.y) * dy) / length)) : 0;
+  return Math.hypot(at.x - (a.x + t * dx), at.y - (a.y + t * dy));
+}
 
 function modeOf(event: { shift: boolean; ctrl: boolean }): 'replace' | 'add' | 'remove' {
   if (event.ctrl) return 'remove';
@@ -55,6 +79,8 @@ export function createNetInteraction(
   hooks: NetInteractionHooks,
 ): ViewportInteraction {
   let gesture: Gesture | null = null;
+  /** Where the pointer was last seen over the viewport (keys act there). */
+  let lastPointer: ScreenPoint | null = null;
 
   /** Visible control points with their screen positions (front-facing only). */
   const visiblePoints = function* (): Generator<{ control: number; screen: ScreenPoint }> {
@@ -84,6 +110,61 @@ export function createNetInteraction(
     return { picked, nearby };
   };
   const pickControl = (at: ScreenPoint): number | null => pointsAt(at).picked;
+
+  /** The visible net edge under the pointer, with whether it is open border. */
+  const edgeAt = (at: ScreenPoint): { edge: Edge; border: boolean } | null => {
+    const edges = editor.edges;
+    if (!edges) return null;
+    const screens = new Map<number, ScreenPoint | null>();
+    const screenOf = (control: number): ScreenPoint | null => {
+      if (screens.has(control)) return screens.get(control) ?? null;
+      const point = editor.limitPoint(control);
+      let screen = viewport.worldToScreen(point);
+      if (
+        screen &&
+        dot(editor.normalAt(control), viewport.screenToRay(screen).direction) > FACING_LIMIT
+      )
+        screen = null;
+      screens.set(control, screen);
+      return screen;
+    };
+    let best: { edge: Edge; border: boolean } | null = null;
+    let bestDistance = EDGE_RADIUS_PX;
+    for (let index = 0; index < edges.pairs.length / 2; index += 1) {
+      const a = edges.pairs[index * 2] ?? 0;
+      const b = edges.pairs[index * 2 + 1] ?? 0;
+      const sa = screenOf(a);
+      const sb = screenOf(b);
+      if (!sa || !sb) continue;
+      const distance = segmentDistance(at, sa, sb);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        const border = (edges.border[index] ?? 0) !== 0;
+        best = { edge: (border && editor.borderEdge(a, b)) || { a, b }, border };
+      }
+    }
+    return best;
+  };
+
+  /** The scan point under the pointer and the scan's outward normal there. */
+  const scanAt = (at: ScreenPoint): { point: Vec3; normal: Vec3 } | null => {
+    const hit = viewport.pick(at, { kinds: ['scan'] });
+    if (!hit || hit.kind !== 'scan') return null;
+    const ray = viewport.screenToRay(at);
+    const normal = viewport.scanSurface.closest(hit.point, 1)?.normal ?? [
+      -ray.direction[0],
+      -ray.direction[1],
+      -ray.direction[2],
+    ];
+    return { point: hit.point, normal };
+  };
+
+  /** The view plane through a point: drags move in it. */
+  const viewPlane = (origin: Vec3): { origin: Vec3; normal: Vec3 } => {
+    const at = viewport.worldToScreen(origin);
+    const normal = at ? viewport.screenToRay(at).direction : ([0, 0, 1] as Vec3);
+    return { origin, normal };
+  };
 
   /** Offset of the grabbed surface point for the pointer at `screen`. */
   const dragOffset = (
@@ -125,14 +206,37 @@ export function createNetInteraction(
   return {
     cursor: 'default',
     onPointerMove: (event) => {
+      lastPointer = event.screen;
       if (!gesture) {
+        const facing = editor.getState().facing;
+        if (facing) {
+          editor.previewFacePoint(scanAt(event.screen)?.point ?? null);
+          return false;
+        }
         if (editor.controlCount === 0) return false;
         const { picked, nearby } = pointsAt(event.screen);
         editor.setHover(picked, nearby);
+        editor.setHoverEdge(picked === null ? (edgeAt(event.screen)?.edge ?? null) : null);
         return false;
       }
       if (gesture.kind === 'box') {
         hooks.onBox({ from: gesture.start, to: event.screen });
+        return true;
+      }
+      if (gesture.kind === 'edge') {
+        const moved = Math.hypot(
+          event.screen.x - gesture.start.x,
+          event.screen.y - gesture.start.y,
+        );
+        if (!gesture.moved && moved < DRAG_THRESHOLD_PX) return true;
+        gesture.moved = true;
+        const ray = viewport.screenToRay(event.screen);
+        const { origin, normal } = gesture.plane;
+        const denominator = dot(normal, ray.direction);
+        if (Math.abs(denominator) < 1e-9) return true;
+        const s = dot(normal, sub(origin, ray.origin)) / denominator;
+        gesture.offset = sub(add(ray.origin, ray.direction, s), origin);
+        editor.previewExtrusion(gesture.chain, gesture.offset);
         return true;
       }
       const distance = Math.hypot(
@@ -155,7 +259,13 @@ export function createNetInteraction(
       return true;
     },
     onPointerDown: (event) => {
-      if (event.button !== 0 || editor.controlCount === 0) return false;
+      if (event.button !== 0) return false;
+      if (editor.getState().facing) {
+        const hit = scanAt(event.screen);
+        if (hit) void editor.addFacePoint(hit.point, hit.normal);
+        return true;
+      }
+      if (editor.controlCount === 0) return false;
       const control = pickControl(event.screen);
       if (control !== null) {
         const origin = editor.limitPoint(control);
@@ -171,6 +281,23 @@ export function createNetInteraction(
         };
         return true;
       }
+      const under = edgeAt(event.screen);
+      if (under?.border) {
+        const chain = editor.extrusionChain(under.edge, event.shift);
+        const a = editor.limitPoint(under.edge.a);
+        const b = editor.limitPoint(under.edge.b);
+        const middle: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+        gesture = {
+          kind: 'edge',
+          chain,
+          start: event.screen,
+          moved: false,
+          plane: viewPlane(middle),
+          offset: null,
+        };
+        editor.previewExtrusion(chain, [0, 0, 0]);
+        return true;
+      }
       if (hooks.selectionModeActive()) return false;
       gesture = { kind: 'box', start: event.screen, mode: modeOf(event) };
       return true;
@@ -179,6 +306,11 @@ export function createNetInteraction(
       const done = gesture;
       gesture = null;
       if (!done) return false;
+      if (done.kind === 'edge') {
+        if (done.moved && done.offset) void editor.extrude(done.chain, done.offset);
+        else editor.previewExtrusion(null, [0, 0, 0]);
+        return true;
+      }
       if (done.kind === 'box') {
         hooks.onBox(null);
         const small =
@@ -195,6 +327,27 @@ export function createNetInteraction(
       return true;
     },
     onKeyDown: (event) => {
+      const plain = !event.ctrlKey && !event.altKey && !event.metaKey;
+      if (editor.getState().facing) {
+        if (event.key === 'Escape') {
+          editor.setFacing(false);
+          return true;
+        }
+        if (event.key === 'Backspace') return editor.removeFacePoint();
+        return false;
+      }
+      if (gesture?.kind === 'edge' && event.key === 'Escape') {
+        editor.previewExtrusion(null, [0, 0, 0]);
+        gesture = null;
+        return true;
+      }
+      if (plain && (event.key === 's' || event.key === 'S') && !gesture) {
+        const at = lastPointer;
+        const under = at ? edgeAt(at) : null;
+        if (!under) return false;
+        void editor.split(under.edge);
+        return true;
+      }
       if (event.key === 'Escape') {
         if (gesture?.kind === 'point' && gesture.moved) {
           editor.endDrag(false);

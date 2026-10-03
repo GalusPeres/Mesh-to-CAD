@@ -5,7 +5,8 @@
   "sections": {
     "net": "Net",
     "edit": "Edit",
-    "deviation": "Deviation"
+    "deviation": "Deviation",
+    "build": "Build by hand"
   },
   "source": "Input",
   "sources": {
@@ -64,5 +65,12 @@
     "closedBody": "Closed body",
     "openSurface": "Open surface",
     "openHint": "The net has open borders. It becomes a surface, not a body."
+  },
+  "build": {
+    "addFace": "Place face",
+    "placing": "Place corner {{count}} of 4 …",
+    "startHint": "Place face, then click four corners on the scan. Then drag a border edge: a new row grows on, aligned with the one before.",
+    "faceHint": "Click four corners on the scan, in order around the face. Backspace takes the last one back, Esc cancels.",
+    "growHint": "Grab a border edge and drag: a new row grows on; with Shift the whole border up to the next corner. S over an edge inserts a row across it (more resolution, e.g. at fillets). New points snap to the scan."
   }
 }

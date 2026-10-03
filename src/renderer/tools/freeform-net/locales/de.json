@@ -5,7 +5,8 @@
   "sections": {
     "net": "Netz",
     "edit": "Bearbeiten",
-    "deviation": "Abweichung"
+    "deviation": "Abweichung",
+    "build": "Von Hand aufbauen"
   },
   "source": "Eingabe",
   "sources": {
@@ -64,5 +65,12 @@
     "closedBody": "Geschlossener Körper",
     "openSurface": "Offene Fläche",
     "openHint": "Das Netz hat offene Ränder. Es wird eine Fläche, kein Körper."
+  },
+  "build": {
+    "addFace": "Fläche setzen",
+    "placing": "Ecke {{count}} von 4 setzen …",
+    "startHint": "Fläche setzen und vier Ecken auf den Scan klicken. Danach an einer Randkante ziehen: es wächst eine neue Reihe an, sauber ausgerichtet an der vorigen.",
+    "faceHint": "Vier Ecken auf den Scan klicken, der Reihe nach rundherum. Rücktaste nimmt die letzte zurück, Esc bricht ab.",
+    "growHint": "Randkante anfassen und ziehen: eine neue Reihe wächst an; mit Umschalt die ganze Kante bis zur nächsten Ecke. S über einer Kante legt eine Reihe quer dazu ein (mehr Auflösung, etwa an Rundungen). Neue Punkte schmiegen sich an den Scan an."
   }
 }

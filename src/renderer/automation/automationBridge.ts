@@ -11,6 +11,7 @@ import { replaceSelection } from '../selection/api';
 import { selectionStore } from '../selection/selectionStore';
 import { documentStore } from '../state/documentStore';
 import { toolStore } from '../state/toolStore';
+import { getViewport } from '../viewport/api';
 
 async function handle(action: AutomationAction): Promise<unknown> {
   switch (action.type) {
@@ -45,7 +46,56 @@ async function handle(action: AutomationAction): Promise<unknown> {
       return click(action.target);
     case 'key':
       return press(action);
+    case 'pointer':
+      return pointer(action);
+    case 'project': {
+      const viewport = getViewport();
+      if (!viewport) throw new Error('no viewport');
+      return action.points.map((point) => viewport.worldToScreen(point));
+    }
+    case 'pick': {
+      const viewport = getViewport();
+      if (!viewport) throw new Error('no viewport');
+      return viewport.pick({ x: action.x, y: action.y });
+    }
   }
+}
+
+/** The canvas of the 3D view: the largest one in the main area. */
+function viewCanvas(): HTMLCanvasElement {
+  const canvases = [...document.querySelectorAll<HTMLCanvasElement>('main canvas')];
+  const largest = canvases.sort(
+    (a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight,
+  )[0];
+  if (!largest) throw new Error('no 3D view');
+  return largest;
+}
+
+const POINTER_TYPES = { down: 'pointerdown', move: 'pointermove', up: 'pointerup' } as const;
+
+/** A pointer event on the 3D view, as the mouse would send it. */
+function pointer(action: Extract<AutomationAction, { type: 'pointer' }>): { sent: string } {
+  const canvas = viewCanvas();
+  const rect = canvas.getBoundingClientRect();
+  const button = action.button ?? 0;
+  const pressed = action.kind === 'up' ? 0 : action.kind === 'down' ? 1 << button : 0;
+  canvas.dispatchEvent(
+    new PointerEvent(POINTER_TYPES[action.kind], {
+      bubbles: true,
+      cancelable: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+      clientX: rect.left + action.x,
+      clientY: rect.top + action.y,
+      button: action.kind === 'move' ? -1 : button,
+      buttons: pressed,
+      ctrlKey: action.ctrl ?? false,
+      shiftKey: action.shift ?? false,
+      altKey: action.alt ?? false,
+    }),
+  );
+  return { sent: action.kind };
 }
 
 /** Click like the user: by test id first, else the button with that label or aria-label. */

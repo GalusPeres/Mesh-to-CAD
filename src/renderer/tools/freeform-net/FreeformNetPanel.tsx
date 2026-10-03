@@ -20,6 +20,7 @@ import styles from './FreeformNetPanel.module.css';
 import { FREEFORM_NET_TOOL_ID } from './netEditor';
 import type { BoxRectangle } from './netInteraction';
 import {
+  BuildSection,
   DENSITY_QUADS,
   DeviationSection,
   EditSection,
@@ -110,6 +111,7 @@ export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
             onDensity={setDensity}
             onGenerate={generate}
           />
+          <BuildSection editor={editor} state={state} />
           <ErrorMessage state={state} />
           {state.hasNet && (
             <>

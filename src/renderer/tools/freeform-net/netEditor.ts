@@ -19,7 +19,9 @@ import {
   deviationSummary,
   heatmapScale,
 } from './heatmap';
+import { GuideOverlay } from './GuideOverlay';
 import { LimitSurface } from './limitSurface';
+import { type Edge, addQuad, borderChain, borderEdges, extrudeEdges, splitRing } from './netBuild';
 import { type NetEditorState, type NetJobKind, initialNetState } from './netState';
 import { NetOverlay } from './NetOverlay';
 import {
@@ -68,6 +70,11 @@ export class NetEditor {
   private running: KernelJob<unknown> | null = null;
   private measureToken = 0;
   private drag: Drag | null = null;
+  private guides: GuideOverlay | null = null;
+  private facePoints: { point: Vec3; normal: Vec3 }[] = [];
+  private facePreview: Vec3 | null = null;
+  private hoverEdge: Edge | null = null;
+  private extrusionPreview: number[] = [];
   private scale: HeatmapScale;
   private detached = false;
   /** Scan triangles the net belongs to (fitting uses them); null = the whole scan. */
@@ -117,10 +124,13 @@ export class NetEditor {
     this.syncHistory();
   }
 
-  /** Snap the net to the scan; with chosen points only those move ("Glätten": fairer). */
-  async fit(smooth: boolean): Promise<void> {
+  /**
+   * Snap the net to the scan; with chosen points only those move ("Glätten": fairer).
+   * Returns whether the fitted net was shown (and recorded).
+   */
+  async fit(smooth: boolean): Promise<boolean> {
     const net = this.net;
-    if (!net) return;
+    if (!net) return false;
     const fixed =
       this.selection.size > 0
         ? Uint8Array.from({ length: net.vertices.length / 3 }, (_, i) =>
@@ -135,8 +145,9 @@ export class NetEditor {
       smoothing: smooth ? SMOOTH_SMOOTHING : SNAP_SMOOTHING,
       iterations: FIT_ITERATIONS,
     });
-    if (!result) return;
+    if (!result) return false;
     await this.setNet({ vertices: result.vertices, quads: net.quads }, true);
+    return true;
   }
 
   /**
@@ -243,6 +254,150 @@ export class NetEditor {
     this.repaintPoints();
   }
 
+  // Building by hand -------------------------------------------------------------------------
+
+  /** Start or stop placing a face by four clicks on the scan. */
+  setFacing(facing: boolean): void {
+    this.facePoints = [];
+    this.facePreview = null;
+    this.update({ facing, facePoints: 0 });
+    this.drawGuides();
+  }
+
+  /** A clicked scan point of the new face; the fourth one adds the face. */
+  async addFacePoint(point: Vec3, normal: Vec3): Promise<void> {
+    if (!this.state.facing || this.state.job) return;
+    this.facePoints.push({ point, normal });
+    this.update({ facePoints: this.facePoints.length });
+    this.drawGuides();
+    if (this.facePoints.length < 4) return;
+    const corners = this.facePoints.map((clicked) => clicked.point);
+    const outward = this.facePoints.reduce<Vec3>(
+      (sum, clicked) => [
+        sum[0] + clicked.normal[0],
+        sum[1] + clicked.normal[1],
+        sum[2] + clicked.normal[2],
+      ],
+      [0, 0, 0],
+    );
+    this.setFacing(false);
+    await this.setNet(addQuad(this.net, corners, outward), true);
+  }
+
+  /** Take back the last clicked corner; false if there was none. */
+  removeFacePoint(): boolean {
+    if (this.facePoints.length === 0) return false;
+    this.facePoints.pop();
+    this.update({ facePoints: this.facePoints.length });
+    this.drawGuides();
+    return true;
+  }
+
+  /** The scan point under the pointer while placing a face (rubber band), or null. */
+  previewFacePoint(point: Vec3 | null): void {
+    this.facePreview = point;
+    this.drawGuides();
+  }
+
+  /** Edges of the net (control-point pairs) and which of them are open border. */
+  get edges(): { pairs: Uint32Array; border: Uint8Array } | null {
+    const map = this.surface?.map;
+    return map ? { pairs: map.edges, border: map.boundaryEdges } : null;
+  }
+
+  /** The border edge a-b directed as in its quad, or null if it is no border edge. */
+  borderEdge(a: number, b: number): Edge | null {
+    if (!this.net) return null;
+    return (
+      borderEdges(this.net).find(
+        (edge) => (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a),
+      ) ?? null
+    );
+  }
+
+  /** Highlight the edge under the pointer (null: none). */
+  setHoverEdge(edge: Edge | null): void {
+    const current = this.hoverEdge;
+    const same = edge && current ? edge.a === current.a && edge.b === current.b : edge === current;
+    if (same) return;
+    this.hoverEdge = edge;
+    this.drawGuides();
+  }
+
+  /** The border edges a drag of `edge` extends: it alone, or its whole border chain. */
+  extrusionChain(edge: Edge, whole: boolean): Edge[] {
+    return whole && this.net ? borderChain(this.net, edge) : [edge];
+  }
+
+  /** Show the row an extrusion by `offset` would add (null clears the preview). */
+  previewExtrusion(chain: readonly Edge[] | null, offset: Vec3): void {
+    const segments: number[] = [];
+    for (const { a, b } of chain ?? []) {
+      const [pa, pb] = [this.limitPoint(a), this.limitPoint(b)];
+      const [qa, qb] = [this.extrudedPoint(a, offset), this.extrudedPoint(b, offset)];
+      segments.push(...pa, ...qa, ...qa, ...qb, ...qb, ...pb);
+    }
+    this.extrusionPreview = segments;
+    this.drawGuides();
+  }
+
+  /** Add a row of quads along border edges, moved by `offset`, and snap it to the scan. */
+  async extrude(chain: readonly Edge[], offset: Vec3): Promise<void> {
+    const net = this.net;
+    this.extrusionPreview = [];
+    this.drawGuides();
+    if (!net || this.state.job || chain.length === 0) return;
+    const result = extrudeEdges(net, chain, (vertex) => this.extrudedPoint(vertex, offset));
+    await this.settle(result.net, result.added);
+  }
+
+  /** Split the ring of quads crossing an edge with a new loop, snapped to the scan. */
+  async split(edge: Edge): Promise<void> {
+    const net = this.net;
+    if (!net || this.state.job) return;
+    const result = splitRing(net, edge.a, edge.b);
+    if (result.added.length === 0) return;
+    await this.settle(result.net, result.added);
+  }
+
+  /** Show a changed net, then snap its new points to the scan: one undo step. */
+  private async settle(net: Net, added: readonly number[]): Promise<void> {
+    await this.setNet(net, false);
+    this.choose(added, 'replace');
+    const fitted = await this.fit(false);
+    if (!fitted && this.net) {
+      this.history.push(this.net);
+      this.syncHistory();
+    }
+  }
+
+  /** A border point moved by `offset`, onto the scan when snapping. */
+  private extrudedPoint(vertex: number, offset: Vec3): Vec3 {
+    const [x, y, z] = this.limitPoint(vertex);
+    const moved: Vec3 = [x + offset[0], y + offset[1], z + offset[2]];
+    if (!this.state.snap) return moved;
+    return this.viewport.scanSurface.closest(moved, Infinity)?.point ?? moved;
+  }
+
+  private drawGuides(): void {
+    if (this.detached) return;
+    if (!this.guides) this.guides = new GuideOverlay(this.viewport.createOverlay());
+    const segments: number[] = [...this.extrusionPreview];
+    const points: number[] = [];
+    const corners = this.facePoints.map((clicked) => clicked.point);
+    if (this.facePreview && this.state.facing) corners.push(this.facePreview);
+    corners.forEach((corner, i) => {
+      points.push(...corner);
+      const next = corners[i + 1] ?? (corners.length === 4 ? corners[0] : undefined);
+      if (next) segments.push(...corner, ...next);
+    });
+    if (this.hoverEdge && this.surface && !this.state.facing) {
+      segments.push(...this.limitPoint(this.hoverEdge.a), ...this.limitPoint(this.hoverEdge.b));
+    }
+    this.guides.show(segments, points);
+    this.viewport.invalidate();
+  }
+
   // Dragging ----------------------------------------------------------------------------------
 
   /** Start moving the chosen control points (the grabbed one is chosen first if needed). */
@@ -337,6 +492,8 @@ export class NetEditor {
     this.running?.cancel();
     this.overlay?.dispose();
     this.overlay = null;
+    this.guides?.dispose();
+    this.guides = null;
   }
 
   // Internals ---------------------------------------------------------------------------------
@@ -385,6 +542,7 @@ export class NetEditor {
         if (control >= this.surface.controlCount) this.selection.delete(control);
       }
       this.hover = null;
+      this.hoverEdge = null;
     }
     this.net = cloneNet(net);
     const surface = this.surface as LimitSurface;
