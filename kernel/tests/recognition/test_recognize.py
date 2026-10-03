@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import cache
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -19,6 +20,8 @@ from m2c_kernel.cad.occ_compat import (
 )
 from m2c_kernel.mesh.normals import vertex_normals
 from m2c_kernel.recognition.api import Feature, Recognition, recognize
+from tests.kernel_process import KernelProcess
+from tests.synthetic import write_binary_stl
 from tests.synthetic.noise import add_scanner_noise
 from tests.synthetic.parts import tessellate_part
 
@@ -97,3 +100,26 @@ def test_through_holes_are_found_once() -> None:
         assert hole.outline.kind == "circle"
         assert _diameter(hole) == pytest.approx(6.0, abs=0.1)
         assert hole.relief.height == pytest.approx(6.0, abs=0.15)
+
+
+def test_recognize_run_through_the_protocol(kernel: KernelProcess, tmp_path: Path) -> None:
+    shape = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 60.0, 40.0, 5.0).Shape()
+    shape = BRepAlgoAPI_Fuse(shape, _cylinder(20.0, 20.0, 5.0, 8.0, 2.0)).Shape()
+    shape = BRepAlgoAPI_Cut(shape, _cylinder(45.0, 20.0, -1.0, 6.0, 10.0)).Shape()
+    part = tessellate_part(shape, max_edge=1.0)
+    path = write_binary_stl(tmp_path / "plate.stl", part.vertices, part.faces)
+    report = kernel.call("mesh.import", {"path": str(path)}, origin="main").result
+    assert kernel.call("mesh.commitImport", {"pendingId": report["pendingId"], "unit": "mm"}).ok
+    scan_key = kernel.call("doc.get").result["document"]["scan"]["key"]
+
+    answer = kernel.call("recognize.run", {"scanKey": scan_key}, lane="recognize.run:test")
+    assert answer.ok, answer.header.get("error")
+    result = answer.result
+    features = result["features"]
+    kinds = sorted((f["kind"], f["shape"], f["top"]) for f in features)
+    assert kinds == [("boss", "circle", "flat"), ("pocket", "circle", "through")]
+    boss = next(f for f in features if f["kind"] == "boss")
+    assert 2 * boss["params"]["radius"] == pytest.approx(8.0, abs=0.1)
+    assert boss["height"] == pytest.approx(2.0, abs=0.1)
+    offsets = np.frombuffer(answer.buffers[result["outlineOffsets"]["$buf"]], np.uint32)
+    assert len(offsets) == 2 * len(features) + 1

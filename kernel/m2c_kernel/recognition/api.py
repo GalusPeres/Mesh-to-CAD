@@ -19,7 +19,7 @@ from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.intent import beautify
 from m2c_kernel.recognition.outline import Outline, outline_points
 from m2c_kernel.recognition.planes import BasePlane, base_planes
-from m2c_kernel.recognition.relief import Relief, find_reliefs
+from m2c_kernel.recognition.relief import Relief, find_reliefs, mesh_data
 
 type IntArray = npt.NDArray[np.int64]
 
@@ -68,10 +68,11 @@ def recognize(
 ) -> Recognition:
     """Base planes and their features, with design intent, without duplicates."""
     planes = base_planes(vertices, faces, noise, min_share=PLANE_SHARE)
+    data = mesh_data(vertices, faces)
     features: list[Feature] = []
     for index, plane in enumerate(planes):
         check_cancelled()
-        reliefs = beautify(find_reliefs(vertices, faces, plane, noise))
+        reliefs = beautify(find_reliefs(data, plane, noise))
         offset = len(features)
         for relief in reliefs:
             parent = None if relief.parent is None else relief.parent + offset

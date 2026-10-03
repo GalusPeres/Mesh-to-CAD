@@ -11,6 +11,7 @@ import { type InspectionMethods, INSPECTION_METHODS } from './inspection';
 import { type MeshMethods, MESH_METHODS } from './mesh';
 import { type NetMethods, NET_METHODS } from './net';
 import { type ProjectMethods, PROJECT_METHODS } from './project';
+import { type RecognizeMethods, RECOGNIZE_METHODS } from './recognize';
 import { type RegionsMethods, REGIONS_METHODS } from './regions';
 import { type SceneMethods, SCENE_METHODS } from './scene';
 import { type SketchMethods, SKETCH_METHODS } from './sketch';
@@ -44,7 +45,7 @@ import type { RevolveFeatureType } from './feature-revolve';
 import type { SketchFeatureType } from './feature-sketch';
 import type { TrimFeatureType } from './feature-trim';
 
-export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
+export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RecognizeMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
 
 export const METHOD_TABLE = {
   ...ALIGNMENT_METHODS,
@@ -58,6 +59,7 @@ export const METHOD_TABLE = {
   ...MESH_METHODS,
   ...NET_METHODS,
   ...PROJECT_METHODS,
+  ...RECOGNIZE_METHODS,
   ...REGIONS_METHODS,
   ...SCENE_METHODS,
   ...SKETCH_METHODS,

@@ -53,6 +53,8 @@ ON_PLANE_SHARE = 0.2
 FAR_SIDE = 0.5
 """Sunk vertices whose normal points away from the plane beyond this cosine are left out."""
 UP_FACING = 0.9
+MIN_TOP_POINTS = 3
+"""Fewer upward points near the top: no top face (a dome, or a through hole)."""
 WALL_FACING = 0.5
 WALL_STEP_MM = 0.5
 MIN_AREA_MM2 = 2.0
@@ -60,8 +62,9 @@ MIN_AREA_MM2 = 2.0
 MAX_SHARE = 0.4
 """A relief covers at most this share of its plane's extent."""
 HEIGHT_PERCENTILE = 95.0
-NORMAL_RINGS = 4
-"""Rings of neighbours the vertex normals are averaged over."""
+NORMAL_SMOOTHING_MM = 0.4
+"""Vertex normals are averaged over neighbours about this far away."""
+MAX_NORMAL_RINGS = 6
 FLAT_TOP_FACTOR = 4.0
 """A top is flat when its points lie within this x the noise of a parallel plane."""
 
@@ -111,23 +114,40 @@ class _Context:
     normals: FloatArray
 
 
-def find_reliefs(
-    vertices: FloatArray, faces: IntArray, plane: BasePlane, noise: float
-) -> list[Relief]:
+@dataclass(frozen=True)
+class MeshData:
+    """What every plane's search needs of the mesh, computed once."""
+
+    vertices: FloatArray
+    faces: IntArray
+    graph: sp.csr_matrix
+    """Vertex adjacency."""
+    normals: FloatArray
+    """Smoothed unit vertex normals (`vertex_normals`)."""
+
+
+def mesh_data(vertices: FloatArray, faces: IntArray) -> MeshData:
+    n = len(vertices)
+    edges = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
+    graph = sp.csr_matrix((np.ones(len(edges)), (edges[:, 0], edges[:, 1])), shape=(n, n))
+    graph = (graph + graph.T).tocsr()
+    graph.data[:] = 1.0
+    return MeshData(vertices, faces, graph, vertex_normals(vertices, faces, graph))
+
+
+def find_reliefs(data: MeshData, plane: BasePlane, noise: float) -> list[Relief]:
     """Raised and sunk features on the plane, pockets with the features inside them."""
+    vertices, faces, graph = data.vertices, data.faces, data.graph
     uvh = plane.to_plane(vertices)
     inlier_vertices = np.unique(faces[plane.faces])
     hull_points = uvh[inlier_vertices, :2]
     footprint = Delaunay(hull_points)
-    edges = np.concatenate([faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]])
     n = len(vertices)
-    graph = sp.csr_matrix((np.ones(len(edges)), (edges[:, 0], edges[:, 1])), shape=(n, n))
-    graph = (graph + graph.T).tocsr()
     threshold = max(MIN_RISE_MM, RISE_NOISE * noise)
     span = np.ptp(hull_points, axis=0)
     on_plane = np.zeros(n, dtype=bool)
     on_plane[inlier_vertices] = True
-    normals = _vertex_normals(vertices, faces, graph)
+    normals = data.normals
     facing = normals @ plane.normal
     context = _Context(
         plane,
@@ -241,12 +261,15 @@ def _measure(
     up = context.facing[part] > UP_FACING
     near_top = part[(rise > 0.8 * height) & up]
     top: Literal["flat", "domed", "through"]
-    if len(near_top) < MIN_VERTICES // 3:
+    if len(near_top) < MIN_TOP_POINTS:
         top = "through" if kind == "pocket" else "domed"
         if top == "through":
-            # Through: the hole ends at the far rim, which joins the far side's points.
+            # Through: the hole ends at the far side; its points next to the far rim
+            # (facing away from the plane) give the depth.
             rim = np.unique(context.graph[part].indices)
-            height = max(height, float(np.max(level - context.uvh[rim, 2])))
+            far = rim[context.facing[rim] < -FAR_SIDE]
+            if len(far):
+                height = max(height, float(np.median(level - context.uvh[far, 2])))
     else:
         spread = float(np.std(context.uvh[near_top, 2]))
         top = "flat" if spread < max(FLAT_TOP_FACTOR * context.noise, 0.05) else "domed"
@@ -333,19 +356,22 @@ def _covered(relief: Relief, inside: BoolArray) -> bool:
     return bool(inside[relief.vertices].mean() > 0.9)
 
 
-def _vertex_normals(vertices: FloatArray, faces: IntArray, graph: sp.csr_matrix) -> FloatArray:
-    """Area-weighted vertex normals, averaged over a few rings of neighbours.
+def vertex_normals(vertices: FloatArray, faces: IntArray, graph: sp.csr_matrix) -> FloatArray:
+    """Area-weighted vertex normals, averaged over neighbours `NORMAL_SMOOTHING_MM` away.
 
     On dense scans single-vertex normals follow the noise (0.02 mm noise on 0.1 mm
     triangles tilts them by tens of degrees); the walls and floors only need the
-    direction of the surface around the point.
+    direction of the surface around the point. The number of neighbour rings
+    follows the edge length, so coarse meshes are not smoothed across whole faces.
     """
     corners = vertices[faces]
     normal = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
     result = np.zeros_like(vertices)
     for corner in range(3):
         np.add.at(result, faces[:, corner], normal)
-    for _ in range(NORMAL_RINGS):
+    edge = float(np.mean(np.linalg.norm(corners[:, 1] - corners[:, 0], axis=1)))
+    rings = int(np.clip(round(NORMAL_SMOOTHING_MM / max(edge, 1e-9)), 0, MAX_NORMAL_RINGS))
+    for _ in range(rings):
         result = result + graph @ result
         result /= np.maximum(np.linalg.norm(result, axis=1, keepdims=True), 1e-300)
     length = np.linalg.norm(result, axis=1, keepdims=True)
