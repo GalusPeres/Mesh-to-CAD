@@ -89,7 +89,7 @@ export class NetEditor {
       snap: () => this.state.snap,
       refreshRows: (rows) => this.refreshRows(rows),
       record: () => this.recordCurrent(),
-      dropped: (controls) => controls.length === 1 && this.build.weldOnto(controls[0] ?? 0),
+      dropped: (controls) => controls.length === 1 && this.build.edits.weldOnto(controls[0] ?? 0),
     });
   }
 
@@ -192,10 +192,28 @@ export class NetEditor {
     return true;
   }
 
+  /** Q: smooth the chosen chain (or the chosen points) while it stays on the scan. */
+  async smoothChosen(): Promise<void> {
+    const edges = this.build.chosenEdges();
+    if (edges.length > 0)
+      this.choose(
+        edges.flatMap(({ a, b }) => [a, b]),
+        'replace',
+      );
+    if (this.selection.size > 0) await this.fit(true);
+  }
+
   // Display options -------------------------------------------------------------------------
 
   setSnap(snap: boolean): void {
     this.update({ snap });
+  }
+
+  /** Space: show only the surface, or the net on it again. */
+  setNetVisible(netVisible: boolean): void {
+    this.overlay?.setNetVisible(netVisible);
+    this.viewport.invalidate();
+    this.update({ netVisible });
   }
 
   setHeatmap(heatmap: boolean): void {
@@ -313,6 +331,7 @@ export class NetEditor {
     if (this.surface && this.net) {
       this.overlay = new NetOverlay(this.viewport.createOverlay(), this.surface);
       this.overlay.positionsChanged();
+      this.overlay.setNetVisible(this.state.netVisible);
       this.repaintPoints();
       void this.measureAll();
     }
@@ -350,6 +369,10 @@ export class NetEditor {
   /** Show a net: a new limit map when the quads changed, then positions and heatmap. */
   private async setNet(net: Net, record: boolean): Promise<void> {
     if (this.detached) return;
+    if (net.quads.length === 0) {
+      this.showEmpty(net, record);
+      return;
+    }
     const topologyChanged = !this.net || !this.surface || !sameTopology(this.net, net);
     if (topologyChanged) {
       const map = await this.jobs.run('map', 'net.limitMap', {
@@ -360,6 +383,7 @@ export class NetEditor {
       this.overlay?.dispose();
       this.surface = new LimitSurface(map, net.vertices.length / 3);
       this.overlay = new NetOverlay(this.viewport.createOverlay(), this.surface);
+      this.overlay.setNetVisible(this.state.netVisible);
       this.measure.reset(this.surface);
       for (const control of [...this.selection]) {
         if (control >= this.surface.controlCount) this.selection.delete(control);
@@ -391,6 +415,26 @@ export class NetEditor {
     });
     this.viewport.invalidate();
     await this.measureAll();
+  }
+
+  /** Everything deleted: no surface; placing a first face starts again (undoable). */
+  private showEmpty(net: Net, record: boolean): void {
+    this.measure.cancel();
+    this.overlay?.dispose();
+    this.overlay = null;
+    this.surface = null;
+    this.net = cloneNet(net);
+    this.selection.clear();
+    this.irregular = new Set();
+    this.build.topologyChanged(this.net);
+    if (record) {
+      this.history.push(this.net);
+      this.syncHistory();
+    }
+    const counts = { quads: 0, faces: 0, controlPoints: 0, irregular: 0, selected: 0 };
+    this.update({ hasNet: false, summary: null, ...counts });
+    this.build.setFacing(true);
+    this.viewport.invalidate();
   }
 
   /** Recompute positions, distances and colours of some dense vertices (during a drag). */

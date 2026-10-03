@@ -2,7 +2,15 @@
 // explanation in the tooltip, numbers instead of sentences. What the pointer does is
 // told in the status bar (freeformNet.status.tsx), not here.
 
-import { Crosshair, Magnet, Palette, Square, SquarePlus, Waves } from 'lucide-react';
+import {
+  Crosshair,
+  Magnet,
+  Palette,
+  RectangleHorizontal,
+  Square,
+  SquarePlus,
+  Waves,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
@@ -18,6 +26,7 @@ import { SegmentedControl } from '../../ui/SegmentedControl/SegmentedControl';
 import styles from './FreeformNetPanel.module.css';
 import { HEATMAP_TOLERANCES } from './heatmap';
 import type { NetEditor, NetEditorState } from './netEditor';
+import type { FaceMode } from './netFacePlacement';
 
 const KEY = 'tools:freeformNet';
 
@@ -98,7 +107,7 @@ function JobProgress({ editor, state }: SectionProps) {
   );
 }
 
-/** Building and shaping by hand: one row of icon tools, the choice as one line. */
+/** Building and shaping by hand: the face button, a row of icon tools, the choice as one line. */
 export function ToolsSection({ editor, state }: SectionProps) {
   const { t } = useTranslation();
   const busy = state.job !== null;
@@ -111,14 +120,8 @@ export function ToolsSection({ editor, state }: SectionProps) {
   return (
     <PanelSection title={t(`${KEY}.sections.build`)}>
       <div className={styles.toolbar}>
-        <IconButton
-          icon={SquarePlus}
-          {...tool('face')}
-          pressed={state.facing}
-          disabled={busy}
-          data-testid="freeform-net-add-face"
-          onClick={() => editor.build.setFacing(!state.facing)}
-        />
+        <FaceButton editor={editor} state={state} mode="quad" />
+        <FaceButton editor={editor} state={state} mode="rectangle" />
         <IconButton
           icon={Magnet}
           {...tool(`fit.${scope}`)}
@@ -158,6 +161,31 @@ export function ToolsSection({ editor, state }: SectionProps) {
       )}
       {fitting && <JobProgress editor={editor} state={state} />}
     </PanelSection>
+  );
+}
+
+/** Start (or stop) placing a face: four corners, or a rectangle from two. */
+function FaceButton({ editor, state, mode }: SectionProps & { mode: FaceMode }) {
+  const { t } = useTranslation();
+  const name = mode === 'quad' ? 'face' : 'rectangle';
+  const active = state.facing && state.faceMode === mode;
+  return (
+    <Button
+      variant={active ? 'primary' : 'secondary'}
+      className={styles.labelled}
+      disabled={state.job !== null}
+      aria-pressed={active}
+      title={t(`${KEY}.tools.${name}.description`)}
+      data-testid={`freeform-net-add-${name}`}
+      onClick={() => editor.build.setFacing(!active, mode)}
+    >
+      {mode === 'quad' ? (
+        <SquarePlus size={16} aria-hidden />
+      ) : (
+        <RectangleHorizontal size={16} aria-hidden />
+      )}
+      {t(`${KEY}.tools.${name}.label`)}
+    </Button>
   );
 }
 

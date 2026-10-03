@@ -1,17 +1,25 @@
-// Building the net by hand, as in QuickSurface: a face from four clicks on the scan,
-// chosen edges (a double click takes a whole chain), new rows dragged out of border
-// edges by drag and drop (RowDrag: dropped onto the scan, or onto border points of the
-// net to join pieces), a border point dropped onto another one welds them, and chosen
-// points or edges can be deleted with their quads. After a row its outer edges are
-// chosen, so the next drag goes on from there.
+// Building the net by hand, as in QuickSurface: a face from four clicked corners or a
+// rectangle from two, chosen edges (a double click takes a whole chain), and new rows
+// duplicated out of border edges by drag and drop: from the "D" grip that appears at
+// a hovered border edge, or with Alt (RowDrag drops them onto the scan, or onto border
+// points of the net to join pieces). Where a dropped point joins or welds onto
+// another one, both are marked and linked. One-step edits (split, bridge, ...) are
+// NetEdits'.
 
 import type { ScreenPoint, Vec3, Viewport } from '../../viewport/api';
 import { GuideOverlay } from './GuideOverlay';
-import { addQuad, extrudeEdges, mergePoints, removeQuads, splitRing } from './netBuild';
+import { addQuad, extrudeEdges } from './netBuild';
+import { NetEdits } from './netEdits';
+import { FacePlacement, type FaceMode, type ScanCorner, outwardOf } from './netFacePlacement';
 import type { Net } from './netModel';
 import { RowDrag, joinableBorder, nearestJoin } from './netRows';
 import type { NetEditorState } from './netState';
-import { type Edge, borderEdges, borderRuns, edgeKey, edgeLoop } from './netTopology';
+import { type Edge, borderEdges, borderRuns, edgeKey, edgeLoop, edgeQuads } from './netTopology';
+
+/** The "D" grip of a hovered border edge sits this far out, in parts of its quad. */
+const HANDLE_OFFSET = 0.35;
+/** The grip is under the pointer within this distance. */
+const HANDLE_PICK_PX = 10;
 
 /** What the builder needs of the editor that owns the net. */
 export interface BuildHost {
@@ -26,7 +34,9 @@ export interface BuildHost {
   snap(): boolean;
   /** The tool is shown, so guides may be drawn. */
   shown(): boolean;
-  update(patch: Partial<Pick<NetEditorState, 'facing' | 'facePoints' | 'chosenEdges'>>): void;
+  update(
+    patch: Partial<Pick<NetEditorState, 'facing' | 'faceMode' | 'facePoints' | 'chosenEdges'>>,
+  ): void;
   /** Show a net as one undo step. */
   record(net: Net): Promise<void>;
   /** Show a net, then snap its new points to the scan: one undo step. */
@@ -36,60 +46,86 @@ export interface BuildHost {
 export type ChoiceMode = 'replace' | 'add' | 'remove' | 'toggle';
 
 export class NetBuilder {
-  private facePoints: { point: Vec3; normal: Vec3 }[] = [];
-  private facePreview: Vec3 | null = null;
-  private facing = false;
+  private readonly face = new FacePlacement();
   private hoverEdge: Edge | null = null;
   private readonly chosen = new Map<string, Edge>();
   private readonly rows: RowDrag;
   private guides: GuideOverlay | null = null;
+  /** A dragged border point and the border point it would be welded onto. */
+  private weld: { from: number; into: number } | null = null;
+  /** Split, bridge, increase resolution, weld, delete. */
+  readonly edits: NetEdits;
 
   constructor(private readonly host: BuildHost) {
     this.rows = new RowDrag(host);
+    this.edits = new NetEdits(host, {
+      edges: () => this.chosenEdges(),
+      clear: () => this.chosen.clear(),
+    });
   }
 
-  // A face by four clicks ------------------------------------------------------------------
+  // A new face ----------------------------------------------------------------------------
 
-  setFacing(facing: boolean): void {
-    this.facing = facing;
-    this.facePoints = [];
-    this.facePreview = null;
-    this.host.update({ facing, facePoints: 0 });
+  /** Start (in a mode) or stop placing a face. */
+  setFacing(facing: boolean, mode: FaceMode = this.face.mode): void {
+    this.face.set(facing, mode);
+    this.host.update({ facing, faceMode: mode, facePoints: 0 });
     this.draw();
   }
 
-  /** A clicked scan point of the new face; the fourth one adds the face. */
-  async addFacePoint(point: Vec3, normal: Vec3): Promise<void> {
-    if (!this.facing || this.host.busy()) return;
-    this.facePoints.push({ point, normal });
-    this.host.update({ facePoints: this.facePoints.length });
+  get faceMode(): FaceMode {
+    return this.face.mode;
+  }
+
+  /** The first corner of a rectangle, clicked on screen (or null before). */
+  get rectangleAnchor(): ScreenPoint | null {
+    return this.face.anchor;
+  }
+
+  setRectangleAnchor(at: ScreenPoint): void {
+    this.face.anchor = at;
+    this.host.update({ facePoints: 1 });
     this.draw();
-    if (this.facePoints.length < 4) return;
-    const corners = this.facePoints.map((clicked) => clicked.point);
-    const outward = this.facePoints.reduce<Vec3>(
-      (sum, { normal: n }) => [sum[0] + n[0], sum[1] + n[1], sum[2] + n[2]],
-      [0, 0, 0],
-    );
+  }
+
+  /** A clicked corner on the scan; the fourth one adds the face. */
+  async addFacePoint(corner: ScanCorner): Promise<void> {
+    if (!this.face.active || this.host.busy()) return;
+    const corners = this.face.click(corner);
+    this.host.update({ facePoints: this.face.count });
+    this.draw();
+    if (corners) await this.addFace(corners);
+  }
+
+  /** Add a face with these four corners on the scan. */
+  async addFace(corners: ScanCorner[]): Promise<void> {
+    if (corners.length !== 4 || this.host.busy()) return;
     this.setFacing(false);
-    await this.host.record(addQuad(this.host.net(), corners, outward));
+    const points = corners.map((corner) => corner.point);
+    await this.host.record(addQuad(this.host.net(), points, outwardOf(corners)));
   }
 
   /** Take back the last clicked corner; false if there was none. */
   removeFacePoint(): boolean {
-    if (this.facePoints.length === 0) return false;
-    this.facePoints.pop();
-    this.host.update({ facePoints: this.facePoints.length });
+    if (!this.face.undo()) return false;
+    this.host.update({ facePoints: this.face.count });
     this.draw();
     return true;
   }
 
   /** The scan point under the pointer while placing a face (rubber band), or null. */
   previewFacePoint(point: Vec3 | null): void {
-    this.facePreview = point;
+    this.face.hover(point);
     this.draw();
   }
 
-  // Chosen edges ---------------------------------------------------------------------------
+  /** The rectangle the second click would add (corners on the scan), or null. */
+  previewRectangle(corners: Vec3[] | null): void {
+    this.face.hoverRectangle(corners);
+    this.draw();
+  }
+
+  // Chosen edges and the grip -------------------------------------------------------------
 
   setHoverEdge(edge: Edge | null): void {
     const current = this.hoverEdge;
@@ -100,6 +136,15 @@ export class NetBuilder {
     if (same) return;
     this.hoverEdge = edge;
     this.draw();
+  }
+
+  /** The hovered border edge if the pointer is on its "D" grip, else null. */
+  handleAt(at: ScreenPoint): Edge | null {
+    const edge = this.hoverEdge;
+    const grip = edge ? this.handleOf(edge) : null;
+    const screen = grip ? this.host.viewport.worldToScreen(grip) : null;
+    if (!edge || !screen) return null;
+    return Math.hypot(screen.x - at.x, screen.y - at.y) <= HANDLE_PICK_PX ? edge : null;
   }
 
   isChosen(edge: Edge): boolean {
@@ -130,8 +175,8 @@ export class NetBuilder {
   // Rows by drag and drop ------------------------------------------------------------------
 
   /**
-   * Start dragging rows out of the border: out of every chosen border edge if `edge` is
-   * chosen, else out of `edge` alone (which becomes the choice). False if it is no border.
+   * Start duplicating border edges into new rows: every chosen border edge if `edge` is
+   * chosen, else `edge` alone (which becomes the choice). False if it is no border.
    */
   beginRows(edge: Edge): boolean {
     const net = this.host.net();
@@ -155,19 +200,12 @@ export class NetBuilder {
     if (!drop || !net || this.host.busy()) return;
     let next = net;
     const added: number[] = [];
-    const outer: Edge[] = [];
     for (const run of drop.runs) {
       const row = extrudeEdges(next, run, drop.target);
       next = row.net;
       added.push(...row.added);
-      outer.push(...row.outer);
     }
-    // The outer edges that stay open are chosen (once the new net is shown): the next
-    // drag goes on from there. A row joined onto the net closes them.
-    const open = new Set(borderEdges(next).map(({ a, b }) => edgeKey(a, b)));
     this.chosen.clear();
-    for (const edge of outer)
-      if (open.has(edgeKey(edge.a, edge.b))) this.chosen.set(edgeKey(edge.a, edge.b), edge);
     if (added.length > 0) await this.host.settle(next, added);
     else await this.host.record(next);
   }
@@ -176,62 +214,29 @@ export class NetBuilder {
     return this.rows.active;
   }
 
-  // Changing the net -----------------------------------------------------------------------
-
-  /** Split the ring of quads crossing an edge with a new loop, snapped to the scan. */
-  async split(edge: Edge): Promise<void> {
+  /** While a single point is dragged: the border point it would be welded onto. */
+  previewWeld(control: number | null): void {
     const net = this.host.net();
-    if (!net || this.host.busy()) return;
-    const result = splitRing(net, edge.a, edge.b);
-    if (result.added.length === 0) return;
-    await this.host.settle(result.net, result.added);
-  }
-
-  /** A dragged border point dropped onto another border point: weld them (true if so). */
-  weldOnto(control: number): boolean {
-    const net = this.host.net();
-    const screen = this.host.screenOf(control);
-    if (!net || !screen || this.host.busy()) return false;
-    if (!this.isBorderPoint(net, control)) return false;
-    const border = joinableBorder(net, (v) => this.host.screenOf(v), new Set([control]));
-    const into = nearestJoin(border, screen);
-    const welded = into === null ? null : mergePoints(net, control, into);
-    if (!welded) return false;
-    void this.host.record(welded);
-    return true;
-  }
-
-  /**
-   * Delete the quads of the chosen edges, else the quads using chosen points; false if
-   * nothing is chosen or no quad would be left.
-   */
-  deleteChosen(): boolean {
-    const net = this.host.net();
-    if (!net || this.host.busy()) return false;
-    const points = this.host.chosenPoints();
-    const edges = new Set(this.chosen.keys());
-    const touches = (corners: number[]) =>
-      edges.size > 0
-        ? corners.some((p, k) => edges.has(edgeKey(p, corners[(k + 1) % 4] ?? p)))
-        : corners.some((p) => points.has(p));
-    if (edges.size === 0 && points.size === 0) return false;
-    const rest = removeQuads(net, touches);
-    if (!rest) return false;
-    this.chosen.clear();
-    void this.host.record(rest);
-    return true;
+    const screen = control === null ? null : this.host.screenOf(control);
+    let next: { from: number; into: number } | null = null;
+    if (net && control !== null && screen) {
+      const into = nearestJoin(
+        joinableBorder(net, (v) => this.host.screenOf(v), new Set([control])),
+        screen,
+      );
+      const onBorder = borderEdges(net).some(({ a, b }) => a === control || b === control);
+      if (into !== null && onBorder) next = { from: control, into };
+    }
+    if (next?.into === this.weld?.into && next?.from === this.weld?.from) return;
+    this.weld = next;
+    this.draw();
   }
 
   // Upkeep ---------------------------------------------------------------------------------
 
   /** The net's quads changed: forget edges it no longer has. */
   topologyChanged(net: Net): void {
-    const present = new Set<string>();
-    for (let quad = 0; quad < net.quads.length / 4; quad += 1)
-      for (let k = 0; k < 4; k += 1)
-        present.add(
-          edgeKey(net.quads[quad * 4 + k] ?? 0, net.quads[quad * 4 + ((k + 1) % 4)] ?? 0),
-        );
+    const present = edgeQuads(net);
     for (const id of [...this.chosen.keys()]) if (!present.has(id)) this.chosen.delete(id);
     this.hoverEdge = null;
     this.host.update({ chosenEdges: this.chosen.size });
@@ -245,10 +250,12 @@ export class NetBuilder {
     return borderEdges(net).map((edge) => {
       const [a, b] = [this.host.limitPoint(edge.a), this.host.limitPoint(edge.b)];
       const middle: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+      const grip = this.handleOf(edge);
       return {
         edge,
         middle,
         screen: this.host.viewport.worldToScreen(middle),
+        handle: grip ? this.host.viewport.worldToScreen(grip) : null,
         chosen: this.isChosen(edge),
       };
     });
@@ -260,8 +267,20 @@ export class NetBuilder {
     this.guides = null;
   }
 
-  private isBorderPoint(net: Net, control: number): boolean {
-    return borderEdges(net).some(({ a, b }) => a === control || b === control);
+  /** Where the "D" grip of a border edge sits: a little outside it, away from its quad. */
+  private handleOf(edge: Edge): Vec3 | null {
+    const net = this.host.net();
+    const users = net ? edgeQuads(net).get(edgeKey(edge.a, edge.b)) : undefined;
+    const quad = users?.length === 1 ? users[0]?.quad : undefined;
+    if (!net || quad === undefined) return null;
+    const corners = [0, 1, 2, 3].map((k) => this.host.limitPoint(net.quads[quad * 4 + k] ?? 0));
+    const [a, b] = [this.host.limitPoint(edge.a), this.host.limitPoint(edge.b)];
+    const out = (axis: 0 | 1 | 2) => {
+      const centre = corners.reduce((sum, p) => sum + p[axis], 0) / 4;
+      const middle = (a[axis] + b[axis]) / 2;
+      return middle + (middle - centre) * HANDLE_OFFSET;
+    };
+    return [out(0), out(1), out(2)];
   }
 
   private draw(): void {
@@ -270,21 +289,25 @@ export class NetBuilder {
     const net = this.host.net();
     const count = net ? net.vertices.length / 3 : 0;
     const point = (vertex: number) => this.host.limitPoint(vertex);
-    const { segments, points } = this.rows.preview();
-    const corners = this.facePoints.map((clicked) => clicked.point);
-    if (this.facePreview && this.facing) corners.push(this.facePreview);
-    corners.forEach((corner, i) => {
-      points.push(...corner);
-      const next = corners[i + 1] ?? (corners.length === 4 ? corners[0] : undefined);
-      if (next) segments.push(...corner, ...next);
-    });
+    const rows = this.rows.preview();
+    const face = this.face.preview();
+    const segments = [...rows.segments, ...face.segments];
+    const points = [...face.points];
+    const joins = [...rows.points];
+    if (this.weld) {
+      const [from, into] = [point(this.weld.from), point(this.weld.into)];
+      joins.push(...into);
+      segments.push(...from, ...into);
+    }
     const known = (edge: Edge) => edge.a < count && edge.b < count;
-    if (this.hoverEdge && !this.facing && known(this.hoverEdge))
-      segments.push(...point(this.hoverEdge.a), ...point(this.hoverEdge.b));
+    const hover =
+      this.hoverEdge && !this.face.active && known(this.hoverEdge) ? this.hoverEdge : null;
+    if (hover) segments.push(...point(hover.a), ...point(hover.b));
     const chosen: number[] = [];
     for (const edge of this.chosen.values())
       if (known(edge)) chosen.push(...point(edge.a), ...point(edge.b));
-    this.guides.show(segments, points, chosen);
+    const grip = hover && !this.rows.active ? this.handleOf(hover) : null;
+    this.guides.show({ segments, points, chosen, handles: grip ? [...grip] : [], joins });
     this.host.viewport.invalidate();
   }
 }

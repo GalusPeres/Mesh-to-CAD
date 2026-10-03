@@ -8,7 +8,7 @@ import { toolStore } from '../../state/toolStore';
 import { useViewport } from '../../viewport/api';
 import { defaultHeatmapTolerance } from './heatmap';
 import { NetEditor, type NetEditorState } from './netEditor';
-import { type BoxRectangle, createNetInteraction } from './netInteraction';
+import { type BoxRectangle, type NetMenuRequest, createNetInteraction } from './netInteraction';
 import { setNetHint } from './netSession';
 
 /**
@@ -19,9 +19,12 @@ import { setNetHint } from './netSession';
 export function useNetEditor(editTarget: string | null): {
   editor: NetEditor | null;
   box: BoxRectangle | null;
+  menu: NetMenuRequest | null;
+  closeMenu: () => void;
 } {
   const viewport = useViewport();
   const [box, setBox] = useState<BoxRectangle | null>(null);
+  const [menu, setMenu] = useState<NetMenuRequest | null>(null);
   // One editor per viewport; its colour scale starts at the project tolerance (at least
   // 0.1 mm) and is then chosen in the panel.
   const editor = useMemo(() => {
@@ -36,12 +39,16 @@ export function useNetEditor(editTarget: string | null): {
     const removeInteraction = viewport.addInteraction(
       createNetInteraction(editor, viewport, {
         onBox: setBox,
+        onMenu: setMenu,
         selectionModeActive: () => isSelectionModeId(toolStore.getState().selectionMode),
       }),
     );
     setDraftHistoryHandler({ undo: () => editor.undo(), redo: () => editor.redo() });
     const removeInfo = setToolInfoProvider(() => editor.automationInfo());
-    setNetHint(editor.getState().hasNet || editTarget ? 'idle' : 'start');
+    const empty = !editor.getState().hasNet && !editTarget;
+    // An empty net starts with placing its first face: click four corners or drag.
+    if (empty && !editor.getState().facing) editor.build.setFacing(true);
+    setNetHint(empty ? 'start' : 'idle');
     if (editTarget) {
       viewport.setOwnerHidden(editTarget);
       if (!editor.getState().hasNet) void editor.load(editTarget);
@@ -56,7 +63,7 @@ export function useNetEditor(editTarget: string | null): {
     };
   }, [viewport, editor, editTarget]);
 
-  return { editor, box };
+  return { editor, box, menu, closeMenu: () => setMenu(null) };
 }
 
 const EMPTY: NetEditorState | null = null;

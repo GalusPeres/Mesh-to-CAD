@@ -98,6 +98,17 @@ function pointer(action: Extract<AutomationAction, { type: 'pointer' }>): { sent
       altKey: action.alt ?? false,
     }),
   );
+  if (action.kind === 'up' && button === 2) {
+    canvas.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + action.x,
+        clientY: rect.top + action.y,
+        button: 2,
+      }),
+    );
+  }
   return { sent: action.kind };
 }
 

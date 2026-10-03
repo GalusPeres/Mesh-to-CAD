@@ -3,7 +3,7 @@
   "tooltip": "Lay a quad net over the scan, automatically or by hand row by row; the deviation shows live as colour.",
   "help": "For roundings and organic shapes. Auto net lays the net over the scan or the selection in one step; by hand it grows face by face: place a face, then drag border edges. The status bar tells what the mouse does right now. OK creates B-spline faces, a body when the net is closed.",
   "sections": {
-    "net": "Auto net",
+    "net": "Automatic",
     "build": "By hand",
     "deviation": "Deviation"
   },
@@ -31,7 +31,7 @@
   },
   "tools": {
     "face": {
-      "label": "Place face",
+      "label": "Face",
       "description": "Click four corners on the scan, one after another."
     },
     "fit": {
@@ -61,6 +61,10 @@
     "snap": {
       "label": "Snap to scan",
       "description": "Dragged points and new rows land on the scan."
+    },
+    "rectangle": {
+      "label": "Rectangle",
+      "description": "Click two opposite corners on the scan."
     }
   },
   "chosenPoints_one": "{{count}} point chosen",
@@ -82,12 +86,31 @@
   "closedBody": "Body",
   "openSurface": "Open surface",
   "hints": {
-    "start": "Place face, then click four corners on the scan",
-    "face": "Click corner {{count}} of 4 on the scan · Backspace: back · Esc: cancel",
+    "start": "Click the first corner on the scan",
+    "face": "Click corner {{count}} of 4 · Backspace: back · Esc: cancel",
     "point": "Drag: move · onto a border point: join · Alt: along the normal · Delete: remove",
-    "border": "Drag: new row · onto border points: join faces · Double click: whole side · S: insert a row",
-    "edge": "Click: choose · Double click: edge chain · Drag: move · S: insert a row · Delete: remove",
+    "border": "Drag: move the edge · drag the D grip or with Alt: new row · Double click: whole side · Right click: menu",
+    "edge": "Click: choose · Double click: edge chain · Drag: move · S: split · Right click: menu",
     "rows": "Release: add the row · yellow points get joined · Esc: cancel",
-    "idle": "Drag a border edge: extend the net · Drag a point: shape · Rectangle: choose points"
+    "idle": "Drag an edge's D grip: extend the net · Drag a point: shape · Right click: menu · Space: surface only",
+    "corner": "Click the opposite corner · Backspace: back · Esc: cancel",
+    "empty": "Choose Face or Rectangle (in the panel or by right click), then click on the scan",
+    "handle": "Drag: duplicate the edge into a new row on the scan · drop onto border points: join"
+  },
+  "menu": {
+    "split": "Split",
+    "chain": "Choose edge chain",
+    "bridge": "Bridge two chosen edges",
+    "smooth": "Smooth",
+    "delete": "Delete",
+    "deleteKey": "Del",
+    "snapAll": "Snap all points to the scan",
+    "snapChosen": "Snap chosen points to the scan",
+    "refine": "Increase resolution (1 → 4)",
+    "snap": "Snap to scan",
+    "net": "Show net",
+    "space": "Space",
+    "face": "Place face (4 corners)",
+    "rectangle": "Place rectangle (2 corners)"
   }
 }

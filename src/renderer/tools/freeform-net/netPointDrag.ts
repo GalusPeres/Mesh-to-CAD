@@ -1,10 +1,11 @@
 // Dragging chosen control points of the net. The grabbed surface points follow the
-// pointer (in the view plane, or along the surface normal); with snapping each one
-// lands on the nearest scan point. The control points move so that their limit
+// pointer: with snapping each one lands on the scan where the pointer carries it on
+// screen (ray projection, as in QuickSurface), else in the view plane, or along the
+// surface normal. The control points move so that their limit
 // points get there (controlOffsets), and only the dense rows they influence are
 // re-evaluated and re-measured.
 
-import type { Vec3, Viewport } from '../../viewport/api';
+import type { ScreenPoint, Vec3, Viewport } from '../../viewport/api';
 import type { LimitSurface } from './limitSurface';
 import { type Net, controlOffsets } from './netModel';
 
@@ -29,6 +30,8 @@ interface Drag {
   rows: Uint32Array;
   startVertices: Float64Array;
   startLimits: Float64Array;
+  /** Screen positions of the grabbed surface points (null off screen). */
+  startScreens: (ScreenPoint | null)[];
 }
 
 export class NetPointDrag {
@@ -50,20 +53,24 @@ export class NetPointDrag {
       rows: surface.rowsOf(controls),
       startVertices: net.vertices.slice(),
       startLimits,
+      startScreens: Array.from(controls, (control) =>
+        this.host.viewport.worldToScreen(surface.limitPoint(control)),
+      ),
     };
     return true;
   }
 
   /**
-   * Move the surface points of the dragged control points by `offset`. With snapping
-   * (and not `alongNormal`), each moved surface point lands on the nearest scan point.
+   * Move the grabbed surface points: by `offset` in space, or (with snapping and a
+   * screen `delta`) onto the scan under each point's screen position moved by `delta`;
+   * a point off the scan there moves by `offset`.
    */
-  moveBy(offset: Vec3, alongNormal: boolean): void {
+  move(offset: Vec3, delta: ScreenPoint | null): void {
     const drag = this.drag;
     const surface = this.host.surface();
     const net = this.host.net();
     if (!drag || !surface || !net) return;
-    const snap = this.host.snap() && !alongNormal;
+    const onScan = delta !== null && this.host.snap();
     const wanted = new Float64Array(drag.controls.length * 3);
     drag.controls.forEach((_, index) => {
       const o = index * 3;
@@ -73,7 +80,12 @@ export class NetPointDrag {
         drag.startLimits[o + 2] ?? 0,
       ];
       let target: Vec3 = [start[0] + offset[0], start[1] + offset[1], start[2] + offset[2]];
-      if (snap) target = this.host.viewport.scanSurface.closest(target, Infinity)?.point ?? target;
+      const screen = drag.startScreens[index];
+      if (onScan && screen) {
+        const at = { x: screen.x + delta.x, y: screen.y + delta.y };
+        const hit = this.host.viewport.pick(at, { kinds: ['scan'] });
+        if (hit?.kind === 'scan') target = hit.point;
+      }
       wanted.set([target[0] - start[0], target[1] - start[1], target[2] - start[2]], o);
     });
     const offsets = controlOffsets(surface, drag.controls, wanted);

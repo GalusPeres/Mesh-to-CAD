@@ -147,6 +147,8 @@ export interface ViewportInteraction {
   onPointerUp?(event: ViewportPointerEvent): boolean | void;
   onWheel?(event: ViewportPointerEvent & { deltaY: number }): boolean | void;
   onKeyDown?(event: KeyboardEvent): boolean | void;
+  /** A right click without a drag (the camera did not orbit): open a context menu. */
+  onContextMenu?(event: ViewportPointerEvent): boolean | void;
 }
 
 /** A group of three.js objects owned by a tool; removed from the scene on dispose. */

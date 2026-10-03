@@ -3,7 +3,7 @@
   "tooltip": "Vierecksnetz über den Scan legen, automatisch oder von Hand Reihe für Reihe; die Abweichung erscheint live als Farbe.",
   "help": "Für Rundungen und organische Formen. Auto-Netz legt das Netz in einem Schritt über den Scan oder die Auswahl; von Hand entsteht es Fläche für Fläche: Fläche setzen, dann Randkanten ziehen. Die Statuszeile zeigt, was die Maus gerade tut. OK erzeugt B-Spline-Flächen, bei einem geschlossenen Netz einen Körper.",
   "sections": {
-    "net": "Auto-Netz",
+    "net": "Automatisch",
     "build": "Von Hand",
     "deviation": "Abweichung"
   },
@@ -31,7 +31,7 @@
   },
   "tools": {
     "face": {
-      "label": "Fläche setzen",
+      "label": "Fläche",
       "description": "Vier Ecken nacheinander auf den Scan klicken."
     },
     "fit": {
@@ -61,6 +61,10 @@
     "snap": {
       "label": "Fang am Scan",
       "description": "Gezogene Punkte und neue Reihen landen auf dem Scan."
+    },
+    "rectangle": {
+      "label": "Rechteck",
+      "description": "Zwei gegenüberliegende Ecken auf den Scan klicken."
     }
   },
   "chosenPoints_one": "{{count}} Punkt gewählt",
@@ -82,12 +86,31 @@
   "closedBody": "Körper",
   "openSurface": "Offene Fläche",
   "hints": {
-    "start": "Fläche setzen, dann vier Ecken auf den Scan klicken",
-    "face": "Ecke {{count}} von 4 auf den Scan klicken · Rücktaste: zurück · Esc: abbrechen",
+    "start": "Erste Ecke auf den Scan klicken",
+    "face": "Ecke {{count}} von 4 klicken · Rücktaste: zurück · Esc: abbrechen",
     "point": "Ziehen: verschieben · auf einen Randpunkt ziehen: verbinden · Alt: entlang der Normalen · Entf: löschen",
-    "border": "Ziehen: neue Reihe · auf Randpunkte ziehen: Flächen verbinden · Doppelklick: ganze Seite · S: Reihe einfügen",
-    "edge": "Klick: wählen · Doppelklick: Kantenzug · Ziehen: verschieben · S: Reihe einfügen · Entf: löschen",
+    "border": "Ziehen: Kante verschieben · am D-Griff oder mit Alt ziehen: neue Reihe · Doppelklick: ganze Seite · Rechtsklick: Menü",
+    "edge": "Klick: wählen · Doppelklick: Kantenzug · Ziehen: verschieben · S: teilen · Rechtsklick: Menü",
     "rows": "Loslassen: Reihe anlegen · gelbe Punkte werden verbunden · Esc: abbrechen",
-    "idle": "Randkante ziehen: Netz erweitern · Punkt ziehen: formen · Rahmen: Punkte wählen"
+    "idle": "Kante am D-Griff ziehen: Netz erweitern · Punkt ziehen: formen · Rechtsklick: Menü · Leertaste: nur Fläche",
+    "corner": "Gegenüberliegende Ecke klicken · Rücktaste: zurück · Esc: abbrechen",
+    "empty": "Fläche oder Rechteck wählen (rechts oder Rechtsklick), dann auf den Scan klicken",
+    "handle": "Ziehen: Kante verdoppeln, neue Reihe auf den Scan · auf Randpunkte fallen lassen: verbinden"
+  },
+  "menu": {
+    "split": "Teilen",
+    "chain": "Kantenzug wählen",
+    "bridge": "Brücke zwischen zwei gewählten Kanten",
+    "smooth": "Glätten",
+    "delete": "Löschen",
+    "deleteKey": "Entf",
+    "snapAll": "Alle Punkte auf den Scan",
+    "snapChosen": "Gewählte Punkte auf den Scan",
+    "refine": "Auflösung erhöhen (1 → 4)",
+    "snap": "Fang am Scan",
+    "net": "Netz zeigen",
+    "space": "Leertaste",
+    "face": "Fläche setzen (4 Ecken)",
+    "rectangle": "Rechteck setzen (2 Ecken)"
   }
 }

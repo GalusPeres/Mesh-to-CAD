@@ -18,6 +18,12 @@
   gap: var(--space-4);
 }
 
+.labelled {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
 .separator {
   width: 1px;
   height: var(--control-height);

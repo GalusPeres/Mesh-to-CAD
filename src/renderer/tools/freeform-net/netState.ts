@@ -2,6 +2,7 @@
 
 import type { KernelFailure } from '../../kernel/KernelFailure';
 import type { DeviationSummary } from './heatmap';
+import type { FaceMode } from './netFacePlacement';
 
 export type NetJobKind = 'generate' | 'fit' | 'smooth' | 'map' | 'load';
 
@@ -25,8 +26,12 @@ export interface NetEditorState {
   canRedo: boolean;
   /** A face is being placed by clicks on the scan. */
   facing: boolean;
+  /** Four clicked corners, or a rectangle from two. */
+  faceMode: FaceMode;
   /** Corners of that face clicked so far (0..3). */
   facePoints: number;
+  /** The net's points and lines are shown (Space shows only the surface). */
+  netVisible: boolean;
   /** Chosen net edges (a drag of a chosen border edge grows rows on all of them). */
   chosenEdges: number;
 }
@@ -49,7 +54,9 @@ export function initialNetState(tolerance: number): NetEditorState {
     canUndo: false,
     canRedo: false,
     facing: false,
+    faceMode: 'quad',
     facePoints: 0,
+    netVisible: true,
     chosenEdges: 0,
   };
 }

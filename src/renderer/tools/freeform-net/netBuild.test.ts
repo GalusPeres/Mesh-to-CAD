@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Vec3 } from '../../viewport/api';
-import { addQuad, extrudeEdges, mergePoints, removeQuads, splitRing } from './netBuild';
+import {
+  addQuad,
+  bridgeRuns,
+  extrudeEdges,
+  mergePoints,
+  removeQuads,
+  splitRing,
+  subdivide,
+} from './netBuild';
 import type { Net } from './netModel';
 import { borderChain, borderEdges, borderRuns, edgeLoop } from './netTopology';
 
@@ -232,7 +240,27 @@ describe('joining pieces of a net', () => {
     expect(rest?.quads.length).toBe(4);
     expect(rest?.vertices.length).toBe(4 * 3);
     expectOriented(rest as Net);
-    expect(removeQuads(net, () => true)).toBeNull();
+    expect(removeQuads(net, () => true)?.quads.length).toBe(0);
     expect(removeQuads(net, () => false)).toBeNull();
+  });
+
+  it('bridges two chosen edges with a quad', () => {
+    const net = apart();
+    // The left piece's right side 1 -> 2 and the right piece's left side 7 -> 4.
+    const bridged = bridgeRuns(net, [{ a: 1, b: 2 }], [{ a: 7, b: 4 }]);
+    expect(bridged?.quads.length).toBe(12);
+    expect(bridged?.vertices.length).toBe(net.vertices.length);
+    expectOriented(bridged as Net);
+    expect(bridgeRuns(net, [{ a: 1, b: 2 }], [])).toBeNull();
+  });
+
+  it('splits every quad into four', () => {
+    const fine = subdivide(strip());
+    // Two quads become eight; 6 old points + 7 edge middles + 2 quad middles.
+    expect(fine.net.quads.length / 4).toBe(8);
+    expect(fine.net.vertices.length / 3).toBe(15);
+    expect(fine.added).toHaveLength(9);
+    expectOriented(fine.net);
+    for (let quad = 0; quad < 8; quad += 1) expect(normalOf(fine.net, quad)[2]).toBeGreaterThan(0);
   });
 });

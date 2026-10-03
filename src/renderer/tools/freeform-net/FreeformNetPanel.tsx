@@ -18,6 +18,7 @@ import { useCommit } from '../framework/hooks';
 import type { ToolPanelProps } from '../framework/types';
 import styles from './FreeformNetPanel.module.css';
 import { FREEFORM_NET_TOOL_ID } from './netEditor';
+import { NetContextMenu } from './NetContextMenu';
 import type { BoxRectangle } from './netInteraction';
 import {
   DENSITY_QUADS,
@@ -50,7 +51,7 @@ function useSelectionFaces(): Uint32Array {
  */
 export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
   const { t } = useTranslation();
-  const { editor, box } = useNetEditor(editTarget);
+  const { editor, box, menu, closeMenu } = useNetEditor(editTarget);
   const state = useNetState(editor);
   const features = useDocument((snapshot) => snapshot.snapshot?.document.features);
   const [source, setSource] = useState<NetSource>('scan');
@@ -121,6 +122,9 @@ export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
         </InlineMessage>
       )}
       <BoxSelection box={box} />
+      {editor && state && (
+        <NetContextMenu editor={editor} state={state} request={menu} onClose={closeMenu} />
+      )}
     </ToolPanel>
   );
 }

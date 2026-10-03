@@ -197,7 +197,7 @@ export function splitRing(net: Net, a: number, b: number): { net: Net; added: nu
 
 /**
  * The net without the quads `drop` picks (by their corners) and without the points no
- * quad uses any more; null if nothing or everything would be removed.
+ * quad uses any more (an empty net if all go); null if nothing would be removed.
  */
 export function removeQuads(net: Net, drop: (corners: number[]) => boolean): Net | null {
   const kept: number[] = [];
@@ -205,11 +205,70 @@ export function removeQuads(net: Net, drop: (corners: number[]) => boolean): Net
     const corners = [0, 1, 2, 3].map((k) => corner(net, quad, k));
     if (!drop(corners)) kept.push(...corners);
   }
-  if (kept.length === 0 || kept.length === net.quads.length) return null;
+  if (kept.length === net.quads.length) return null;
   // Remaining points keep their order, so their numbers only shift down.
   const used = [...new Set(kept)].sort((a, b) => a - b);
   const index = new Map(used.map((vertex, i) => [vertex, i]));
   const vertices = new Float64Array(used.length * 3);
   used.forEach((vertex, i) => vertices.set(point(net, vertex), i * 3));
   return { vertices, quads: Uint32Array.from(kept, (vertex) => index.get(vertex) ?? 0) };
+}
+
+/**
+ * Close the gap between two border runs of the same length with a row of quads (the
+ * bridge of two chosen edges or chains). Facing runs go in opposite directions, so the
+ * first point of one run meets the last point of the other. Null if the lengths differ.
+ */
+export function bridgeRuns(net: Net, from: readonly Edge[], to: readonly Edge[]): Net | null {
+  if (from.length === 0 || from.length !== to.length) return null;
+  const points = (run: readonly Edge[]) => [run[0]?.a ?? 0, ...run.map((edge) => edge.b)];
+  const [ours, theirs] = [points(from), points(to)];
+  const partner = new Map(ours.map((vertex, i) => [vertex, theirs[theirs.length - 1 - i] ?? 0]));
+  const bridged = extrudeEdges(net, from, (vertex) => ({ onto: partner.get(vertex) ?? vertex }));
+  return bridged.net.quads.length > net.quads.length ? bridged.net : null;
+}
+
+/**
+ * Every quad split into four (QuickSurface's "Increase resolution"): a new point in the
+ * middle of every edge and of every quad, at the averages of their corners. Returns
+ * the net and the new points (to be snapped to the scan).
+ */
+export function subdivide(net: Net): { net: Net; added: number[] } {
+  const base = net.vertices.length / 3;
+  const extra: number[] = [];
+  const middles = new Map<string, number>();
+  const average = (corners: readonly number[]): number => {
+    const sum = [0, 0, 0];
+    for (const vertex of corners) {
+      const [x, y, z] = point(net, vertex);
+      sum[0] = (sum[0] ?? 0) + x / corners.length;
+      sum[1] = (sum[1] ?? 0) + y / corners.length;
+      sum[2] = (sum[2] ?? 0) + z / corners.length;
+    }
+    extra.push(...sum);
+    return base + extra.length / 3 - 1;
+  };
+  const middle = (p: number, q: number): number => {
+    const id = edgeKey(p, q);
+    const known = middles.get(id);
+    if (known !== undefined) return known;
+    const created = average([p, q]);
+    middles.set(id, created);
+    return created;
+  };
+  const quads: number[] = [];
+  for (let quad = 0; quad < quadCount(net); quad += 1) {
+    const c = [0, 1, 2, 3].map((k) => corner(net, quad, k)) as [number, number, number, number];
+    const m = [0, 1, 2, 3].map((k) => middle(c[k] ?? 0, c[(k + 1) % 4] ?? 0));
+    const centre = average(c);
+    // Each corner keeps its own quarter, turning the same way as the old quad.
+    for (let k = 0; k < 4; k += 1) quads.push(c[k] ?? 0, m[k] ?? 0, centre, m[(k + 3) % 4] ?? 0);
+  }
+  const vertices = new Float64Array(net.vertices.length + extra.length);
+  vertices.set(net.vertices);
+  vertices.set(extra, net.vertices.length);
+  return {
+    net: { vertices, quads: Uint32Array.from(quads) },
+    added: Array.from({ length: extra.length / 3 }, (_, i) => base + i),
+  };
 }

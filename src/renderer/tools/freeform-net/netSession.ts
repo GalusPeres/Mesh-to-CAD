@@ -4,8 +4,13 @@
 import { useStore } from 'zustand';
 import { createStore } from 'zustand/vanilla';
 
-/** start: no net yet; face: placing a face; point / edge / border: under the pointer. */
-export type NetHint = 'start' | 'face' | 'point' | 'edge' | 'border' | 'rows' | 'idle';
+/**
+ * start / face / corner: placing a face (first corner, next corner, rectangle's second
+ * corner); empty: no net and not placing; point / edge / border / handle: under the
+ * pointer; rows: duplicating edges; idle: nothing under the pointer.
+ */
+export type NetHint =
+  'start' | 'face' | 'corner' | 'empty' | 'point' | 'edge' | 'border' | 'handle' | 'rows' | 'idle';
 
 interface NetSessionState {
   hint: NetHint | null;

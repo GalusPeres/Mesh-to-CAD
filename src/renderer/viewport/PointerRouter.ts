@@ -1,9 +1,13 @@
 // Routes pointer, wheel and key events of the canvas to the registered
 // interactions (viewport chrome first, then tools latest first). An interaction
 // that consumes a pointer-down owns the drag until pointer-up, and navigation is
-// off meanwhile. Key presses in text fields never reach interactions.
+// off meanwhile. A right click that did not orbit the camera goes to the interactions
+// as a context menu. Key presses in text fields never reach interactions.
 
 import type { ViewportInteraction, ViewportPointerEvent } from './api';
+
+/** A right press that moved more than this orbited the camera: no context menu. */
+const CONTEXT_CLICK_PX = 4;
 
 /** Viewport-internal interactions may also hear that the pointer left the canvas. */
 export interface ChromeInteraction extends ViewportInteraction {
@@ -21,6 +25,7 @@ export class PointerRouter {
   private readonly interactions: ViewportInteraction[] = [];
   private readonly chrome: ChromeInteraction[] = [];
   private dragOwner: ViewportInteraction | null = null;
+  private rightPress: { x: number; y: number } | null = null;
   private readonly detach: () => void;
 
   constructor(
@@ -30,6 +35,7 @@ export class PointerRouter {
     const onPointerDown = (event: PointerEvent) => {
       canvas.focus({ preventScroll: true });
       const viewportEvent = this.toEvent(event);
+      if (event.button === 2) this.rightPress = viewportEvent.screen;
       const owner = this.ordered().find((interaction) =>
         interaction.onPointerDown?.(viewportEvent),
       );
@@ -67,7 +73,15 @@ export class PointerRouter {
         event.stopPropagation();
       }
     };
-    const onContextMenu = (event: MouseEvent) => event.preventDefault();
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      const press = this.rightPress;
+      this.rightPress = null;
+      const viewportEvent = this.toEvent(event);
+      const { x, y } = viewportEvent.screen;
+      if (!press || Math.hypot(x - press.x, y - press.y) > CONTEXT_CLICK_PX) return;
+      this.ordered().some((interaction) => interaction.onContextMenu?.(viewportEvent));
+    };
 
     // Capture phase: interactions see the pointer before the camera rig does.
     canvas.addEventListener('pointerdown', onPointerDown, { capture: true });
@@ -134,7 +148,7 @@ export class PointerRouter {
     this.canvas.style.cursor = cursor ?? 'default';
   }
 
-  private toEvent(event: PointerEvent | WheelEvent): ViewportPointerEvent {
+  private toEvent(event: MouseEvent): ViewportPointerEvent {
     const rect = this.canvas.getBoundingClientRect();
     return {
       screen: { x: event.clientX - rect.left, y: event.clientY - rect.top },

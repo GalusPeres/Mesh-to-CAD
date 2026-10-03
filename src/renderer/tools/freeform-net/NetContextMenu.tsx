@@ -1,0 +1,127 @@
+import {
+  Combine,
+  Crosshair,
+  Eye,
+  Grid2x2Plus,
+  Magnet,
+  RectangleHorizontal,
+  Spline,
+  SplitSquareVertical,
+  SquarePlus,
+  Trash2,
+  Waves,
+} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+import { MenuAt, MenuItem, MenuSeparator } from '../../ui/Menu/Menu';
+import type { NetEditor, NetEditorState } from './netEditor';
+import type { NetMenuRequest } from './netInteraction';
+
+const KEY = 'tools:freeformNet.menu';
+
+interface NetContextMenuProps {
+  editor: NetEditor;
+  state: NetEditorState;
+  request: NetMenuRequest | null;
+  onClose: () => void;
+}
+
+/** Window position of a point given relative to the viewport area. */
+function inWindow(at: { x: number; y: number }): { x: number; y: number } {
+  const area = document.querySelector('main')?.getBoundingClientRect();
+  return { x: (area?.left ?? 0) + at.x, y: (area?.top ?? 0) + at.y };
+}
+
+/**
+ * The right-click menu of the freeform net, as QuickSurface's: what can be done with the
+ * edge under the pointer and the chosen edges or points, and on the whole net.
+ */
+export function NetContextMenu({ editor, state, request, onClose }: NetContextMenuProps) {
+  const { t } = useTranslation();
+  const edge = request?.edge ?? null;
+  const chosen = state.selected + state.chosenEdges > 0;
+  const busy = state.job !== null;
+  const item = (name: string) => t(`${KEY}.${name}`);
+  return (
+    <MenuAt at={request ? inWindow(request.at) : null} onClose={onClose}>
+      {edge && (
+        <>
+          <MenuItem
+            label={item('split')}
+            icon={SplitSquareVertical}
+            shortcut="S"
+            disabled={busy}
+            onSelect={() => void editor.build.edits.split(edge)}
+          />
+          <MenuItem
+            label={item('chain')}
+            icon={Spline}
+            onSelect={() => editor.build.chooseEdges(editor.build.chainOf(edge), 'replace')}
+          />
+          <MenuSeparator />
+        </>
+      )}
+      <MenuItem
+        label={item('bridge')}
+        icon={Combine}
+        disabled={busy || !editor.build.edits.bridgeable()}
+        testId="freeform-net-bridge"
+        onSelect={() => void editor.build.edits.bridge()}
+      />
+      <MenuItem
+        label={item('smooth')}
+        icon={Waves}
+        shortcut="Q"
+        disabled={busy || !chosen}
+        onSelect={() => void editor.smoothChosen()}
+      />
+      <MenuItem
+        label={item('delete')}
+        icon={Trash2}
+        shortcut={t(`${KEY}.deleteKey`)}
+        disabled={busy || !chosen}
+        onSelect={() => void editor.build.edits.deleteChosen()}
+      />
+      <MenuSeparator />
+      <MenuItem
+        label={item(state.selected > 0 ? 'snapChosen' : 'snapAll')}
+        icon={Magnet}
+        disabled={busy || !state.hasNet}
+        onSelect={() => void editor.fit(false)}
+      />
+      <MenuItem
+        label={item('refine')}
+        icon={Grid2x2Plus}
+        disabled={busy || !state.hasNet}
+        testId="freeform-net-refine"
+        onSelect={() => void editor.build.edits.refine()}
+      />
+      <MenuItem
+        label={item('snap')}
+        icon={Crosshair}
+        checked={state.snap}
+        onSelect={() => editor.setSnap(!state.snap)}
+      />
+      <MenuItem
+        label={item('net')}
+        icon={Eye}
+        shortcut={t(`${KEY}.space`)}
+        checked={state.netVisible}
+        onSelect={() => editor.setNetVisible(!state.netVisible)}
+      />
+      <MenuSeparator />
+      <MenuItem
+        label={item('face')}
+        icon={SquarePlus}
+        disabled={busy}
+        onSelect={() => editor.build.setFacing(true, 'quad')}
+      />
+      <MenuItem
+        label={item('rectangle')}
+        icon={RectangleHorizontal}
+        disabled={busy}
+        onSelect={() => editor.build.setFacing(true, 'rectangle')}
+      />
+    </MenuAt>
+  );
+}
