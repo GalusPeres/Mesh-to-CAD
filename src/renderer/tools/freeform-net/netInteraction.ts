@@ -14,7 +14,9 @@
 
 import type { ScreenPoint, Viewport, ViewportInteraction } from '../../viewport/api';
 import type { NetEditor } from './netEditor';
+import type { ScanCorner } from './netFacePlacement';
 import { type DragPlane, createNetPicking } from './netPicking';
+import { joinableBorder, nearestJoin } from './netRows';
 import { setNetHint } from './netSession';
 import type { Edge } from './netTopology';
 
@@ -88,6 +90,18 @@ export function createNetInteraction(
   let lastPointer: ScreenPoint | null = null;
   let lastEdgeClick: { edge: Edge; at: ScreenPoint; time: number } | null = null;
 
+  /** A face corner at the pointer: an existing border point nearby, else the scan. */
+  const cornerAt = (at: ScreenPoint): ScanCorner | null => {
+    const net = editor.current();
+    if (net && net.quads.length > 0) {
+      const border = joinableBorder(net, (v) => editor.visibleScreen(v), new Set());
+      const vertex = nearestJoin(border, at);
+      if (vertex !== null)
+        return { point: editor.limitPoint(vertex), normal: editor.normalAt(vertex), vertex };
+    }
+    return picking.scanAt(at);
+  };
+
   const hover = (at: ScreenPoint) => {
     const state = editor.getState();
     if (state.facing) {
@@ -95,7 +109,7 @@ export function createNetInteraction(
       if (anchor) {
         const corners = picking.rectangleOnScan(anchor, at);
         build.previewRectangle(corners?.map((corner) => corner.point) ?? null);
-      } else build.previewFacePoint(picking.scanAt(at)?.point ?? null);
+      } else build.previewFacePoint(cornerAt(at));
       const hint =
         state.facePoints === 0 ? 'start' : state.faceMode === 'rectangle' ? 'corner' : 'face';
       setNetHint(hint, state.facePoints + 1);
@@ -119,7 +133,7 @@ export function createNetInteraction(
 
   const placeCorner = (at: ScreenPoint) => {
     if (build.faceMode === 'quad') {
-      const corner = picking.scanAt(at);
+      const corner = cornerAt(at);
       if (corner) void build.addFacePoint(corner);
       return;
     }

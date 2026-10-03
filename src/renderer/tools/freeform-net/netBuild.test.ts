@@ -11,7 +11,7 @@ import {
   subdivide,
 } from './netBuild';
 import type { Net } from './netModel';
-import { borderChain, borderEdges, borderRuns, edgeLoop } from './netTopology';
+import { borderChain, borderEdges, borderRuns, edgeKey, edgeLoop } from './netTopology';
 
 const UP: Vec3 = [0, 0, 1];
 
@@ -58,15 +58,34 @@ describe('building a net by hand', () => {
       [1, 1, 0],
       [1, 0, 0],
     ];
-    const net = addQuad(null, clockwise, UP);
+    const net = addQuad(null, clockwise, UP) as Net;
     expect(normalOf(net, 0)[2]).toBeGreaterThan(0);
     const two = addQuad(
       net,
       clockwise.map(([x, y]) => [x + 3, y, 0] as Vec3),
       UP,
-    );
+    ) as Net;
     expect(two.quads.length).toBe(8);
     expect(normalOf(two, 1)[2]).toBeGreaterThan(0);
+  });
+
+  it('docks a new face onto points of the net', () => {
+    const net = strip();
+    // A face right of the strip: its left corners are the strip's points 2 and 5.
+    const corners: Vec3[] = [
+      [2, 0, 0],
+      [3, 0, 0],
+      [3, 1, 0],
+      [2, 1, 0],
+    ];
+    const docked = addQuad(net, corners, UP, [2, null, null, 5]) as Net;
+    expect(docked.vertices.length / 3).toBe(8);
+    expect(docked.quads.length / 4).toBe(3);
+    expectOriented(docked);
+    // The shared side 2-5 is inside now.
+    expect(borderEdges(docked).some(({ a, b }) => edgeKey(a, b) === edgeKey(2, 5))).toBe(false);
+    // A face on the same corner twice cannot be.
+    expect(addQuad(net, corners, UP, [2, 2, null, 5])).toBeNull();
   });
 
   it('follows a border up to the corners of the net', () => {

@@ -102,7 +102,9 @@ export class NetBuilder {
     if (corners.length !== 4 || this.host.busy()) return;
     this.setFacing(false);
     const points = corners.map((corner) => corner.point);
-    await this.host.record(addQuad(this.host.net(), points, outwardOf(corners)));
+    const shared = corners.map((corner) => corner.vertex ?? null);
+    const next = addQuad(this.host.net(), points, outwardOf(corners), shared);
+    if (next) await this.host.record(next);
   }
 
   /** Take back the last clicked corner; false if there was none. */
@@ -113,9 +115,9 @@ export class NetBuilder {
     return true;
   }
 
-  /** The scan point under the pointer while placing a face (rubber band), or null. */
-  previewFacePoint(point: Vec3 | null): void {
-    this.face.hover(point);
+  /** The corner under the pointer while placing a face (rubber band), or null. */
+  previewFacePoint(corner: ScanCorner | null): void {
+    this.face.hover(corner);
     this.draw();
   }
 
@@ -293,7 +295,7 @@ export class NetBuilder {
     const face = this.face.preview();
     const segments = [...rows.segments, ...face.segments];
     const points = [...face.points];
-    const joins = [...rows.points];
+    const joins = [...rows.points, ...face.joins];
     if (this.weld) {
       const [from, into] = [point(this.weld.from), point(this.weld.into)];
       joins.push(...into);

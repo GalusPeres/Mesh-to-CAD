@@ -16,8 +16,18 @@ function point(net: Net, vertex: number): Vec3 {
   ];
 }
 
-/** A net with one quad more, from four new points, facing `outward`. */
-export function addQuad(net: Net | null, corners: readonly Vec3[], outward: Vec3): Net {
+/**
+ * A net with one quad more, facing `outward`. A corner given by `shared` is that
+ * existing point of the net (the face docks on there); the others become new points.
+ * Null if the face would break the net (a corner twice, or an edge it shares with a
+ * neighbour running the same way even when turned round).
+ */
+export function addQuad(
+  net: Net | null,
+  corners: readonly Vec3[],
+  outward: Vec3,
+  shared: readonly (number | null)[] = [],
+): Net | null {
   if (corners.length !== 4) throw new Error('a face needs four corners');
   // Newell normal of the polygon; the quad turns counter-clockwise seen from outside.
   let nx = 0;
@@ -29,16 +39,47 @@ export function addQuad(net: Net | null, corners: readonly Vec3[], outward: Vec3
     ny += (current[2] - next[2]) * (current[0] + next[0]);
     nz += (current[0] - next[0]) * (current[1] + next[1]);
   });
-  const ordered =
-    nx * outward[0] + ny * outward[1] + nz * outward[2] >= 0 ? corners : [...corners].reverse();
+  const order = [0, 1, 2, 3];
+  if (nx * outward[0] + ny * outward[1] + nz * outward[2] < 0) order.reverse();
   const base = net ? net.vertices.length / 3 : 0;
-  const vertices = new Float64Array((base + 4) * 3);
+  const created: Vec3[] = [];
+  const indices = order.map((k) => {
+    const existing = shared[k];
+    if (existing !== null && existing !== undefined) return existing;
+    created.push(corners[k] as Vec3);
+    return base + created.length - 1;
+  });
+  const vertices = new Float64Array((base + created.length) * 3);
   if (net) vertices.set(net.vertices);
-  ordered.forEach((corner, i) => vertices.set(corner, (base + i) * 3));
-  const quads = new Uint32Array((net ? net.quads.length : 0) + 4);
-  if (net) quads.set(net.quads);
-  quads.set([base, base + 1, base + 2, base + 3], quads.length - 4);
-  return { vertices, quads };
+  created.forEach((corner, i) => vertices.set(corner, (base + i) * 3));
+  const old = net ? net.quads : new Uint32Array(0);
+  for (const quad of [indices, [...indices].reverse()]) {
+    const quads = new Uint32Array(old.length + 4);
+    quads.set(old);
+    quads.set(quad, old.length);
+    const candidate = { vertices, quads };
+    if (orientedManifold(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Every quad has four different corners; every edge is used at most twice, never twice the same way. */
+function orientedManifold(net: Net): boolean {
+  const directed = new Set<string>();
+  const uses = new Map<string, number>();
+  for (let quad = 0; quad < quadCount(net); quad += 1) {
+    const corners = [0, 1, 2, 3].map((k) => corner(net, quad, k));
+    if (new Set(corners).size < 4) return false;
+    for (let k = 0; k < 4; k += 1) {
+      const [p, q] = [corners[k] ?? 0, corners[(k + 1) % 4] ?? 0];
+      if (directed.has(`${p}>${q}`)) return false;
+      directed.add(`${p}>${q}`);
+      const id = edgeKey(p, q);
+      uses.set(id, (uses.get(id) ?? 0) + 1);
+      if ((uses.get(id) ?? 0) > 2) return false;
+    }
+  }
+  return true;
 }
 
 /** Where a new row point goes: a new point there, or an existing point it joins. */
@@ -103,20 +144,7 @@ export function extrudeEdges(
 export function mergePoints(net: Net, from: number, into: number): Net | null {
   if (from === into) return null;
   const renamed = Uint32Array.from(net.quads, (vertex) => (vertex === from ? into : vertex));
-  const directed = new Set<string>();
-  const uses = new Map<string, number>();
-  for (let quad = 0; quad < renamed.length / 4; quad += 1) {
-    const corners = renamed.subarray(quad * 4, quad * 4 + 4);
-    if (new Set(corners).size < 4) return null;
-    for (let k = 0; k < 4; k += 1) {
-      const [p, q] = [corners[k] ?? 0, corners[(k + 1) % 4] ?? 0];
-      if (directed.has(`${p}>${q}`)) return null;
-      directed.add(`${p}>${q}`);
-      const id = edgeKey(p, q);
-      uses.set(id, (uses.get(id) ?? 0) + 1);
-      if ((uses.get(id) ?? 0) > 2) return null;
-    }
-  }
+  if (!orientedManifold({ vertices: net.vertices, quads: renamed })) return null;
   // Drop the point `from`; later points move down by one.
   const quads = Uint32Array.from(renamed, (vertex) => (vertex > from ? vertex - 1 : vertex));
   const vertices = new Float64Array(net.vertices.length - 3);

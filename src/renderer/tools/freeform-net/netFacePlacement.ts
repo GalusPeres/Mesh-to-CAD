@@ -9,13 +9,15 @@ import type { ScreenPoint, Vec3 } from '../../viewport/api';
 export interface ScanCorner {
   point: Vec3;
   normal: Vec3;
+  /** The existing net point the corner snapped to (the face docks on there). */
+  vertex?: number;
 }
 
 export type FaceMode = 'quad' | 'rectangle';
 
 export class FacePlacement {
   private clicked: ScanCorner[] = [];
-  private pointer: Vec3 | null = null;
+  private pointer: ScanCorner | null = null;
   private rectangle: Vec3[] | null = null;
   active = false;
   mode: FaceMode = 'quad';
@@ -53,9 +55,9 @@ export class FacePlacement {
     return this.clicked.pop() !== undefined;
   }
 
-  /** The scan point under the pointer (rubber band to the next corner), or null. */
-  hover(point: Vec3 | null): void {
-    this.pointer = point;
+  /** The corner under the pointer (rubber band to the next corner), or null. */
+  hover(corner: ScanCorner | null): void {
+    this.pointer = corner;
   }
 
   /** The rectangle face to the pointer (its corners on the scan), or null. */
@@ -63,20 +65,24 @@ export class FacePlacement {
     this.rectangle = corners;
   }
 
-  /** Guide lines and corner points to draw. */
-  preview(): { segments: number[]; points: number[] } {
+  /** Guide lines, corner points, and the net points the face will dock on. */
+  preview(): { segments: number[]; points: number[]; joins: number[] } {
     const segments: number[] = [];
     const points: number[] = [];
-    if (!this.active) return { segments, points };
+    const joins: number[] = [];
+    if (!this.active) return { segments, points, joins };
+    const pointer = this.pointer;
+    for (const corner of [...this.clicked, ...(pointer ? [pointer] : [])])
+      if (corner.vertex !== undefined) joins.push(...corner.point);
     const corners = this.rectangle ?? this.clicked.map((corner) => corner.point);
-    if (!this.rectangle && this.pointer && this.mode === 'quad') corners.push(this.pointer);
-    if (!this.rectangle && this.pointer && this.mode === 'rectangle') points.push(...this.pointer);
+    if (!this.rectangle && pointer && this.mode === 'quad') corners.push(pointer.point);
+    if (!this.rectangle && pointer && this.mode === 'rectangle') points.push(...pointer.point);
     corners.forEach((corner, i) => {
       points.push(...corner);
       const next = corners[i + 1] ?? (corners.length === 4 ? corners[0] : undefined);
       if (next) segments.push(...corner, ...next);
     });
-    return { segments, points };
+    return { segments, points, joins };
   }
 }
 
