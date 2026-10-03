@@ -120,21 +120,21 @@ export function ToolsSection({ editor, state }: SectionProps) {
           {...tool(`fit.${scope}`)}
           disabled={busy || !state.hasNet}
           data-testid="freeform-net-fit"
-          onClick={() => void editor.fit(false)}
+          onClick={() => void editor.shape.fit(false)}
         />
         <IconButton
           icon={Waves}
           {...tool(`smooth.${scope}`)}
           disabled={busy || !state.hasNet}
           data-testid="freeform-net-smooth"
-          onClick={() => void editor.fit(true)}
+          onClick={() => void editor.shape.fit(true)}
         />
         <IconButton
           icon={Square}
           {...tool('flatten')}
           disabled={busy || state.selected < 3}
           data-testid="freeform-net-flatten"
-          onClick={() => void editor.flatten()}
+          onClick={() => void editor.shape.flatten()}
         />
       </div>
       <PointOptions editor={editor} state={state} />

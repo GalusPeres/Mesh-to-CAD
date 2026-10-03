@@ -4,6 +4,7 @@
 // influence: those control points are solved together with the dragged ones, so the
 // neighbours' points stay where they are and the bulge stays within the dragged
 // points' own quads (beyond them the surface only eases out, as it must to stay smooth).
+// The same solve puts pinned and dropped points exactly where they belong.
 
 import type { LimitSurface } from './limitSurface';
 import { controlOffsets } from './netModel';
@@ -52,4 +53,37 @@ export function dragOffsets(
   const wanted = new Float64Array(set.controls.length * 3);
   wanted.set(moves.subarray(0, set.dragged * 3));
   return controlOffsets(surface, set.controls, wanted);
+}
+
+/** The limit points of the given control points (x, y, z each, in their order). */
+export function limitsOf(surface: LimitSurface, controls: readonly number[]): Float64Array {
+  const limits = new Float64Array(controls.length * 3);
+  controls.forEach((control, index) => limits.set(surface.limitPoint(control), index * 3));
+  return limits;
+}
+
+/**
+ * Move the given control points, and only them, so that their limit points are at
+ * `targets` (x, y, z each), in place; `surface` must show `vertices` and is updated.
+ */
+export function placeLimits(
+  surface: LimitSurface,
+  vertices: Float64Array,
+  controls: readonly number[],
+  targets: Float64Array,
+): void {
+  if (controls.length === 0) return;
+  const set = Uint32Array.from(controls);
+  const current = limitsOf(surface, controls);
+  const offsets = controlOffsets(
+    surface,
+    set,
+    targets.map((target, i) => target - (current[i] ?? 0)),
+  );
+  set.forEach((control, index) => {
+    for (let axis = 0; axis < 3; axis += 1)
+      vertices[control * 3 + axis] =
+        (vertices[control * 3 + axis] ?? 0) + (offsets[index * 3 + axis] ?? 0);
+  });
+  surface.evaluateRows(vertices, surface.rowsOf(set));
 }

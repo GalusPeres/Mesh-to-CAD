@@ -334,7 +334,7 @@ export function createNetInteraction(
         return true;
       }
       if (plain && key === 'q' && editor.getState().selected + editor.getState().chosenEdges > 0) {
-        void editor.smoothChosen();
+        void editor.shape.smoothChosen();
         return true;
       }
       if (plain && key === 's') {

@@ -1,39 +1,26 @@
-// The freeform-net tool's working state outside React: the draft net, its dense
-// limit surface and viewport overlay, the draft history, and the kernel requests that
-// generate, fit and map the net. The chosen and pinned points are NetPoints', measuring
-// against the scan NetMeasure's, building by hand NetBuilder's, dragging points
-// NetPointDrag's, running kernel requests NetJobs'. The panel subscribes for its
-// numbers; a drag only touches the viewport, never React.
+// The freeform-net tool's working state outside React: the draft net, its history, and
+// the kernel requests that generate and map it. Drawing and measuring it is NetScene's
+// job, the chosen and pinned points NetPoints', building by hand NetBuilder's, dragging
+// points NetPointDrag's, fitting and smoothing NetShaping's, running kernel requests
+// NetJobs'. The panel subscribes for its numbers; a drag only touches the viewport.
 
 import type { ScreenPoint, Vec3, Viewport } from '../../viewport/api';
-import { LimitSurface } from './limitSurface';
-import { type Edge, borderEdges } from './netTopology';
 import { netAutomationInfo } from './netAutomation';
 import { NetBuilder } from './netBuilder';
+import { placeLimits } from './netDragSolve';
 import { NetJobs } from './netJobs';
-import { NetMeasure } from './netMeasure';
-import {
-  type Net,
-  NetHistory,
-  cloneNet,
-  fitPlane,
-  irregularPoints,
-  projectOntoPlane,
-  sameTopology,
-} from './netModel';
-import { NetOverlay } from './NetOverlay';
-import { carriedPins, fixedMask, holdPinned, pinnedLimits } from './netPins';
+import { type Net, NetHistory, cloneNet, irregularPoints, sameTopology } from './netModel';
+import { carriedPins } from './netPins';
 import { NetPointDrag } from './netPointDrag';
 import { type ChooseMode, NetPoints } from './netPoints';
+import { NetScene } from './netScene';
+import { NetShaping } from './netShaping';
 import { type NetEditorState, initialNetState } from './netState';
+import { type Edge, borderEdges } from './netTopology';
 
 export type { NetEditorState, NetJobKind } from './netState';
 
 export const FREEFORM_NET_TOOL_ID = 'freeform-net';
-/** Fairness of "Snap to scan" and the stronger one of "Smooth" (kernel `net.fit`). */
-export const SNAP_SMOOTHING = 0.002;
-export const SMOOTH_SMOOTHING = 0.05;
-const FIT_ITERATIONS = 4;
 /** Points whose surface faces away from the viewer more than this cannot be picked. */
 const FACING_LIMIT = 0.15;
 
@@ -41,9 +28,7 @@ export class NetEditor {
   private state: NetEditorState;
   private readonly listeners = new Set<() => void>();
   private net: Net | null = null;
-  private surface: LimitSurface | null = null;
-  private overlay: NetOverlay | null = null;
-  private readonly measure: NetMeasure;
+  private readonly scene: NetScene;
   private readonly points = new NetPoints();
   private readonly history = new NetHistory();
   private readonly jobs: NetJobs;
@@ -52,6 +37,8 @@ export class NetEditor {
   readonly build: NetBuilder;
   /** Moving chosen control points with the pointer. */
   readonly pointDrag: NetPointDrag;
+  /** Snap to scan, Smooth, Q, lay on a plane. */
+  readonly shape: NetShaping;
   /** Scan triangles the net belongs to (fitting uses them); null = the whole scan. */
   faces: Uint32Array | null = null;
 
@@ -59,8 +46,8 @@ export class NetEditor {
     private readonly viewport: Viewport,
     tolerance: number,
   ) {
-    this.measure = new NetMeasure(viewport, tolerance);
-    this.state = initialNetState(this.measure.tolerance);
+    this.scene = new NetScene(viewport, tolerance, () => this.state);
+    this.state = initialNetState(this.scene.measure.tolerance);
     this.jobs = new NetJobs(
       FREEFORM_NET_TOOL_ID,
       (patch) => this.update(patch),
@@ -77,18 +64,37 @@ export class NetEditor {
       shown: () => !this.detached,
       update: (patch) => this.update(patch),
       record: (net) => this.setNet(net, true),
-      settle: (net, added) => this.settle(net, added),
+      settle: (net, added) => this.shape.settle(net, added),
+      place: (net, added) => this.shape.place(net, added),
+    });
+    this.shape = new NetShaping({
+      jobs: this.jobs,
+      net: () => this.net,
+      surface: () => this.scene.surface,
+      chosen: () => this.points.chosen,
+      pinned: () => this.points.pinned,
+      faces: () => this.faces,
+      busy: () => this.state.job !== null,
+      chosenEdges: () => this.build.chosenEdges(),
+      choose: (controls, mode) => this.choose(controls, mode),
+      show: (net, record) => this.setNet(net, record),
+      moved: async () => {
+        this.scene.positionsChanged();
+        this.recordCurrent();
+        await this.measureAll();
+      },
+      record: () => this.recordCurrent(),
     });
     this.pointDrag = new NetPointDrag({
       viewport,
       net: () => this.net,
-      surface: () => (this.state.job ? null : this.surface),
+      surface: () => (this.state.job ? null : this.scene.surface),
       selection: () => this.points.chosen,
       pinned: () => this.points.pinned,
       snap: () => this.state.snap,
       keepNeighbours: () => this.state.keepNeighbours,
       strength: () => this.state.strength,
-      refreshRows: (rows) => this.refreshRows(rows),
+      refreshRows: (rows) => this.net && this.scene.refreshRows(this.net.vertices, rows),
       record: () => this.recordCurrent(),
       dropped: (controls) => controls.length === 1 && this.build.edits.weldOnto(controls[0] ?? 0),
     });
@@ -131,44 +137,6 @@ export class NetEditor {
     this.syncHistory();
   }
 
-  /**
-   * Snap the net to the scan; with chosen points only those move ("Smooth": fairer).
-   * Pinned points stay. Returns whether the fitted net was shown (and recorded).
-   */
-  async fit(smooth: boolean): Promise<boolean> {
-    const net = this.net;
-    if (!net) return false;
-    const result = await this.jobs.run(smooth ? 'smooth' : 'fit', 'net.fit', {
-      vertices: net.vertices,
-      quads: net.quads,
-      faces: this.faces,
-      fixed: fixedMask(net.vertices.length / 3, this.points.pinned, this.points.chosen),
-      smoothing: smooth ? SMOOTH_SMOOTHING : SNAP_SMOOTHING,
-      iterations: FIT_ITERATIONS,
-    });
-    if (!result) return false;
-    await this.setNet({ vertices: result.vertices, quads: net.quads }, true);
-    return true;
-  }
-
-  /**
-   * Lay the chosen control points (not the pinned ones) on their best-fitting plane.
-   * Where a region of the net and the ring of points around it are coplanar, its limit
-   * surface is exactly that plane (affine invariance of subdivision), so flat faces
-   * become truly flat.
-   */
-  async flatten(): Promise<void> {
-    const net = this.net;
-    const surface = this.surface;
-    const chosen = [...this.points.chosen].filter((control) => !this.points.pinned.has(control));
-    if (!net || !surface || chosen.length < 3 || this.state.job) return;
-    const plane = fitPlane(pinnedLimits(surface, chosen));
-    if (!plane) return;
-    const next = cloneNet(net);
-    projectOntoPlane(next.vertices, chosen, plane);
-    await this.setNet(next, true);
-  }
-
   cancelJob(): void {
     this.jobs.cancel();
   }
@@ -187,17 +155,6 @@ export class NetEditor {
     return true;
   }
 
-  /** Q: smooth the chosen chain (or the chosen points) while it stays on the scan. */
-  async smoothChosen(): Promise<void> {
-    const edges = this.build.chosenEdges();
-    if (edges.length > 0)
-      this.choose(
-        edges.flatMap(({ a, b }) => [a, b]),
-        'replace',
-      );
-    if (this.points.chosen.size > 0) await this.fit(true);
-  }
-
   // Options -------------------------------------------------------------------------------
 
   /** Snapping, "Don't move neighbours" and the drag strength. */
@@ -207,39 +164,37 @@ export class NetEditor {
 
   /** Space: show only the surface, or the net on it again. */
   setNetVisible(netVisible: boolean): void {
-    this.overlay?.setNetVisible(netVisible);
-    this.viewport.invalidate();
+    this.scene.setNetVisible(netVisible);
     this.update({ netVisible });
   }
 
   setHeatmap(heatmap: boolean): void {
-    this.overlay?.setSurfaceColors(heatmap ? this.measure.colors : null);
-    this.viewport.invalidate();
+    this.scene.setHeatmap(heatmap);
     this.update({ heatmap });
   }
 
   setTolerance(tolerance: number): void {
-    if (!this.measure.setTolerance(tolerance)) return;
+    if (!this.scene.measure.setTolerance(tolerance)) return;
     this.update({ tolerance });
     void this.measureAll();
   }
 
   get tolerance(): number {
-    return this.measure.tolerance;
+    return this.scene.measure.tolerance;
   }
 
   // Control points --------------------------------------------------------------------------
 
   get controlCount(): number {
-    return this.surface?.controlCount ?? 0;
+    return this.scene.surface?.controlCount ?? 0;
   }
 
   limitPoint(control: number): Vec3 {
-    return this.surface?.limitPoint(control) ?? [0, 0, 0];
+    return this.scene.limitPoint(control);
   }
 
   normalAt(control: number): Vec3 {
-    return this.overlay?.normalAt(control) ?? [0, 0, 1];
+    return this.scene.normalAt(control);
   }
 
   /** Screen position of a control point, or null if it faces away from the viewer. */
@@ -290,7 +245,7 @@ export class NetEditor {
 
   /** Edges of the net (control-point pairs) and which of them are open border. */
   get edges(): { pairs: Uint32Array; border: Uint8Array } | null {
-    const map = this.surface?.map;
+    const map = this.scene.surface?.map;
     return map ? { pairs: map.edges, border: map.boundaryEdges } : null;
   }
 
@@ -308,7 +263,7 @@ export class NetEditor {
   automationInfo(): unknown {
     return netAutomationInfo({
       tool: FREEFORM_NET_TOOL_ID,
-      net: this.surface ? this.net : null,
+      net: this.scene.surface ? this.net : null,
       state: this.state,
       border: () => this.build.automationBorder(),
       chosen: this.points.chosen,
@@ -329,42 +284,26 @@ export class NetEditor {
   attach(): void {
     if (!this.detached) return;
     this.detached = false;
-    if (this.surface && this.net) {
-      this.overlay = new NetOverlay(this.viewport.createOverlay(), this.surface);
-      this.overlay.positionsChanged();
-      this.overlay.setNetVisible(this.state.netVisible);
-      this.repaintPoints();
-      void this.measureAll();
-    }
+    if (this.net && this.scene.show(this.points)) void this.measureAll();
   }
 
   /** Remove the net from the viewport and stop running work; the draft is kept. */
   detach(): void {
     this.detached = true;
-    this.measure.cancel();
     this.pointDrag.end(false);
     this.jobs.cancel();
-    this.overlay?.dispose();
-    this.overlay = null;
+    this.scene.hide();
     this.build.dispose();
   }
 
   // Internals ---------------------------------------------------------------------------------
-
-  /** Show a changed net, then snap its new points to the scan: one undo step. */
-  private async settle(net: Net, added: readonly number[]): Promise<void> {
-    await this.setNet(net, false);
-    this.choose(added, 'replace');
-    const fitted = await this.fit(false);
-    if (!fitted) this.recordCurrent();
-  }
 
   /** The current net becomes a draft history step (after a drag or a build step). */
   private recordCurrent(): void {
     if (!this.net) return;
     this.history.push(this.net, [...this.points.pinned]);
     this.syncHistory();
-    this.update({ summary: this.measure.summary(), ...this.points.counts() });
+    this.update({ summary: this.scene.measure.summary(), ...this.points.counts() });
   }
 
   /**
@@ -377,32 +316,28 @@ export class NetEditor {
     const previous = this.net;
     const { pins, anchors } = pinned
       ? { pins: [...pinned], anchors: null }
-      : carriedPins(this.surface, previous, net, [...this.points.pinned]);
+      : carriedPins(this.scene.surface, previous, net, [...this.points.pinned]);
     if (net.quads.length === 0) {
       this.showEmpty(net, record);
       return;
     }
-    const topologyChanged = !previous || !this.surface || !sameTopology(previous, net);
+    const topologyChanged = !previous || !this.scene.surface || !sameTopology(previous, net);
     if (topologyChanged) {
       const map = await this.jobs.run('map', 'net.limitMap', {
         quads: net.quads,
         vertexCount: net.vertices.length / 3,
       });
       if (!map || this.detached) return;
-      this.overlay?.dispose();
-      this.surface = new LimitSurface(map, net.vertices.length / 3);
-      this.overlay = new NetOverlay(this.viewport.createOverlay(), this.surface);
-      this.overlay.setNetVisible(this.state.netVisible);
-      this.measure.reset(this.surface);
-      const count = this.surface.controlCount;
+      const count = this.scene.replace(map, net.vertices.length / 3).controlCount;
       this.points.renumbered(count, irregularPoints(map.edges, map.boundaryEdges, count));
     }
     this.net = cloneNet(net);
-    const surface = this.surface as LimitSurface;
+    const surface = this.scene.surface;
+    if (!surface) return;
     surface.evaluate(this.net.vertices);
     this.points.setPinned(pins);
-    if (anchors) holdPinned(surface, this.net.vertices, pins, anchors);
-    this.overlay?.positionsChanged();
+    if (anchors) placeLimits(surface, this.net.vertices, pins, anchors);
+    this.scene.positionsChanged();
     if (topologyChanged) this.build.topologyChanged(this.net);
     this.repaintPoints();
     if (record) {
@@ -419,16 +354,12 @@ export class NetEditor {
       closed: !map.boundaryEdges.some((flag) => flag !== 0),
       ...this.points.counts(),
     });
-    this.viewport.invalidate();
     await this.measureAll();
   }
 
   /** Everything deleted: no surface; placing a first face starts again (undoable). */
   private showEmpty(net: Net, record: boolean): void {
-    this.measure.cancel();
-    this.overlay?.dispose();
-    this.overlay = null;
-    this.surface = null;
+    this.scene.clear();
     this.net = cloneNet(net);
     this.points.renumbered(0, []);
     this.build.topologyChanged(this.net);
@@ -439,35 +370,16 @@ export class NetEditor {
     const counts = { quads: 0, faces: 0, controlPoints: 0, irregular: 0 };
     this.update({ hasNet: false, summary: null, ...counts, ...this.points.counts() });
     this.build.setFacing(true);
-    this.viewport.invalidate();
-  }
-
-  /** Recompute positions, distances and colours of some dense vertices (during a drag). */
-  private refreshRows(rows: Uint32Array): void {
-    const surface = this.surface;
-    const net = this.net;
-    if (!surface || !net) return;
-    surface.evaluateRows(net.vertices, rows);
-    this.measure.rows(surface, rows);
-    this.overlay?.positionsChanged();
-    if (this.state.heatmap) this.overlay?.setSurfaceColors(this.measure.colors);
-    this.viewport.invalidate();
   }
 
   /** Measure every dense vertex against the scan, a chunk per frame. */
   private async measureAll(): Promise<void> {
-    const surface = this.surface;
-    if (!surface) return;
-    const summary = await this.measure.all(surface, () => {
-      if (this.state.heatmap) this.overlay?.setSurfaceColors(this.measure.colors);
-      this.viewport.invalidate();
-    });
+    const summary = await this.scene.measureAll();
     if (summary) this.update({ summary });
   }
 
   private repaintPoints(): void {
-    this.points.paint(this.overlay);
-    this.viewport.invalidate();
+    this.scene.paint(this.points);
   }
 
   private syncHistory(): void {

@@ -79,7 +79,7 @@ export function NetContextMenu({ editor, state, request, onClose }: NetContextMe
         icon={Waves}
         shortcut="Q"
         disabled={busy || !chosen}
-        onSelect={() => void editor.smoothChosen()}
+        onSelect={() => void editor.shape.smoothChosen()}
       />
       {state.selected > state.chosenPinned && (
         <MenuItem
@@ -111,7 +111,7 @@ export function NetContextMenu({ editor, state, request, onClose }: NetContextMe
         label={item(state.selected > 0 ? 'snapChosen' : 'snapAll')}
         icon={Magnet}
         disabled={busy || !state.hasNet}
-        onSelect={() => void editor.fit(false)}
+        onSelect={() => void editor.shape.fit(false)}
       />
       <MenuItem
         label={item('refine')}

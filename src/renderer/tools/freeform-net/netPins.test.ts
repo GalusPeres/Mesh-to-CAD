@@ -4,7 +4,8 @@ import { gridFixture } from './gridFixture';
 import { LimitSurface } from './limitSurface';
 import { mergePoints, removeQuads, subdivide } from './netBuild';
 import { NetHistory } from './netModel';
-import { carriedPins, carryPins, fixedMask, holdPinned, pinnedLimits } from './netPins';
+import { limitsOf, placeLimits } from './netDragSolve';
+import { carriedPins, carryPins, fixedMask } from './netPins';
 import { NetPoints } from './netPoints';
 
 describe('fixedMask', () => {
@@ -42,20 +43,20 @@ describe('carryPins', () => {
   });
 });
 
-describe('holdPinned', () => {
+describe('placeLimits', () => {
   it('brings the pinned limit points back after their neighbours moved', () => {
     const grid = gridFixture(9);
     const surface = new LimitSurface(grid.map, 81);
     surface.evaluate(grid.net.vertices);
     const pinned = [grid.id(4, 4), grid.id(4, 5)];
-    const anchors = pinnedLimits(surface, pinned);
+    const anchors = limitsOf(surface, pinned);
     // A fit moved every other control point up and held the pinned ones (kernel `fixed`).
     const vertices = grid.net.vertices.slice();
     for (let control = 0; control < 81; control += 1)
       if (!pinned.includes(control)) vertices[control * 3 + 2] = 0.5;
     surface.evaluate(vertices);
     expect(surface.limitPoint(pinned[0]!)[2]).toBeGreaterThan(0.1);
-    holdPinned(surface, vertices, pinned, anchors);
+    placeLimits(surface, vertices, pinned, anchors);
     for (const [index, control] of pinned.entries())
       for (let axis = 0; axis < 3; axis += 1)
         expect(surface.limitPoint(control)[axis]).toBeCloseTo(anchors[index * 3 + axis]!, 5);
