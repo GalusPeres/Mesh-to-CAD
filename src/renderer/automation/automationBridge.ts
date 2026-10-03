@@ -7,6 +7,7 @@ import type { AutomationAction } from '@shared/automation';
 
 import { allCommands, commandById, runCommand } from '../app/commands/registry';
 import { i18n } from '../i18n';
+import { objectVisibilityStore } from '../panels/objectVisibility';
 import { deviationStore, isDeviationShown } from '../inspection/deviationStore';
 import { replaceSelection } from '../selection/api';
 import { selectionStore } from '../selection/selectionStore';
@@ -29,14 +30,20 @@ function deviationState() {
 
 async function handle(action: AutomationAction): Promise<unknown> {
   switch (action.type) {
-    case 'state':
+    case 'state': {
+      const view = viewStore.getState();
       return {
         revision: documentStore.getState().snapshot?.revision ?? null,
         activeTool: toolStore.getState().activeToolId,
         selectedFaces: selectionStore.getState().count,
-        visibility: viewStore.getState().visibility,
+        visibility: view.visibility,
+        displayMode: view.displayMode,
+        // What the tree hides: body ids, and the owner features of other items.
+        hidden: objectVisibilityStore.getState(),
+        // The heatmap is finished when its revision is the document's.
         deviation: deviationState(),
       };
+    }
     case 'listCommands':
       return allCommands().map((command) => ({
         id: command.id,

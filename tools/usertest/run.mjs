@@ -5,6 +5,9 @@
 //   M2C_INSTANCE=<name> M2C_WINDOW=offscreen M2C_AUTOMATION=1 npm run dev
 //   M2C_INSTANCE=<name> npm run usertest [-- <test> ...]
 //
+// `remote` (the reference part rebuilt end to end, tools/usertest/remote/) runs only
+// when named, on the scan given by M2C_REMOTE_SCAN or --scan=<path>.
+//
 // They run only against an app of its own (M2C_INSTANCE), never the user's: each run
 // starts a new project there. Screenshots: test-results/usertest/<instance>/.
 
@@ -22,6 +25,7 @@ import { loftEndTest } from './loftend.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
+import { remoteTest } from './remote/index.mjs';
 import { writeRoundedBlock } from './rounded.mjs';
 import { writeRoundedPart } from './roundedPart.mjs';
 import { roundingTest } from './rounding.mjs';
@@ -41,6 +45,9 @@ const TESTS = {
   rounding: roundingTest,
   radii: buttonRadiiTest,
 };
+
+/** Long tests on a real scan, run only when named; they start their project themselves. */
+const ON_REQUEST = { remote: remoteTest };
 
 /** The part a test runs on, when it is not the plate with the boss. */
 const PARTS = {
@@ -74,10 +81,12 @@ async function main() {
     console.error('Set M2C_INSTANCE to the name of your own app (see the header of this file).');
     process.exit(2);
   }
-  const names = process.argv.slice(2).length > 0 ? process.argv.slice(2) : Object.keys(TESTS);
-  const unknown = names.filter((name) => !TESTS[name]);
+  const named = process.argv.slice(2).filter((argument) => !argument.startsWith('--'));
+  const names = named.length > 0 ? named : Object.keys(TESTS);
+  const known = { ...TESTS, ...ON_REQUEST };
+  const unknown = names.filter((name) => !known[name]);
   if (unknown.length > 0) {
-    console.error(`Unknown test: ${unknown.join(', ')}. Known: ${Object.keys(TESTS).join(', ')}`);
+    console.error(`Unknown test: ${unknown.join(', ')}. Known: ${Object.keys(known).join(', ')}`);
     process.exit(2);
   }
   const client = automationClient();
@@ -85,6 +94,10 @@ async function main() {
   for (const name of names) {
     console.log(`\n== ${name}`);
     try {
+      if (ON_REQUEST[name]) {
+        await ON_REQUEST[name](d, client);
+        continue;
+      }
       await startOver(client, d, PARTS[name] ?? writeTestPart);
       await TESTS[name](d);
     } catch (error) {

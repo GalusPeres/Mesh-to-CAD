@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tools/**/*.test.mjs'],
     environment: 'node',
     restoreMocks: true,
   },

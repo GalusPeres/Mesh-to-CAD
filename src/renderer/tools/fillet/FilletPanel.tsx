@@ -188,8 +188,10 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
         mode,
         size,
         measurement,
+        // OK is possible: the preview of the picked edges with this size is there.
+        ready: previewOk,
       })),
-    [draft.body, draft.edges, mode, size, measurement],
+    [draft.body, draft.edges, mode, size, measurement, previewOk],
   );
 
   const body = bodies.find((item) => item.id === draft.body);

@@ -91,7 +91,7 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
-  /** The app's view: revision, open tool, what is visible, the deviation map. */
+  /** The window's state: revision, open tool, selection, what is shown, the heatmap. */
   const state = () => ui({ type: 'state' });
 
   /** What the pointer finds at a screen point: scan, body, edge or item. */
