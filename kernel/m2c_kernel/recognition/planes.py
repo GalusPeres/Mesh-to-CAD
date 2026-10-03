@@ -13,6 +13,10 @@ Greedy, largest area first:
 
 Buttons, bosses and pockets on a face barely move the fit, because their triangles
 lie on other levels or face other ways.
+
+A plane's x axis follows the face's longer extent; near an axis of the part (the scan
+is aligned, so the part's axes are the coordinate axes) it is that axis, so rows of
+buttons and straight edges of the part line up with the plane frame.
 """
 
 from __future__ import annotations
@@ -36,6 +40,8 @@ MIN_SHARE = 0.03
 """A base plane covers at least this share of the part's area."""
 MAX_PLANES = 16
 MAX_TRIES = 40
+PART_AXIS_DEG = 10.0
+"""The x axis is a part axis when the face's longer extent lies this close to it."""
 
 
 @dataclass(frozen=True)
@@ -45,7 +51,8 @@ class BasePlane:
     Attributes:
         origin: Centre of the inlier area, on the plane.
         normal: Unit normal, pointing out of the material.
-        x_axis: In-plane unit axis along the face's longer extent.
+        x_axis: In-plane unit axis along the face's longer extent (or the part axis
+            near it).
         faces: Inlier triangles.
         area: Inlier area (mm^2).
         rms: RMS distance of the inlier vertices to the plane (mm).
@@ -178,16 +185,32 @@ def _plane_along(
     flat = inlier_points - centre
     flat -= np.outer(flat @ normal, normal)
     _, _, axes = np.linalg.svd(flat, full_matrices=False)
-    x_axis = axes[0] - (axes[0] @ normal) * normal
-    x_axis /= np.linalg.norm(x_axis)
     return BasePlane(
         origin=centre,
         normal=normal,
-        x_axis=x_axis,
+        x_axis=_x_axis(axes[0], normal),
         faces=inliers.astype(np.int64),
         area=float(areas[inliers].sum()),
         rms=rms,
     )
+
+
+def _x_axis(extent: FloatArray, normal: FloatArray) -> FloatArray:
+    """The in-plane direction of the longer extent, or the part axis close to it."""
+    along = extent - (extent @ normal) * normal
+    along /= np.linalg.norm(along)
+    close = np.cos(np.radians(PART_AXIS_DEG))
+    for axis in np.eye(3):
+        in_plane = axis - (axis @ normal) * normal
+        length = float(np.linalg.norm(in_plane))
+        if length < close:
+            continue  # the axis leaves the plane
+        in_plane /= length
+        agreement = float(in_plane @ along)
+        if abs(agreement) >= close:
+            result: FloatArray = np.sign(agreement) * in_plane
+            return result
+    return along
 
 
 def robust_plane(

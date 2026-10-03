@@ -36,8 +36,8 @@ const NEW_BODIES = '';
 
 /**
  * Formen erkennen: reads the aligned scan like a designer (flat faces, and on them
- * buttons, pockets, slots, ring segments and holes) and builds the checked ones as
- * a plane, sketches and extrusions in one step.
+ * buttons, pockets, slots, ring segments, holes and free outlines of lines and arcs)
+ * and builds the checked ones as a plane, sketches and extrusions in one step.
  */
 export function RecognizePanel({ close }: ToolPanelProps) {
   const { t } = useTranslation();
@@ -83,9 +83,7 @@ export function RecognizePanel({ close }: ToolPanelProps) {
   const targetBody = bodies.some((body) => body.id === target) ? target : null;
   const chosen = chosenFeatures(groups, checked);
   const pocketsChosen = needsBody(groups, checked);
-  const bossesChosen = groups.some(
-    (group) => group.buildable && checked.has(group.id) && group.role === 'boss',
-  );
+  const bossesChosen = groups.some((group) => checked.has(group.id) && group.role === 'boss');
 
   const format = useFormatter();
   const build = useCallback(async () => {
@@ -243,9 +241,6 @@ function GroupList({ groups, checked, hovered, onToggle, onHover, onAll }: Group
           />
         ))}
       </ul>
-      {groups.some((group) => !group.buildable) && (
-        <p className={styles.hint}>{t(`${KEY}.profileHint`)}</p>
-      )}
     </>
   );
 }
@@ -262,7 +257,7 @@ function GroupRow({ group, checked, hovered, onToggle, onHover }: GroupRowProps)
   const { t } = useTranslation();
   const format = useFormatter();
   const { feature } = group;
-  const color = group.buildable ? RECOGNITION_COLORS[group.role] : RECOGNITION_COLORS.profile;
+  const color = RECOGNITION_COLORS[group.role];
   const amount = format.length(feature.height, { decimals: 2 });
   const details = [
     t(`${KEY}.roles.${group.role}`),
@@ -282,8 +277,7 @@ function GroupRow({ group, checked, hovered, onToggle, onHover }: GroupRowProps)
       <input
         type="checkbox"
         className={styles.box}
-        checked={checked && group.buildable}
-        disabled={!group.buildable}
+        checked={checked}
         aria-label={name}
         onChange={() => onToggle(group.id)}
       />

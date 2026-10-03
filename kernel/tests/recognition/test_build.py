@@ -1,4 +1,5 @@
-"""Recognised outlines become valid sketch loops of the right area."""
+"""Recognised outlines, templates and free chains alike, become valid sketch loops of the
+right area, and recognised features build the part."""
 
 from __future__ import annotations
 
@@ -31,8 +32,9 @@ from m2c_kernel.document.model import Document, Scan, ScanSource
 from m2c_kernel.document.ops import AddFeature, NewFeature
 from m2c_kernel.mesh.normals import vertex_normals
 from m2c_kernel.protocol.wire import RawObject, from_json
-from m2c_kernel.recognition.build import _Sketch, outline_loop
-from m2c_kernel.recognition.outline import Outline, outline_points
+from m2c_kernel.recognition.build import _Sketch, chain_loop
+from m2c_kernel.recognition.chain import Chain, chain_points
+from m2c_kernel.recognition.outline import Outline, free_outline
 from m2c_kernel.session.jobs import JobContext
 from m2c_kernel.session.session import Session
 from m2c_kernel.sketch.api import evaluate, section_geometry
@@ -44,6 +46,7 @@ pytestmark = pytest.mark.occt
 
 SHAPES = [
     Outline("circle", (3.0, -2.0, 4.0), 0.0),
+    Outline("cutCircle", (1.0, 2.0, 3.6, 0.1, 1.6), 0.0),
     Outline("slot", (0.0, 1.0, 0.3, 8.0, 4.8), 0.0),
     Outline("roundedRect", (-1.0, 0.0, 0.2, 12.0, 6.0, 1.5), 0.0),
     Outline("roundedRect", (2.0, 1.0, 0.0, 10.0, 4.0, 0.0), 0.0),
@@ -57,11 +60,20 @@ def _polygon_area(points: np.ndarray) -> float:
     return float(0.5 * abs(x @ np.roll(y, -1) - y @ np.roll(x, -1)))
 
 
-@pytest.mark.parametrize("shape", SHAPES, ids=[f"{s.kind}-{i}" for i, s in enumerate(SHAPES)])
-def test_outline_becomes_one_closed_loop_of_the_same_area(shape: Outline) -> None:
+def _star() -> Chain:
+    """A free profile: a fitted five-pointed star of lines and arcs."""
+    t = np.linspace(0, 2 * np.pi, 600, endpoint=False)
+    star = (5 + 2 * np.cos(5 * t))[:, None] * np.column_stack([np.cos(t), np.sin(t)])
+    return free_outline(star, 0.02).chain
+
+
+CHAINS = [shape.chain for shape in SHAPES] + [_star()]
+
+
+@pytest.mark.parametrize("chain", CHAINS, ids=[*(s.kind for s in SHAPES), "profile"])
+def test_outline_becomes_one_closed_loop_of_the_same_area(chain: Chain) -> None:
     sketch = _Sketch()
-    loop = outline_loop(sketch, shape, np.zeros(2))
-    assert loop is not None
+    loop = chain_loop(sketch, chain, np.zeros(2))
     section = PlanarSection(plane=StandardPlaneSource(plane="XY"))
     params = from_json(
         {
@@ -78,7 +90,7 @@ def test_outline_becomes_one_closed_loop_of_the_same_area(shape: Outline) -> Non
     assert len(result.profiles.profile_faces) == 1
     properties = GProp_GProps()
     BRepGProp.SurfaceProperties_s(result.profiles.profile_faces[0], properties)
-    expected = _polygon_area(outline_points(shape, 2048))
+    expected = _polygon_area(chain_points(chain, step_deg=0.25))
     assert properties.Mass() == pytest.approx(expected, rel=2e-3)
 
 

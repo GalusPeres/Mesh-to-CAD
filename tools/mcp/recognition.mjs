@@ -34,7 +34,6 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         inPocket: feature.parent,
         group: feature.group,
         labelAt: feature.label.map(round),
-        buildable: feature.shape !== 'profile',
       })),
     };
   }
@@ -44,9 +43,12 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
     {
       description:
         'Read the aligned scan like a designer (like Formen erkennen): its flat faces and, on ' +
-        'them, raised shapes, pockets and holes with circle, slot, rounded rectangle or ring ' +
-        'segment outlines, design intent applied (equal sizes, shared centres, rounded values). ' +
-        'Outline params are in the plane frame (mm, radians). Follow with build_shapes.',
+        'them, raised shapes, pockets and holes. Every outline is lines and arcs, named circle, ' +
+        'cutCircle (a circle trimmed by the part outline: radius, cut normal angle, cut distance ' +
+        'from the centre), slot, roundedRect or ringSegment where one fits, else "profile" (a ' +
+        'free outline: centre and extent). Design intent applied (equal sizes, shared centres, ' +
+        'rounded values). Outline params are in the plane frame (mm, radians). Follow with ' +
+        'build_shapes.',
     },
     async () => {
       const { document } = await kernel('doc.get');
@@ -72,7 +74,7 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
         features: z
           .array(z.number().int().min(0))
           .optional()
-          .describe('Feature indices from recognize_shapes; default: every buildable one'),
+          .describe('Feature indices from recognize_shapes; default: all of them'),
         targetBody: z.string().nullable().optional().describe('Body id, e.g. "f2"'),
       },
     },
@@ -86,9 +88,7 @@ export function registerRecognitionTools({ tool, kernel, text, summarise }) {
           { scanKey: document.scan.key },
           'recognize.run:mcp',
         );
-        chosen = found.features
-          .map((feature, index) => (feature.shape !== 'profile' ? index : -1))
-          .filter((index) => index >= 0);
+        chosen = found.features.map((_, index) => index);
       }
       const built = await kernel('recognize.build', {
         scanKey: document.scan.key,

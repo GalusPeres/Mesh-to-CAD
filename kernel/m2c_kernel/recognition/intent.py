@@ -5,7 +5,8 @@ the arms of a direction pad do not share a centre exactly. Beautification (after
 Langbein, Marshall and Martin 2004: detect candidate regularities within the
 measurement uncertainty, then enforce them consistently) restores them:
 
-1. Concentric groups: ring segments and circles whose centres agree share one centre.
+1. Concentric groups: ring segments and (cut) circles whose centres agree share one
+   centre.
    The ring segments of a group are refit together on their measured contours as
    equal arms around one centre (one inner and outer radius, gap, corner and
    sweep) and, when they are spread evenly, with their middles on an exact angular
@@ -14,9 +15,10 @@ measurement uncertainty, then enforce them consistently) restores them:
    better than a small button); if equal arms do not fit, the arms keep their own
    values and the circles share their mean centre.
 2. Equal groups: features of the same shape whose dimensions agree get the mean
-   dimensions.
+   dimensions (cut circles, buttons cut by the part's outline, among themselves).
 3. Rows and columns: centres that agree in u (or v) share the mean value.
-4. Directions: slots and rectangles nearly parallel to a plane axis become parallel.
+4. Directions: slots, rectangles and cuts nearly parallel to a plane axis become
+   parallel.
 5. Heights that agree become equal: first within a family of equal features (the
    same button made several times has one height), then across families on the same
    level when their heights agree closely.
@@ -35,8 +37,8 @@ from dataclasses import replace
 import numpy as np
 from scipy.optimize import least_squares
 
-from m2c_kernel.recognition.outline import DISTANCES, PARAMETERS, Outline
 from m2c_kernel.recognition.relief import Relief
+from m2c_kernel.recognition.shapes import DISTANCES, LENGTHS, PARAMETERS, ShapeKind
 
 CENTRE_MM = 0.6
 """Centres closer than this are taken as the same centre or the same row."""
@@ -59,14 +61,8 @@ SHARED_HEIGHT_MM = 0.05
 """Families whose heights differ less than this share one height."""
 ROUND_MM = 0.05
 TAU = 2.0 * np.pi
-
-_LENGTHS: dict[str, tuple[str, ...]] = {
-    "circle": ("radius",),
-    "slot": ("length", "width"),
-    "roundedRect": ("width", "height", "corner"),
-    "ringSegment": ("inner", "outer", "gap", "corner"),
-    "profile": (),
-}
+ROUND_KINDS = ("circle", "cutCircle")
+"""Round shapes that share a centre with ring segments around them."""
 
 
 def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
@@ -75,7 +71,8 @@ def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
     kinds = [relief.outline.kind for relief in reliefs]
     _concentric(kinds, outlines, [relief.contour for relief in reliefs])
     _equal_sizes(kinds, outlines)
-    # A ring segment's centre lies far outside it: it forms no row with other features.
+    # A ring segment's centre lies far outside it: it forms no row with other features;
+    # a free profile has no designed centre.
     in_rows = [i for i, kind in enumerate(kinds) if kind not in ("profile", "ringSegment")]
     for axis in ("cx", "cy"):
         _align(outlines, axis, in_rows)
@@ -87,13 +84,13 @@ def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
         if relief.parent is not None:
             levels[i] = levels[relief.parent] - heights[relief.parent]
     for values, kind in zip(outlines, kinds, strict=True):
-        for name in _LENGTHS[kind]:
+        for name in LENGTHS[kind]:
             values[name] = _rounded(values[name])
     return [
         replace(
             relief,
-            outline=Outline(
-                kind, tuple(values[name] for name in PARAMETERS[kind]), relief.outline.rms
+            outline=replace(
+                relief.outline, params=tuple(values[name] for name in PARAMETERS[kind])
             ),
             level=level,
             height=height,
@@ -125,9 +122,9 @@ def _clusters(count: int, close: Callable[[int, int], bool]) -> list[list[int]]:
 
 
 def _concentric(
-    kinds: Sequence[str], outlines: list[dict[str, float]], contours: Sequence[np.ndarray]
+    kinds: Sequence[ShapeKind], outlines: list[dict[str, float]], contours: Sequence[np.ndarray]
 ) -> None:
-    round_ones = [i for i, kind in enumerate(kinds) if kind in ("circle", "ringSegment")]
+    round_ones = [i for i, kind in enumerate(kinds) if kind in (*ROUND_KINDS, "ringSegment")]
     if len(round_ones) < 2:
         return
 
@@ -148,7 +145,7 @@ def _concentric(
     )
     for group in groups:
         members = [round_ones[k] for k in group]
-        circles = [i for i in members if kinds[i] == "circle"]
+        circles = [i for i in members if kinds[i] in ROUND_KINDS]
         arms = [i for i in members if kinds[i] == "ringSegment"]
         anchor = _equal_arms(outlines, arms, contours) if len(arms) >= 2 else None
         if anchor is None:
@@ -216,10 +213,10 @@ def _rms(values: np.ndarray) -> float:
     return float(np.sqrt(np.mean(values**2)))
 
 
-def _equal_sizes(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:
-    for kind in ("circle", "slot", "roundedRect"):
+def _equal_sizes(kinds: Sequence[ShapeKind], outlines: list[dict[str, float]]) -> None:
+    for kind in ("circle", "cutCircle", "slot", "roundedRect"):
         members = [i for i, k in enumerate(kinds) if k == kind]
-        names = _LENGTHS[kind]
+        names = LENGTHS[kind]
 
         def same(
             a: int, b: int, members: list[int] = members, names: tuple[str, ...] = names
@@ -261,18 +258,19 @@ def _runs(values: Sequence[float], tolerance: float) -> list[list[int]]:
     return [group for group in groups if len(group) > 1]
 
 
-def _directions(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:
+def _directions(kinds: Sequence[ShapeKind], outlines: list[dict[str, float]]) -> None:
+    """Directions near a plane axis on it (a slot's modulo a half turn, a cut's a turn)."""
     for values, kind in zip(outlines, kinds, strict=True):
-        if kind not in ("slot", "roundedRect"):
+        if kind not in ("slot", "roundedRect", "cutCircle"):
             continue
         quarter = np.pi / 2.0
         snapped = round(values["angle"] / quarter) * quarter
         if abs(np.degrees(values["angle"] - snapped)) < ANGLE_DEG:
-            values["angle"] = float(np.mod(snapped, np.pi))
+            values["angle"] = float(np.mod(snapped, TAU if kind == "cutCircle" else np.pi))
 
 
 def _equal_heights(
-    reliefs: Sequence[Relief], kinds: Sequence[str], outlines: Sequence[dict[str, float]]
+    reliefs: Sequence[Relief], kinds: Sequence[ShapeKind], outlines: Sequence[dict[str, float]]
 ) -> list[float]:
     heights = [relief.height for relief in reliefs]
     levels: dict[tuple[str, float], list[int]] = {}
@@ -282,7 +280,7 @@ def _equal_heights(
         # Families: equal shape and size (equal sizes are identical by now).
         families: dict[tuple[object, ...], list[int]] = {}
         for i in members:
-            size = tuple(round(outlines[i][name], 3) for name in _LENGTHS[kinds[i]])
+            size = tuple(round(outlines[i][name], 3) for name in LENGTHS[kinds[i]])
             key = (kinds[i], size) if kinds[i] != "profile" else ("profile", i)
             families.setdefault(key, []).append(i)
         groups: list[list[int]] = []

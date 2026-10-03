@@ -45,8 +45,9 @@ Next:
 - Base faces: dominant planes (later cylinders) found robustly, ignoring details.
 - Reliefs on a base face: raised and sunk features (buttons, bosses, ribs, pockets,
   holes), nested (a pad inside a recess), each with:
-  - outline: circle, slot, rounded rectangle, ring segment (annular sector), or a
-    free profile of lines and arcs;
+  - outline: a chain of lines and arcs, named circle, cut circle (trimmed by the
+    part's outline), slot, rounded rectangle or ring segment (annular sector) where
+    one fits, else a free profile;
   - height or depth, flat or domed top, edge rounding.
 - Blends: fillet strips between two faces with their radius; chamfers.
 - Freeform: regions no primitive explains.

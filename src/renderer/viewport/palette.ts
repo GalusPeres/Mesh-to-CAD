@@ -30,7 +30,6 @@ export const RECOGNITION_COLORS = {
   boss: '#3F87EE',
   pocket: '#EC9A3A',
   hole: '#D24B35',
-  profile: '#9786C9',
   unchecked: '#7D828A',
   hover: '#E6CF4F',
   labelBackground: '#1C1D20',

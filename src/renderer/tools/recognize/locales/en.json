@@ -1,6 +1,6 @@
 {
   "label": "Recognise shapes",
-  "tooltip": "Finds flat faces and the buttons, pockets, slots, ring segments and holes on them, and builds them as editable sketches and extrusions.",
+  "tooltip": "Finds flat faces and the buttons, pockets, slots, ring segments, holes and free outlines on them, and builds them as editable sketches and extrusions.",
   "found": "Found",
   "computing": "Recognising shapes …",
   "stop": "Cancel",
@@ -18,6 +18,7 @@
   },
   "shapeNames": {
     "circle": "Circle",
+    "cutCircle": "Cut circle",
     "slot": "Slot",
     "roundedRect": "Rectangle",
     "ringSegment": "Ring segment",
@@ -28,10 +29,9 @@
   "through": "through",
   "domed": "domed",
   "nested": "in pocket",
-  "profileHint": "Free outlines cannot be built automatically: redraw them with the sketch tool.",
   "target": "Target",
   "targetBody": "Body",
   "newBodies": "New bodies",
   "needsBody": "Pockets and holes are cut from a body. Create the base body first and choose it here; without a body only the raised shapes are built.",
-  "help": "Recognition reads the aligned scan like a designer: flat faces and, on them, raised shapes, pockets and holes outlined by a circle, slot, rectangle or ring segment. Equal shapes are made equal, sizes rounded to 0.05 mm. In the view, rings show the foot and top of every shape; clicking its label or its check box leaves it out. OK builds a plane per face, a sketch per height and an extrusion per group, all editable in the project tree afterwards."
+  "help": "Recognition reads the aligned scan like a designer: flat faces and, on them, raised shapes, pockets and holes. Every outline is made of lines and arcs; where a basic shape fits (circle, cut circle, slot, rectangle, ring segment) it carries its name, otherwise it is a free outline. Equal shapes are made equal, sizes rounded to 0.05 mm. In the view, outlines show the foot and top of every shape; clicking its label or its check box leaves it out. OK builds a plane per face, a sketch per height and an extrusion per group, all editable in the project tree afterwards."
 }
