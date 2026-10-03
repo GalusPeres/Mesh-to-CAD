@@ -32,8 +32,10 @@ type IntArray = npt.NDArray[np.int64]
 
 PASSES = 3
 """A point near two faces (a corner) is pushed past one per pass."""
-HEADING = 0.5
-"""cos 60 degrees: a net heading at least this much towards a face runs into it."""
+HEADING = 0.15
+"""A net heading more than about 9 degrees towards a face runs into it (a wall curving
+into a plane through a fillet does); less, it runs along it (a rounding beside its
+faces, about 2 degrees)."""
 
 type Measure = Callable[[FloatArray], tuple[float, FloatArray]]
 """Signed distance of a point (positive on the outward side) and the outward normal."""
