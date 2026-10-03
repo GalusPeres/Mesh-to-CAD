@@ -2,10 +2,11 @@
 
 `recognize.run` reads the aligned scan like a designer (`recognition/api.py`): flat
 faces, and on them buttons, bosses, pockets, recesses and holes with fitted outlines
-and design intent. Large scans are read from the reduced copy the segmentation also
-uses. The result carries the outlines in part coordinates for the viewport (a ring
-at the foot and one at the top of every feature) and the numbers for the panel and
-for automation clients.
+and design intent. Scans up to `FULL_DETAIL_FACES` are read as they are (a reduced
+copy loses small buttons and makes flat tops look domed); larger ones from the
+reduced copy the segmentation also uses. The result carries the outlines in part
+coordinates for the viewport (a ring at the foot and one at the top of every
+feature) and the numbers for the panel and for automation clients.
 
 `recognize.build` turns chosen features of the last recognition into editable
 features (`recognition/build.py`): a plane, sketches and extrusions, added to a body
@@ -33,6 +34,7 @@ from m2c_kernel.segmentation.lod import LEVELS_OF_DETAIL
 from m2c_kernel.session.jobs import JobContext
 
 DEFAULT_NOISE_MM = 0.03
+FULL_DETAIL_FACES = 1_000_000
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -96,7 +98,12 @@ def recognize_run(ctx: JobContext, params: RecognizeParams) -> RecognizeResult:
     mesh = built.mesh
     if mesh is None:
         raise KernelError(ErrorCode.NO_SCAN)
-    working = LEVELS_OF_DETAIL.get(mesh, scan.key, built.matrix, ctx)
+    real = int((~mesh.synthetic).sum())
+    working = (
+        mesh
+        if real <= FULL_DETAIL_FACES
+        else LEVELS_OF_DETAIL.get(mesh, scan.key, built.matrix, ctx)
+    )
     # Filled holes are not part of the scanned surface.
     faces = working.faces[~working.synthetic]
     recognition = recognize(working.vertices, faces, _noise(scan.noise), ctx.check_cancelled)
@@ -121,6 +128,9 @@ class BuildParams:
     """Indices into the features of the last `recognize.run`."""
     target_body: str | None = None
     """Body the bosses join and the pockets cut; None adds bosses as new bodies."""
+    names: list[str] | None = None
+    """Display names of the chosen features (in the order of `features`) for their
+    extrusions, in the user's language."""
 
 
 @dataclass(frozen=True)
@@ -162,11 +172,15 @@ def recognize_build(ctx: JobContext, params: BuildParams) -> BuildResult:
         plane_faces(plane, centroids, mesh.face_normals, _noise(scan.noise))
         for plane in recognition.planes
     ]
-    plan = plan_features(recognition, params.features, faces, document.next_id, params.target_body)
+    names = dict(zip(params.features, params.names, strict=False)) if params.names else None
+    plan = plan_features(
+        recognition, params.features, faces, document.next_id, params.target_body, names
+    )
     ops = [
         AddFeature(
             feature=NewFeature(
                 type=item.type,
+                name=item.name,
                 params=RawObject(item.params, tuple(memoryview(b) for b in item.buffers)),
             )
         )

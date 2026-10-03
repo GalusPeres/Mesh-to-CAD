@@ -9,7 +9,7 @@ reading is kept (it spans the whole feature).
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
 import numpy as np
@@ -31,6 +31,8 @@ type IntArray = npt.NDArray[np.int64]
 
 PLANE_SHARE = 0.01
 """Smallest base plane, as a share of the part's area (a hub's top on a flange)."""
+MAX_DESIGN_NOISE_MM = 0.05
+"""The design noise is at most this: more would hide shallow designed features."""
 SAME_AXIS = 0.99
 SAME_PLACE_MM = 0.6
 SAME_SIZE = 0.1
@@ -77,15 +79,30 @@ def recognize(
     """Base planes and their features, with design intent, without duplicates."""
     planes = base_planes(vertices, faces, noise, min_share=PLANE_SHARE)
     data = mesh_data(vertices, faces)
+    tolerance = design_noise(planes, noise)
     features: list[Feature] = []
     for index, plane in enumerate(planes):
         check_cancelled()
-        reliefs = beautify(find_reliefs(data, plane, noise))
+        reliefs = beautify(find_reliefs(data, plane, tolerance))
         offset = len(features)
         for relief in reliefs:
             parent = None if relief.parent is None else relief.parent + offset
             features.append(Feature(index, _with_parent(relief, parent)))
     return Recognition(tuple(planes), tuple(_without_duplicates(planes, features)))
+
+
+def design_noise(planes: Sequence[BasePlane], noise: float) -> float:
+    """How closely the scan follows a designed face: the largest plane's RMS.
+
+    Scanner software smooths its meshes, so their roughness (the measured noise) can
+    be far below how much a moulded or printed face deviates from the plane it was
+    designed as; outlines and flat tops are judged against that deviation. At least
+    the measured noise, at most `MAX_DESIGN_NOISE_MM`.
+    """
+    if not planes:
+        return noise
+    largest = max(planes, key=lambda plane: plane.area)
+    return float(max(noise, min(largest.rms, MAX_DESIGN_NOISE_MM)))
 
 
 def _with_parent(relief: Relief, parent: int | None) -> Relief:

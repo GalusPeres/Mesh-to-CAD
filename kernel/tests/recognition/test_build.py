@@ -172,3 +172,36 @@ def test_recognised_features_build_the_part_on_a_plate(session: Session, job: Jo
     assert check_solid(body.shape).is_usable
     # Rounded design values (0.05 mm) and noise: within half a percent of the part.
     assert check_solid(body.shape).volume == pytest.approx(check_solid(shape).volume, rel=5e-3)
+
+
+def test_without_a_body_every_button_becomes_a_body(session: Session, job: JobContext) -> None:
+    shape = _panel_shape()
+    part = tessellate_part(shape, max_edge=0.8)
+    rng = np.random.default_rng(5)
+    noisy = add_scanner_noise(part.vertices, vertex_normals(part.vertices, part.faces), 0.02, rng)
+    session.commit(_scan_document(session, noisy, part.faces), "import", job)
+    found = recognize_run(job, RecognizeParams(scan_key="scan:panel"))
+    buttons = [
+        i
+        for i, feature in enumerate(found.features)
+        if feature.kind == "boss" and feature.parent is None and feature.shape == "circle"
+    ]
+    assert len(buttons) == 2
+    built = recognize_build(
+        job,
+        BuildParams(
+            scan_key="scan:panel",
+            base_revision=session.document.revision,
+            features=buttons,
+            names=["Knopf", "Knopf"],
+        ),
+    )
+    statuses = session.snapshot("current", job).status.features
+    assert all(statuses[feature].state == "ok" for feature in built.added)
+    named = [f.name for f in session.document.features if f.type == "extrude"]
+    assert named == ["Knopf", "Knopf"]
+    bodies = session.built(job).result.bodies
+    assert len(bodies) == 2
+    for body in bodies.values():
+        # D8 x 2 buttons.
+        assert check_solid(body.shape).volume == pytest.approx(np.pi * 16.0 * 2.0, rel=0.03)

@@ -6,8 +6,13 @@ For every base plane with chosen features the document gets
   its orientation is known here and the sketches face out of the material;
 - one `sketch` per level on that plane (the base plane, or a pocket floor) holding
   the outlines as lines, arcs and circles with tangency and equality constraints;
-- one `extrude` per group of equal height: bosses are added, pockets cut (through
-  holes a little beyond the part), so the user edits one value per group. Added and
+- one `extrude` per family (equal shape, size and height), named like the family
+  when the client gives names: bosses are added, pockets cut (through holes a
+  little beyond the part), so the user edits one value per family; without a body
+  every boss becomes a body of its own (a body is one solid).
+
+The sketches compare themselves with the scan where the outlines were measured, at
+half the height (depth) of their features, not at the foot, which fillets widen. Added and
   cut extrusions also reach `OVERLAP_MM` back across their sketch plane: the fitted
   plane lies within the scan noise of the body's face, and a boss that only touches
   the body (or a pocket that leaves a skin) would not combine.
@@ -19,7 +24,7 @@ better redrawn with the sketch tool.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -244,6 +249,7 @@ class NewFeatureOp:
     type: str
     params: dict[str, Any]
     buffers: tuple[np.ndarray, ...] = ()
+    name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -263,6 +269,7 @@ def plan_features(
     plane_faces: Sequence[np.ndarray],
     next_id: int,
     target_body: str | None,
+    names: Mapping[int, str] | None = None,
 ) -> FeaturePlan:
     """Plane, sketches and extrusions for the chosen features.
 
@@ -273,16 +280,23 @@ def plan_features(
         next_id: The document's next feature number.
         target_body: Body the bosses join and the pockets cut; None makes the bosses
             new bodies and leaves pockets out.
+        names: Display names by feature index; a family's extrusions take the name
+            of its first feature.
     """
     planned: list[NewFeatureOp] = []
     skipped: list[int] = []
     number = next_id
 
-    def add(kind: str, params: dict[str, Any], buffers: tuple[np.ndarray, ...] = ()) -> str:
+    def add(
+        kind: str,
+        params: dict[str, Any],
+        buffers: tuple[np.ndarray, ...] = (),
+        name: str | None = None,
+    ) -> str:
         nonlocal number
         feature_id = f"f{number}"
         number += 1
-        planned.append(NewFeatureOp(kind, params, buffers))
+        planned.append(NewFeatureOp(kind, params, buffers, name))
         return feature_id
 
     features = recognition.features
@@ -311,7 +325,7 @@ def plan_features(
         )
         shift = np.array([plane.origin @ plane.x_axis, plane.origin @ plane.y_axis])
         for stage in _stages(features, members):
-            _extrusions(add, plane, plane_id, shift, features, stage, target_body)
+            _extrusions(add, plane, plane_id, shift, features, stage, target_body, names or {})
     return FeaturePlan(planned, skipped)
 
 
@@ -343,6 +357,7 @@ def _extrusions(
     features: Sequence[Feature],
     stage: list[int],
     target_body: str | None,
+    names: Mapping[int, str],
 ) -> None:
     by_level: dict[float, list[int]] = {}
     for index in stage:
@@ -356,6 +371,10 @@ def _extrusions(
                 loops[index] = loop
         if not loops:
             continue
+        # Bosses rise along the normal, pockets sink against it: compare with the
+        # scan halfway up the lowest of them, where every one has its wall.
+        sign = 1.0 if features[indices[0]].relief.kind == "boss" else -1.0
+        lowest = min(features[index].relief.height for index in loops)
         sketch_id = add(
             "sketch",
             {
@@ -363,6 +382,7 @@ def _extrusions(
                     "type": "planar",
                     "plane": {"type": "feature", "feature": plane_id},
                     "offset": level,
+                    "sectionOffset": sign * lowest / 2.0,
                     "xDirection": _list(plane.x_axis),
                 },
                 "points": sketch.points,
@@ -370,24 +390,52 @@ def _extrusions(
                 "constraints": sketch.constraints,
             },
         )
-        groups: dict[tuple[str, float, str], list[str]] = {}
-        for index, loop in loops.items():
-            relief = features[index].relief
-            groups.setdefault((relief.kind, round(relief.height, 4), relief.top), []).append(loop)
-        for (kind, height, top), group_loops in groups.items():
-            depth = height + THROUGH_MARGIN_MM if top == "through" else height
-            operation = ("add" if kind == "boss" else "cut") if target_body else "newBody"
-            params: dict[str, Any] = {
-                "sketch": sketch_id,
-                "loops": group_loops,
-                "direction": "normal" if kind == "boss" else "reversed",
-                "extent": {"type": "distance", "forward": depth},
-                "operation": operation,
-            }
-            if target_body:
-                params["extent"]["backward"] = OVERLAP_MM
-                params["targetBody"] = target_body
-            add("extrude", params)
+        families: dict[tuple[object, ...], list[int]] = {}
+        for index in loops:
+            families.setdefault(_family(features[index]), []).append(index)
+        for members in families.values():
+            relief = features[members[0]].relief
+            depth = relief.height + THROUGH_MARGIN_MM if relief.top == "through" else relief.height
+            direction = "normal" if relief.kind == "boss" else "reversed"
+            name = names.get(members[0])
+            if not target_body:
+                # A new body is one solid: every boss of the family becomes its own.
+                for index in members:
+                    add(
+                        "extrude",
+                        {
+                            "sketch": sketch_id,
+                            "loops": [loops[index]],
+                            "direction": direction,
+                            "extent": {"type": "distance", "forward": depth},
+                            "operation": "newBody",
+                        },
+                        name=name,
+                    )
+                continue
+            add(
+                "extrude",
+                {
+                    "sketch": sketch_id,
+                    "loops": [loops[index] for index in members],
+                    "direction": direction,
+                    "extent": {"type": "distance", "forward": depth, "backward": OVERLAP_MM},
+                    "operation": "add" if relief.kind == "boss" else "cut",
+                    "targetBody": target_body,
+                },
+                name=name,
+            )
+
+
+def _family(feature: Feature) -> tuple[object, ...]:
+    """Features made alike: same kind, top, height, shape and size."""
+    relief, outline = feature.relief, feature.outline
+    size = tuple(
+        round(value, 3)
+        for name, value in outline.named().items()
+        if name not in ("cx", "cy", "angle", "start")
+    )
+    return (relief.kind, relief.top, round(relief.height, 4), outline.kind, size)
 
 
 def plane_faces(

@@ -5,9 +5,14 @@ the arms of a direction pad do not share a centre exactly. Beautification (after
 Langbein, Marshall and Martin 2004: detect candidate regularities within the
 measurement uncertainty, then enforce them consistently) restores them:
 
-1. Concentric groups: ring segments and circles whose centres agree share one centre
-   (a circle's centre wins); the ring segments of a group get equal radii, gap and
-   corner, and when they are spread evenly, an exact angular pitch.
+1. Concentric groups: ring segments and circles whose centres agree share one centre.
+   The ring segments of a group are refit together on their measured contours as
+   equal arms around one centre (one inner and outer radius, gap, corner and
+   sweep) and, when they are spread evenly, with their middles on an exact angular
+   pitch; sweep and gap trade off against each other, so they cannot be averaged
+   one by one. The arms' centre is the group's centre (four large contours fix it
+   better than a small button); if equal arms do not fit, the arms keep their own
+   values and the circles share their mean centre.
 2. Equal groups: features of the same shape whose dimensions agree get the mean
    dimensions.
 3. Rows and columns: centres that agree in u (or v) share the mean value.
@@ -28,8 +33,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 
 import numpy as np
+from scipy.optimize import least_squares
 
-from m2c_kernel.recognition.outline import PARAMETERS, Outline
+from m2c_kernel.recognition.outline import DISTANCES, PARAMETERS, Outline
 from m2c_kernel.recognition.relief import Relief
 
 CENTRE_MM = 0.6
@@ -40,6 +46,13 @@ SIZE_MM = 0.2
 SIZE_SHARE = 0.03
 """Dimensions within max(SIZE_MM, SIZE_SHARE x size) are taken as equal."""
 ANGLE_DEG = 3.0
+SHARED_ARM = ("inner", "outer", "gap", "corner", "sweep")
+"""What the arms of a ring share; their middles differ by the pitch."""
+ARM_SLACK = 2.0
+ARM_FLOOR_MM = 0.15
+"""Equal arms are kept when each fits its contour within ARM_SLACK x its own fit's RMS
+or ARM_FLOOR_MM: scans of moulded parts warp by about a tenth of a millimetre, which
+is no reason to model the arms of a direction pad differently."""
 HEIGHT_MM = 0.12
 """Equal features whose heights spread less than this share one height."""
 SHARED_HEIGHT_MM = 0.05
@@ -60,10 +73,12 @@ def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
     """The reliefs with their regularities enforced (see module docstring)."""
     outlines = [dict(relief.outline.named()) for relief in reliefs]
     kinds = [relief.outline.kind for relief in reliefs]
-    _concentric(kinds, outlines)
+    _concentric(kinds, outlines, [relief.contour for relief in reliefs])
     _equal_sizes(kinds, outlines)
+    # A ring segment's centre lies far outside it: it forms no row with other features.
+    in_rows = [i for i, kind in enumerate(kinds) if kind not in ("profile", "ringSegment")]
     for axis in ("cx", "cy"):
-        _align(outlines, axis, [i for i, kind in enumerate(kinds) if kind != "profile"])
+        _align(outlines, axis, in_rows)
     _directions(kinds, outlines)
     heights = _equal_heights(reliefs, kinds, outlines)
     # Parents come before their children (relief.py).
@@ -109,7 +124,9 @@ def _clusters(count: int, close: Callable[[int, int], bool]) -> list[list[int]]:
     return [group for group in groups.values() if len(group) > 1]
 
 
-def _concentric(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:
+def _concentric(
+    kinds: Sequence[str], outlines: list[dict[str, float]], contours: Sequence[np.ndarray]
+) -> None:
     round_ones = [i for i, kind in enumerate(kinds) if kind in ("circle", "ringSegment")]
     if len(round_ones) < 2:
         return
@@ -132,35 +149,71 @@ def _concentric(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:
     for group in groups:
         members = [round_ones[k] for k in group]
         circles = [i for i in members if kinds[i] == "circle"]
-        anchor = np.mean([centre(i) for i in (circles or members)], axis=0)
+        arms = [i for i in members if kinds[i] == "ringSegment"]
+        anchor = _equal_arms(outlines, arms, contours) if len(arms) >= 2 else None
+        if anchor is None:
+            anchor = np.mean([centre(i) for i in (circles or members)], axis=0)
+            # Arms that did not fit as equal arms keep their own centres.
+            members = circles or members
         for i in members:
             outlines[i]["cx"], outlines[i]["cy"] = float(anchor[0]), float(anchor[1])
-        arms = [i for i in members if kinds[i] == "ringSegment"]
-        if len(arms) < 2:
-            continue
-        for name in ("inner", "outer", "gap", "corner"):
-            mean = float(np.mean([outlines[i][name] for i in arms]))
-            for i in arms:
-                outlines[i][name] = mean
-        _even_pitch(outlines, arms)
 
 
-def _even_pitch(outlines: list[dict[str, float]], arms: list[int]) -> None:
-    """Arms spread evenly around their centre get an exact pitch of a full turn / n."""
-    pitch = TAU / len(arms)
-    middles = np.array([outlines[i]["start"] + outlines[i]["sweep"] / 2.0 for i in arms])
+def _even_pitch(middles: np.ndarray) -> tuple[float, np.ndarray] | None:
+    """Phase and pitch slots of arm middles spread evenly around a centre, if they are."""
+    count = len(middles)
+    pitch = TAU / count
     # The common phase of the arms on the pitch grid (circular mean of n x angle).
-    phase = float(np.angle(np.mean(np.exp(1j * len(arms) * middles)))) / len(arms)
+    phase = float(np.angle(np.mean(np.exp(1j * count * middles)))) / count
     slots = np.round((middles - phase) / pitch)
     misfit = np.abs(middles - phase - slots * pitch)
-    if len(set(np.mod(slots, len(arms)).astype(int))) != len(arms):
-        return
+    if len(set(np.mod(slots, count).astype(int))) != count:
+        return None
     if np.degrees(misfit.max()) > 4.0 * ANGLE_DEG:
-        return
-    for i, slot in zip(arms, slots, strict=True):
-        middle = phase + slot * pitch
-        outlines[i]["sweep"] = pitch
-        outlines[i]["start"] = float(np.mod(middle - pitch / 2.0, TAU))
+        return None
+    return phase, slots
+
+
+def _equal_arms(
+    outlines: list[dict[str, float]], arms: list[int], contours: Sequence[np.ndarray]
+) -> np.ndarray | None:
+    """Refit the arms of a ring as equal arms around one centre; that centre, if they fit."""
+    distance = DISTANCES["ringSegment"]
+    before = [
+        _rms(distance(np.array([outlines[i][n] for n in PARAMETERS["ringSegment"]]), contours[i]))
+        for i in arms
+    ]
+    middles = np.array([outlines[i]["start"] + outlines[i]["sweep"] / 2.0 for i in arms])
+    even = _even_pitch(middles)
+    shared = [float(np.mean([outlines[i][n] for i in arms])) for n in ("cx", "cy", *SHARED_ARM)]
+    if even is None:
+        start: list[float] = [*shared, *middles]
+    else:
+        start = [*shared, even[0]]
+
+    def arm_params(x: np.ndarray, k: int) -> np.ndarray:
+        cx, cy, inner, outer, gap, corner, sweep = x[:7]
+        middle = x[7 + k] if even is None else x[7] + even[1][k] * TAU / len(arms)
+        return np.array([cx, cy, inner, outer, middle - sweep / 2.0, sweep, gap, corner])
+
+    def residuals(x: np.ndarray) -> np.ndarray:
+        return np.concatenate([distance(arm_params(x, k), contours[i]) for k, i in enumerate(arms)])
+
+    solution = least_squares(residuals, start, loss="soft_l1", f_scale=0.02, max_nfev=400)
+    after = [_rms(distance(arm_params(solution.x, k), contours[i])) for k, i in enumerate(arms)]
+    if any(a > max(ARM_SLACK * b, ARM_FLOOR_MM) for a, b in zip(after, before, strict=True)):
+        return None  # not equal arms: keep each arm's own fit
+    for k, i in enumerate(arms):
+        values = arm_params(solution.x, k)
+        for name, value in zip(PARAMETERS["ringSegment"], values, strict=True):
+            outlines[i][name] = float(value)
+        outlines[i]["start"] = float(np.mod(outlines[i]["start"], TAU))
+    result: np.ndarray = solution.x[:2]
+    return result
+
+
+def _rms(values: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(values**2)))
 
 
 def _equal_sizes(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:

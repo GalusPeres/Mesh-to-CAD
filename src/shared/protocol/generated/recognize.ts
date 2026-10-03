@@ -43,6 +43,7 @@ export interface BuildParams {
   baseRevision: number;
   features: number[];
   targetBody?: string | null;
+  names?: string[] | null;
 }
 
 export interface BuildResult {

@@ -106,6 +106,17 @@ def test_through_holes_are_found_once() -> None:
         assert hole.relief.height == pytest.approx(6.0, abs=0.15)
 
 
+def test_a_smoothed_scan_is_judged_by_how_it_follows_its_planes() -> None:
+    """Scanner software smooths meshes: a far too small measured noise must not turn
+    the buttons into free profiles or their tops into domes."""
+    part = tessellate_part(panel_shape(), max_edge=0.8)
+    rng = np.random.default_rng(7)
+    noisy = add_scanner_noise(part.vertices, vertex_normals(part.vertices, part.faces), NOISE, rng)
+    smoothed = recognize(noisy, part.faces, NOISE / 10.0)
+    described = sorted((f.outline.kind, f.relief.top) for f in smoothed.features)
+    assert described == sorted((f.outline.kind, f.relief.top) for f in panel().features)
+
+
 def test_a_cad_export_is_read_like_a_dense_scan() -> None:
     """CAD exports (and decimated scans) model a wall with triangles from foot to top
     and a flat top with a few large ones: the same features, the same sizes."""
