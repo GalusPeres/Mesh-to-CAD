@@ -2,15 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { DocumentSnapshot } from '@shared/protocol/generated/document-snapshot';
 
-import { axisOptions, clampSections, defaultRange, rangeProblem } from './loftDraft';
+import { axisOptions, clampSections, rangeProblem } from './loftDraft';
 
 describe('loft draft', () => {
-  it('starts and ends the sections inside the scan', () => {
-    expect(defaultRange(0, 60)).toEqual([1.8, 58.2]);
-    expect(defaultRange(-10, 0)).toEqual([-9.5, -0.5]);
-    expect(defaultRange(0, 0.6)).toEqual([0, 0.6]);
-  });
-
   it('needs an end beyond the start', () => {
     expect(rangeProblem(2, 58)).toBeNull();
     expect(rangeProblem(10, 10)).toBe('emptyRange');

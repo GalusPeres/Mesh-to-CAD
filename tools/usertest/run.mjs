@@ -14,12 +14,13 @@ import path from 'node:path';
 
 import { INSTANCE, automationClient } from '../automation/client.mjs';
 import { createDriver } from './driver.mjs';
+import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
 
 /** Every user test by name; add one per tool. */
-const TESTS = { net: netTest, recognize: recognizeTest };
+const TESTS = { net: netTest, loft: loftTest, recognize: recognizeTest };
 
 /** The part a test runs on, when it is not the plate with the boss. */
 const PARTS = { recognize: writeButtonsPart };

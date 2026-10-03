@@ -1,5 +1,5 @@
-// Rules of the loft panel: default section range, range validation and the axes a
-// loft can follow.
+// Rules of the loft panel: range validation, the section count and the axes a loft can
+// follow. The default range comes from the kernel (`freeform.loftAxis`).
 
 import type { DocumentSnapshot } from '@shared/protocol/generated/document-snapshot';
 import { LOFT_INPUT_RANGES } from '@shared/protocol/generated/feature-loft';
@@ -8,18 +8,9 @@ import { ORIGIN_AXES, isAxis, isPlane, usableFeatures } from '../extrude/solid/m
 
 export const SECTION_RANGE = LOFT_INPUT_RANGES.sectionCount;
 export const DEFAULT_SECTIONS = 12;
-/** Sections at the very ends of the scan hit its end faces; stay this share inside. */
-export const END_INSET_SHARE = 0.03;
 export const MIN_LENGTH_MM = 0.01;
 
 export type RangeProblem = 'emptyRange';
-
-/** Start and end a little inside the scan's extent along the axis. */
-export function defaultRange(low: number, high: number): [number, number] {
-  const inset = Math.max(0.5, END_INSET_SHARE * (high - low));
-  if (high - low <= 2 * inset) return [low, high];
-  return [round3(low + inset), round3(high - inset)];
-}
 
 export function rangeProblem(start: number, end: number): RangeProblem | null {
   return end - start >= MIN_LENGTH_MM ? null : 'emptyRange';
