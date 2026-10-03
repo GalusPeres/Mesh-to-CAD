@@ -62,12 +62,12 @@ export function connectUsedConstruction(): () => void {
   const hiddenByUse = new Set<string>();
   const update = (snapshot: DocumentSnapshot | null) => {
     if (!snapshot) return;
-    // A new or opened project starts over (feature ids repeat across projects).
-    if (snapshot.cause === 'restore' || snapshot.document.features.length === 0) {
-      hiddenByUse.clear();
-    }
     const hidden = objectVisibilityStore.getState();
-    const next = afterUse(hidden, usedFeatures(snapshot), hiddenByUse);
+    // A new or opened project starts over (feature ids repeat across projects): what
+    // the last one hid by use is shown again, or its ids would hide new features.
+    const fresh = snapshot.cause === 'restore' || snapshot.document.features.length === 0;
+    const kept = fresh ? afterUse(hidden, new Set(), hiddenByUse) : hidden;
+    const next = afterUse(kept, usedFeatures(snapshot), hiddenByUse);
     if (next !== hidden) objectVisibilityStore.setState(next, true);
   };
   update(documentStore.getState().snapshot);
