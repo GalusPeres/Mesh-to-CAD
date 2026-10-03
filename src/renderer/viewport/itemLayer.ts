@@ -11,9 +11,9 @@ import {
   type DisplayObject,
   createDisplayObject,
   createLines,
-  isBodyItem,
 } from './displayItems';
 import { distanceToSegment } from './handleMath';
+import { type ItemVisibility, itemShown } from './itemVisibility';
 import { SCENE_COLORS } from './palette';
 
 export type PayloadFetcher = (keys: string[]) => Promise<ScenePayload[]>;
@@ -41,11 +41,11 @@ export class ItemLayer {
   private previewToken = 0;
   private highlighted: HighlightTarget = null;
   private edgeOverlay: { object: THREE.Object3D; dispose(): void } | null = null;
-  private bodyEdgesVisible = true;
-  private hiddenOwner: string | null = null;
-  private hidden: { bodies: Set<string>; owners: Set<string> } = {
-    bodies: new Set(),
-    owners: new Set(),
+  private visibility: ItemVisibility = {
+    bodyEdges: true,
+    editedOwner: null,
+    hiddenBodies: new Set(),
+    hiddenOwners: new Set(),
   };
 
   constructor(
@@ -86,37 +86,35 @@ export class ItemLayer {
 
   /** Body edges (the seams between B-Rep faces) follow the display mode, as in CAD programs. */
   setBodyEdgesVisible(visible: boolean): void {
-    this.bodyEdgesVisible = visible;
+    this.visibility = { ...this.visibility, bodyEdges: visible };
     this.applyVisibility();
     this.invalidate();
   }
 
   /** Hide the document items of one owner while a tool edits it in place. */
   setHiddenOwner(owner: string | null): void {
-    this.hiddenOwner = owner;
+    this.visibility = { ...this.visibility, editedOwner: owner };
     this.applyVisibility();
     this.invalidate();
   }
 
   /** Hide bodies and the other items of features, as the project tree does. */
   setHiddenObjects(hidden: HiddenObjects): void {
-    this.hidden = { bodies: new Set(hidden.bodies), owners: new Set(hidden.owners) };
+    this.visibility = {
+      ...this.visibility,
+      hiddenBodies: new Set(hidden.bodies),
+      hiddenOwners: new Set(hidden.owners),
+    };
     this.applyVisibility();
     this.invalidate();
   }
 
-  private shown(item: SceneItem): boolean {
-    if (item.style === 'bodyEdges' && !this.bodyEdgesVisible) return false;
-    if (item.owner === this.hiddenOwner) return false;
-    return isBodyItem(item)
-      ? !this.hidden.bodies.has(item.bodyId ?? '')
-      : !this.hidden.owners.has(item.owner);
-  }
-
   private applyVisibility(): void {
-    for (const object of this.items.values()) object.object.visible = this.shown(object.item);
+    for (const object of this.items.values()) {
+      object.object.visible = itemShown(object.item, this.visibility);
+    }
     for (const object of [...this.previews.values()].flatMap((preview) => preview.objects)) {
-      if (object.item.style === 'bodyEdges') object.object.visible = this.bodyEdgesVisible;
+      if (object.item.style === 'bodyEdges') object.object.visible = this.visibility.bodyEdges;
     }
   }
 

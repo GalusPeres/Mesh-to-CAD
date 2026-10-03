@@ -9,8 +9,8 @@ import type { SceneItem } from '@shared/protocol/generated/document-display';
 
 import type { PickHit, ScreenPoint, Vec3 } from './api';
 import type { CameraRig } from './CameraRig';
-import { isBodyItem } from './displayItems';
 import type { ItemLayer } from './itemLayer';
+import { isBodyItem } from './itemVisibility';
 import type { ScanMesh } from './scanMesh';
 import { raycastScan } from './scanPicking';
 import type { PickView } from './scanVisibility';

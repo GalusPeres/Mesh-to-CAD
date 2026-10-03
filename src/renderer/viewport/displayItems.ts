@@ -44,11 +44,6 @@ export interface DisplayObject {
   dispose(): void;
 }
 
-/** Items drawn as part of a body (surfaces and edges), as opposed to construction. */
-export function isBodyItem(item: SceneItem): boolean {
-  return !!item.bodyId && item.style !== 'construction' && item.style !== 'patch';
-}
-
 export interface DisplayContext {
   bias: DepthBias;
   clipping: THREE.Plane[];
