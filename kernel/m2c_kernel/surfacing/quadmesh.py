@@ -9,7 +9,8 @@ GIL, cannot be interrupted and prints to stdout, so it runs in a child process
 
 The result is cleaned into a net the surfacing pipeline accepts: quads with four
 distinct corners, no unused vertices, only the largest connected part, consistently
-oriented and facing the same way as the scan.
+oriented and facing the same way as the scan. Its open border is laid onto the rim of
+the triangles (`rim.py`), which the extracted quads stop short of.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from scipy.spatial import cKDTree
 
 from m2c_kernel.geometry import FloatArray
 from m2c_kernel.mesh.child import run_in_child
+from m2c_kernel.surfacing.rim import snap_border_to_rim
 from m2c_kernel.surfacing.subdivision import TopologyError, edge_topology
 
 type IntArray = npt.NDArray[np.int64]
@@ -80,7 +82,8 @@ def quad_net(
     vertex_count = max(4, round(target / QUADS_PER_VERTEX))
     run = remesh or _child_process_remesher(check_cancelled)
     raw_vertices, raw_quads = run(vertices, faces, vertex_count, crease_deg)
-    return clean_quad_net(raw_vertices, raw_quads, vertices, normals)
+    net = clean_quad_net(raw_vertices, raw_quads, vertices, normals)
+    return QuadNet(snap_border_to_rim(net.vertices, net.quads, vertices, faces), net.quads)
 
 
 def clean_quad_net(

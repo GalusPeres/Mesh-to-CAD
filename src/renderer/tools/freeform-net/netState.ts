@@ -4,7 +4,7 @@ import type { KernelFailure } from '../../kernel/KernelFailure';
 import type { DeviationSummary } from './heatmap';
 import type { FaceMode } from './netFacePlacement';
 
-export type NetJobKind = 'generate' | 'fit' | 'smooth' | 'map' | 'load';
+export type NetJobKind = 'generate' | 'fit' | 'smooth' | 'map' | 'load' | 'push';
 
 export interface NetEditorState {
   hasNet: boolean;
@@ -42,6 +42,8 @@ export interface NetEditorState {
   netVisible: boolean;
   /** Chosen net edges (a drag of a chosen border edge grows rows on all of them). */
   chosenEdges: number;
+  /** What the last push past planes and bodies did, until the net changes again. */
+  pushed: { moved: number; faces: number } | null;
 }
 
 export function initialNetState(tolerance: number): NetEditorState {
@@ -70,5 +72,6 @@ export function initialNetState(tolerance: number): NetEditorState {
     facePoints: 0,
     netVisible: true,
     chosenEdges: 0,
+    pushed: null,
   };
 }

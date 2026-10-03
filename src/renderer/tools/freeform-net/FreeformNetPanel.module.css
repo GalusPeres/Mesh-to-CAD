@@ -18,6 +18,21 @@
   gap: var(--space-4);
 }
 
+.icons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.separator {
+  width: 1px;
+  height: var(--control-height);
+  margin: 0 var(--space-4);
+  background: var(--border);
+}
+
 .labelled {
   display: inline-flex;
   align-items: center;

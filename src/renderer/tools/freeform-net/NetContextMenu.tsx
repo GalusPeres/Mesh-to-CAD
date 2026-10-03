@@ -1,4 +1,5 @@
 import {
+  ArrowUpToLine,
   Combine,
   Crosshair,
   Eye,
@@ -20,6 +21,7 @@ import { useFormatter } from '../../i18n/useFormatter';
 import { MenuAt, MenuItem, MenuSeparator, MenuSub } from '../../ui/Menu/Menu';
 import type { NetEditor, NetEditorState } from './netEditor';
 import type { NetMenuRequest } from './netInteraction';
+import { referenceCount, usePushReferences } from './netReferences';
 import { DRAG_STRENGTHS } from './NetPointOptions';
 
 const KEY = 'tools:freeformNet.menu';
@@ -44,6 +46,7 @@ function inWindow(at: { x: number; y: number }): { x: number; y: number } {
 export function NetContextMenu({ editor, state, request, onClose }: NetContextMenuProps) {
   const { t } = useTranslation();
   const format = useFormatter();
+  const references = usePushReferences();
   const edge = request?.edge ?? null;
   const chosen = state.selected + state.chosenEdges > 0;
   const busy = state.job !== null;
@@ -112,6 +115,13 @@ export function NetContextMenu({ editor, state, request, onClose }: NetContextMe
         icon={Magnet}
         disabled={busy || !state.hasNet}
         onSelect={() => void editor.shape.fit(false)}
+      />
+      <MenuItem
+        label={item('push')}
+        icon={ArrowUpToLine}
+        disabled={busy || !state.hasNet || referenceCount(references) === 0}
+        testId="freeform-net-menu-push"
+        onSelect={() => void editor.shape.pushPast(references)}
       />
       <MenuItem
         label={item('refine')}

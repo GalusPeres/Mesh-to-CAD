@@ -1,0 +1,19 @@
+{
+  "label": "Trim",
+  "help": "Choose nets, planes and bodies that cut each other. The pieces inside the scan become one body; clicking a piece removes it, clicking a faded piece keeps it. Push nets past the planes in the freeform net first.",
+  "nothing": "Create an open net, a freeform patch or a body first.",
+  "pieces": "Pieces",
+  "kept_one": "{{kept}} of {{count}} piece kept",
+  "kept_other": "{{kept}} of {{count}} pieces kept",
+  "noPieces": "No pieces yet",
+  "noneKept": "No piece kept",
+  "automatic": {
+    "label": "Automatic",
+    "description": "Keep the pieces inside the scan again; the clicks are dropped."
+  },
+  "hints": {
+    "pick": "Click a piece: remove it or keep it again",
+    "remove": "Click: remove this piece",
+    "keep": "Click: keep this piece"
+  }
+}
