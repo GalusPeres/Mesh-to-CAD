@@ -132,7 +132,8 @@ export function writeButtonsPart(file) {
   return writeStl(file, triangles);
 }
 
-function writeStl(file, triangles) {
+/** Write triangles (three [x, y, z] corners each) to `file` as binary STL. */
+export function writeStl(file, triangles) {
   const buffer = Buffer.alloc(84 + triangles.length * 50);
   buffer.write('Mesh-to-CAD user test part', 0, 'ascii');
   buffer.writeUInt32LE(triangles.length, 80);
