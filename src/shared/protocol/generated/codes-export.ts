@@ -3,6 +3,7 @@
 export const EXPORT_ERROR_CODES = [
   'export.noBody',
   'export.unknownBody',
+  'export.unknownSurface',
   'export.blocked',
   'export.invalidNames',
   'export.writeFailed',

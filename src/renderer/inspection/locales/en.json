@@ -41,7 +41,7 @@
   "export": {
     "bodies": "Bodies",
     "checking": "Checking the bodies …",
-    "noneSelected": "Select at least one body.",
+    "noneSelected": "Choose at least one body or surface.",
     "blocked": "Export blocked: {{problem}} (caused by {{feature}}).",
     "exportable": "{{problem}}. Export is still possible.",
     "productName": "Product name",
@@ -51,6 +51,12 @@
     "bodyCount_one": "{{count}} body",
     "bodyCount_other": "{{count}} bodies",
     "triangleCount_one": "{{formatted}} triangle",
-    "triangleCount_other": "{{formatted}} triangles"
+    "triangleCount_other": "{{formatted}} triangles",
+    "surfaces": "Surfaces",
+    "surfaceInvalid": "The surface is invalid and cannot be exported.",
+    "faceCount_one": "{{count}} face",
+    "faceCount_other": "{{count}} faces",
+    "surfaceCount_one": "{{count}} open surface",
+    "surfaceCount_other": "{{count}} open surfaces"
   }
 }

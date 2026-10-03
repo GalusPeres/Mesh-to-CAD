@@ -99,6 +99,30 @@ def test_step_round_trip_keeps_volume_and_solids(tmp_path: Path) -> None:
     assert _xcaf_names_equal(target, ["Teil Körper 1", "Teil Körper 2"])
 
 
+def test_step_carries_open_surfaces_next_to_bodies(tmp_path: Path) -> None:
+    import numpy as np
+
+    from m2c_kernel.export.api import face_count
+    from m2c_kernel.surfacing.net import net_shape
+
+    # An open freeform net of two quads beside the block.
+    vertices = np.array(
+        [[200, 0, 0], [210, 0, 0], [210, 10, 0], [200, 10, 0], [220, 0, 0], [220, 10, 0]],
+        dtype=np.float64,
+    )
+    quads = np.array([[0, 1, 2, 3], [1, 4, 5, 2]], dtype=np.int64)
+    surface = net_shape(vertices, quads).shape
+    target = tmp_path / "mit-flaeche.step"
+    _, check = write_step(target, [("Teil", _block())], "AP214", [("Teil Netz", surface)])
+    assert check.passed
+    assert check.faces == face_count(_block().shape) + face_count(surface)
+    assert check_solid(read_step(target)).solids == 1
+    # A surface alone is written and checked too.
+    alone = tmp_path / "nur-flaeche.step"
+    _, check = write_step(alone, [], "AP214", [("Netz", surface)])
+    assert check.passed and check.solids == 0 and check.faces == face_count(surface)
+
+
 def _xcaf_names_equal(path: Path, expected: list[str]) -> bool:
     """Whether the free shapes of the file carry exactly these names (read with XCAF)."""
     from OCP.collections import Sequence_TDF_Label
@@ -129,7 +153,9 @@ def test_failed_verification_leaves_the_target_untouched(
     monkeypatch.setattr(
         export_api,
         "verify_step",
-        lambda path, bodies: StepCheck(valid=True, solids=1, expected_solids=1, volume_error=1e-3),
+        lambda path, bodies, surfaces=(): StepCheck(
+            valid=True, solids=1, expected_solids=1, volume_error=1e-3
+        ),
     )
     with pytest.raises(KernelError) as failure:
         write_step(target, [("Halterung", _block())])

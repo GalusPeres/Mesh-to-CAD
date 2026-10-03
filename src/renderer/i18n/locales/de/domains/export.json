@@ -2,6 +2,7 @@
   "errors": {
     "noBody": "Export nicht möglich: Es gibt keinen Körper.",
     "unknownBody": "Export nicht möglich: Ein gewählter Körper ist nicht mehr vorhanden.",
+    "unknownSurface": "Export nicht möglich: Eine gewählte Fläche ist nicht mehr vorhanden.",
     "blocked": "Export gesperrt: Ein Körper hat die Prüfung nicht bestanden. Die Körperliste nennt den Grund.",
     "invalidNames": "Export nicht möglich: Der Produktname fehlt oder ist länger als 200 Zeichen.",
     "writeFailed": "Export fehlgeschlagen: Die Datei konnte nicht geschrieben werden. Ordner und Schreibrechte prüfen.",

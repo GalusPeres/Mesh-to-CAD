@@ -77,19 +77,22 @@ class BodyCheck:
 
 @dataclass(frozen=True)
 class StepCheck:
-    """Comparison of a written STEP file with the exported bodies."""
+    """Comparison of a written STEP file with the exported bodies and surfaces."""
 
     valid: bool
     solids: int
     expected_solids: int
     volume_error: float
+    faces: int = 0
+    expected_faces: int = 0
 
     @property
     def passed(self) -> bool:
-        """Valid, the same solid count and the same volume within `MAX_VOLUME_ERROR`."""
+        """Valid, the same solids, faces and volume (within `MAX_VOLUME_ERROR`)."""
         return (
             self.valid
             and self.solids == self.expected_solids
+            and self.faces == self.expected_faces
             and self.volume_error <= MAX_VOLUME_ERROR
         )
 
@@ -140,9 +143,12 @@ def _shells_closed(shape: TopoDS_Shape) -> bool:
 
 
 def write_step(
-    path: Path, bodies: Sequence[tuple[str, Body]], schema: StepSchema = "AP214"
+    path: Path,
+    bodies: Sequence[tuple[str, Body]],
+    schema: StepSchema = "AP214",
+    surfaces: Sequence[tuple[str, TopoDS_Shape]] = (),
 ) -> tuple[WrittenFile, StepCheck]:
-    """Write (product name, body) pairs to STEP and verify the file by reading it back.
+    """Write (product name, body) pairs, and open surfaces, to STEP and verify the file.
 
     Raises `KernelError` (`export.writeFailed`, `export.verifyFailed`); the target is
     replaced only after the check passed.
@@ -150,10 +156,13 @@ def write_step(
     temporary = _temporary(path)
     try:
         try:
-            _write_step_file(temporary, bodies, schema)
+            shapes = [(name, body.shape) for name, body in bodies] + list(surfaces)
+            _write_step_file(temporary, shapes, schema)
         except Standard_Failure as failure:
             raise KernelError(ErrorCode.WRITE_FAILED, details=str(failure)) from failure
-        check = verify_step(temporary, [body for _, body in bodies])
+        check = verify_step(
+            temporary, [body for _, body in bodies], [shape for _, shape in surfaces]
+        )
         if not check.passed:
             raise KernelError(
                 ErrorCode.VERIFY_FAILED,
@@ -168,15 +177,17 @@ def write_step(
             temporary.unlink()
 
 
-def _write_step_file(path: Path, bodies: Sequence[tuple[str, Body]], schema: StepSchema) -> None:
+def _write_step_file(
+    path: Path, shapes: Sequence[tuple[str, TopoDS_Shape]], schema: StepSchema
+) -> None:
     STEPControl_Controller.Init_s()  # registers the write.step.* parameters
     for key, value in (("write.step.schema", STEP_SCHEMAS[schema]), ("write.step.unit", "MM")):
         if not Interface_Static.SetCVal_s(key, value):
             raise KernelError(ErrorCode.WRITE_FAILED, details=f"STEP parameter rejected: {key}")
     document = TDocStd_Document(TCollection_ExtendedString("MDTV-XCAF"))
     shape_tool = XCAFDoc_DocumentTool.ShapeTool_s(document.Main())
-    for name, body in bodies:
-        label = shape_tool.AddShape(body.shape, False)
+    for name, shape in shapes:
+        label = shape_tool.AddShape(shape, False)
         # True: the name is UTF-8, so umlauts survive.
         TDataStd_Name.Set_s(label, TCollection_ExtendedString(name, True))
     writer = STEPCAFControl_Writer()
@@ -196,18 +207,47 @@ def read_step(path: Path) -> TopoDS_Shape:
     return reader.OneShape()
 
 
-def verify_step(path: Path, bodies: Sequence[Body]) -> StepCheck:
-    """Re-read a written STEP file and compare it with the exported bodies."""
-    loaded = check_solid(read_step(path))
+def verify_step(
+    path: Path, bodies: Sequence[Body], surfaces: Sequence[TopoDS_Shape] = ()
+) -> StepCheck:
+    """Re-read a written STEP file and compare it with the exported bodies and surfaces."""
+    shape = read_step(path)
+    loaded = check_solid(shape)
     checks: list[SolidCheck] = [check_solid(body.shape) for body in bodies]
+    # The solids' volume only: open surfaces in the same file would add a signed volume
+    # that depends on the reference point of the whole compound.
+    volume = sum(check_solid(solid).volume for solid in _solids(shape))
     expected_volume = sum(check.volume for check in checks)
-    error = abs(loaded.volume - expected_volume) / max(abs(expected_volume), 1e-300)
+    error = abs(volume - expected_volume) / max(abs(expected_volume), 1.0)
+    expected_faces = sum(face_count(body.shape) for body in bodies)
+    expected_faces += sum(face_count(surface) for surface in surfaces)
     return StepCheck(
         valid=loaded.valid,
         solids=loaded.solids,
         expected_solids=sum(check.solids for check in checks),
         volume_error=float(error),
+        faces=face_count(shape),
+        expected_faces=expected_faces,
     )
+
+
+def _solids(shape: TopoDS_Shape) -> list[TopoDS_Shape]:
+    explorer = TopExp_Explorer(shape, TopAbs_ShapeEnum.TopAbs_SOLID)
+    solids = []
+    while explorer.More():
+        solids.append(explorer.Current())
+        explorer.Next()
+    return solids
+
+
+def face_count(shape: TopoDS_Shape) -> int:
+    """Number of faces of a shape."""
+    explorer = TopExp_Explorer(shape, TopAbs_ShapeEnum.TopAbs_FACE)
+    count = 0
+    while explorer.More():
+        count += 1
+        explorer.Next()
+    return count
 
 
 def write_stl(path: Path, bodies: Sequence[Body], deflection: float) -> WrittenFile:

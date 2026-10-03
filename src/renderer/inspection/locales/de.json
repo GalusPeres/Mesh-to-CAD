@@ -41,7 +41,7 @@
   "export": {
     "bodies": "Körper",
     "checking": "Körper werden geprüft …",
-    "noneSelected": "Mindestens einen Körper wählen.",
+    "noneSelected": "Mindestens einen Körper oder eine Fläche wählen.",
     "blocked": "Export gesperrt: {{problem}} (Ursache: {{feature}}).",
     "exportable": "{{problem}}. Der Export ist trotzdem möglich.",
     "productName": "Produktname",
@@ -51,6 +51,12 @@
     "bodyCount_one": "{{count}} Körper",
     "bodyCount_other": "{{count}} Körper",
     "triangleCount_one": "{{formatted}} Dreieck",
-    "triangleCount_other": "{{formatted}} Dreiecke"
+    "triangleCount_other": "{{formatted}} Dreiecke",
+    "surfaces": "Flächen",
+    "surfaceInvalid": "Die Fläche ist ungültig und kann nicht exportiert werden.",
+    "faceCount_one": "{{count}} Fläche",
+    "faceCount_other": "{{count}} Flächen",
+    "surfaceCount_one": "{{count}} offene Fläche",
+    "surfaceCount_other": "{{count}} offene Flächen"
   }
 }

@@ -14,10 +14,17 @@ export type PreflightState =
 
 type Settled = Exclude<PreflightState, { status: 'checking' }>;
 
-/** The pre-flight check of every body, repeated whenever the document changes. */
+/**
+ * The pre-flight check of every body (and the open surfaces STEP can carry), repeated
+ * whenever the document changes.
+ */
 export function usePreflight(): PreflightState {
   const revision = useDocument((state) => state.snapshot?.revision ?? null);
-  const hasBodies = useDocument((state) => (state.snapshot?.status.bodies.length ?? 0) > 0);
+  const hasBodies = useDocument(
+    (state) =>
+      (state.snapshot?.status.bodies.length ?? 0) > 0 ||
+      !!state.snapshot?.document.features.some((feature) => feature.type === 'freeformNet'),
+  );
   const [settled, setSettled] = useState<{ revision: number; state: Settled } | null>(null);
 
   useEffect(() => {

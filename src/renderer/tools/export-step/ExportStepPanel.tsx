@@ -6,6 +6,7 @@ import type { StepSchema } from '@shared/protocol/generated/export-api';
 import { useFormatter } from '../../i18n/useFormatter';
 import { ExportBodyList, exportableSelection } from '../../inspection/export/ExportBodyList';
 import { ExportResultSection } from '../../inspection/export/ExportResultSection';
+import { ExportSurfaceList, exportableSurfaces } from '../../inspection/export/ExportSurfaceList';
 import {
   type ExportOutcome,
   productNames,
@@ -13,7 +14,7 @@ import {
   safeFileName,
 } from '../../inspection/export/exportFlow';
 import { usePreflight } from '../../inspection/export/usePreflight';
-import { bodyNames, projectName } from '../../inspection/names';
+import { bodyNames, documentFeatureNames, projectName } from '../../inspection/names';
 import { documentStore, useDocument } from '../../state/documentStore';
 import { showMessage } from '../../state/messageStore';
 import { InlineMessage } from '../../ui/InlineMessage/InlineMessage';
@@ -38,9 +39,11 @@ export function ExportStepPanel({ close }: ToolPanelProps) {
   const [selected, setSelected] = useState<string[]>(
     () => snapshot?.status.bodies.map((body) => body.id) ?? [],
   );
+  const [skippedSurfaces, setSkippedSurfaces] = useState<string[]>([]);
   const [schema, setSchema] = useState<StepSchema>('AP214');
   const [done, setDone] = useState<{ outcome: ExportOutcome; message: string } | null>(null);
   const bodies = exportableSelection(preflight, selected);
+  const surfaces = exportableSurfaces(preflight, skippedSurfaces);
   const project = projectName(snapshot, t('common:untitled'));
 
   const exportStep = useCallback(async () => {
@@ -50,9 +53,13 @@ export function ExportStepPanel({ close }: ToolPanelProps) {
       bodyNames(documentStore.getState().snapshot, t),
       (name, body) => t('inspection:export.productWithBody', { project: name, body }),
     );
+    const features = documentFeatureNames(documentStore.getState().snapshot, t);
+    const surfaceNames = surfaces.map((id) =>
+      t('inspection:export.productWithBody', { project, body: features.get(id) ?? id }),
+    );
     const outcome = await runExport(
       'exportStep',
-      { bodies, names, schema },
+      { bodies, names, schema, surfaces, surfaceNames },
       {
         title: t('exportStep.dialogTitle'),
         filterName: t('exportStep.filterName'),
@@ -62,13 +69,18 @@ export function ExportStepPanel({ close }: ToolPanelProps) {
     if (!outcome) return;
     // Parenthetical details, not a sentence: "(2 Körper, 184 KB)" as in DESIGN.md 8.3.
     const details = [
-      t('inspection:export.bodyCount', { count: outcome.result.bodies }),
+      ...(outcome.result.bodies > 0 || outcome.result.surfaces === 0
+        ? [t('inspection:export.bodyCount', { count: outcome.result.bodies })]
+        : []),
+      ...(outcome.result.surfaces > 0
+        ? [t('inspection:export.surfaceCount', { count: outcome.result.surfaces })]
+        : []),
       format.bytes(outcome.result.bytes),
     ].join(', ');
     const message = t('exportStep.saved', { file: outcome.result.fileName, details });
     setDone({ outcome, message });
     showMessage('success', message);
-  }, [bodies, project, schema, format, t]);
+  }, [bodies, surfaces, project, schema, format, t]);
   const commit = useCommit(exportStep);
 
   const schemas: { value: StepSchema; label: string }[] = [
@@ -79,14 +91,19 @@ export function ExportStepPanel({ close }: ToolPanelProps) {
   return (
     <ToolPanel
       toolId={TOOL_ID}
-      canCommit={bodies.length > 0}
+      canCommit={bodies.length + surfaces.length > 0}
       busy={commit.busy}
       onCommit={() => void commit.commit()}
       onCancel={close}
     >
       <PanelSection title={t('common:sections.input')}>
         <ExportBodyList preflight={preflight} selected={selected} onChange={setSelected} />
-        {preflight.status === 'ok' && bodies.length === 0 && (
+        <ExportSurfaceList
+          preflight={preflight}
+          skipped={skippedSurfaces}
+          onChange={setSkippedSurfaces}
+        />
+        {preflight.status === 'ok' && bodies.length + surfaces.length === 0 && (
           <InlineMessage severity="info">{t('inspection:export.noneSelected')}</InlineMessage>
         )}
       </PanelSection>

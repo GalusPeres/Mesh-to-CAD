@@ -2,6 +2,7 @@
   "errors": {
     "noBody": "Cannot export: there is no body.",
     "unknownBody": "Cannot export: a chosen body no longer exists.",
+    "unknownSurface": "Cannot export: a chosen surface no longer exists.",
     "blocked": "Export blocked: a body failed the check. The body list gives the reason.",
     "invalidNames": "Cannot export: the product name is missing or longer than 200 characters.",
     "writeFailed": "Export failed: the file could not be written. Check the folder and write permissions.",

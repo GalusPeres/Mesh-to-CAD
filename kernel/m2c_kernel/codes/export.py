@@ -6,6 +6,8 @@ from enum import StrEnum
 class ErrorCode(StrEnum):
     NO_BODY = "export.noBody"
     UNKNOWN_BODY = "export.unknownBody"
+    UNKNOWN_SURFACE = "export.unknownSurface"
+    """`surface` names no feature with an open surface (an open freeform net)."""
     BLOCKED = "export.blocked"
     """A body failed the pre-flight check; `problem` is its `IssueCode`."""
     INVALID_NAMES = "export.invalidNames"

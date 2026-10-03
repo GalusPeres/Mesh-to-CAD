@@ -15,6 +15,7 @@ import { ExportStepPanel } from './ExportStepPanel';
 
 const preflight: PreflightResult = {
   exportable: false,
+  surfaces: [],
   bodies: [
     {
       body: 'f5',
@@ -141,7 +142,7 @@ describe('STEP export panel', () => {
 
     expect(run).toHaveBeenCalledWith(
       'exportStep',
-      { bodies: ['f5'], names: ['halterung'], schema: 'AP214' },
+      { bodies: ['f5'], names: ['halterung'], schema: 'AP214', surfaces: [], surfaceNames: [] },
       { title: 'STEP exportieren', filterName: 'STEP-Dateien', defaultName: 'halterung.step' },
     );
     expect(byTestId('export-done')?.textContent).toContain(

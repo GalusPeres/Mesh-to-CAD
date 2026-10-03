@@ -20,9 +20,17 @@ export interface BodyPreflight {
   blocking: boolean;
 }
 
+/** An open surface STEP can carry: the feature that made it, its faces, validity. */
+export interface SurfacePreflight {
+  feature: string;
+  faces: number;
+  valid: boolean;
+}
+
 export interface PreflightResult {
   bodies: BodyPreflight[];
   exportable: boolean;
+  surfaces: SurfacePreflight[];
 }
 
 export interface StepParams {
@@ -30,6 +38,8 @@ export interface StepParams {
   bodies: string[];
   names: string[];
   schema?: StepSchema;
+  surfaces?: string[];
+  surfaceNames?: string[];
 }
 
 export interface StlParams {
@@ -45,6 +55,7 @@ export interface ExportResult {
   bytes: number;
   bodies: number;
   triangles: number | null;
+  surfaces: number;
 }
 
 export interface ExportMethods {
