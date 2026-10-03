@@ -9,6 +9,7 @@ import { useViewport } from '../../viewport/api';
 import { defaultHeatmapTolerance } from './heatmap';
 import { NetEditor, type NetEditorState } from './netEditor';
 import { type BoxRectangle, createNetInteraction } from './netInteraction';
+import { setNetHint } from './netSession';
 
 /**
  * The tool's NetEditor for as long as the panel is open: it owns the viewport
@@ -40,6 +41,7 @@ export function useNetEditor(editTarget: string | null): {
     );
     setDraftHistoryHandler({ undo: () => editor.undo(), redo: () => editor.redo() });
     const removeInfo = setToolInfoProvider(() => editor.automationInfo());
+    setNetHint(editor.getState().hasNet || editTarget ? 'idle' : 'start');
     if (editTarget) {
       viewport.setOwnerHidden(editTarget);
       if (!editor.getState().hasNet) void editor.load(editTarget);
@@ -47,6 +49,7 @@ export function useNetEditor(editTarget: string | null): {
     return () => {
       removeInteraction();
       removeInfo();
+      setNetHint(null);
       setDraftHistoryHandler(null);
       viewport.setOwnerHidden(null);
       editor.detach();

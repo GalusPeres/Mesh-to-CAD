@@ -32,6 +32,7 @@ B-spline faces (motorcycle-graph layout, exact shared edges, about 1 degree kink
 irregular points), outlines of the CAD faces while editing.
 
 Next:
+
 - Calmer nets: remesh coarse and subdivide (fewer irregular points: 43 → 12 on the
   remote, 110 → 25 CAD faces), as a density setting.
 - Sharp edges (creases) on edge loops; crease ends as layout corners.

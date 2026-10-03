@@ -1,31 +1,56 @@
-.hint {
-  margin: var(--space-4) 0 0;
+/* Controls side by side; a segmented control takes the free width. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.row > [role='radiogroup'] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.separator {
+  width: 1px;
+  height: var(--control-height);
+  margin: 0 var(--space-4);
+  background: var(--border);
+}
+
+.facts {
+  margin: var(--space-6) 0 0;
   color: var(--text-secondary);
 }
 
-.wide {
-  width: 100%;
-  margin-top: var(--space-8);
+.warning {
+  color: var(--error);
 }
 
-.buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  margin-top: var(--space-8);
-}
-
-.progress {
-  display: grid;
-  gap: var(--space-4);
-  margin-top: var(--space-8);
-}
-
-.progressRow {
+.score {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: baseline;
   gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.score .facts {
+  margin: 0;
+}
+
+.big {
+  white-space: nowrap;
+  font-size: var(--text-title);
+  line-height: var(--line-title);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
 }
 
 .drawing {

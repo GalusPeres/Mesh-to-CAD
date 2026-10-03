@@ -27,6 +27,8 @@ export interface NetEditorState {
   facing: boolean;
   /** Corners of that face clicked so far (0..3). */
   facePoints: number;
+  /** Chosen net edges (a drag of a chosen border edge grows rows on all of them). */
+  chosenEdges: number;
 }
 
 export function initialNetState(tolerance: number): NetEditorState {
@@ -48,5 +50,6 @@ export function initialNetState(tolerance: number): NetEditorState {
     canRedo: false,
     facing: false,
     facePoints: 0,
+    chosenEdges: 0,
   };
 }

@@ -1,28 +1,26 @@
 {
   "label": "Freeform net",
-  "tooltip": "Lay a clean quad net over the scan, snap it to the scan and drag points; the deviation shows live as a heatmap on the surface.",
-  "help": "For organic shapes. Create net lays an even quad net over the whole scan or the selected triangles and snaps it to them. The surface is a smooth B-spline surface; its colour shows the distance to the scan: green within the tolerance, yellow to red outside the material, blue inside. Click and drag points; with snapping they slide over the scan. Snap to scan fits the surface again, Smooth calms it. OK creates the CAD faces: a body when the net is closed.",
+  "tooltip": "Lay a quad net over the scan, automatically or by hand row by row; the deviation shows live as colour.",
+  "help": "For roundings and organic shapes. Auto net lays the net over the scan or the selection in one step; by hand it grows face by face: place a face, then drag border edges. The status bar tells what the mouse does right now. OK creates B-spline faces, a body when the net is closed.",
   "sections": {
-    "net": "Net",
-    "edit": "Edit",
-    "deviation": "Deviation",
-    "build": "Build by hand"
+    "net": "Auto net",
+    "build": "By hand",
+    "deviation": "Deviation"
   },
   "source": "Input",
   "sources": {
     "scan": "Whole scan",
     "selection": "Selection"
   },
-  "triangles": "Triangles",
-  "selectionMissing": "Select triangles with the brush or smart select (at least {{min}}).",
+  "selectionMissing": "Select at least {{min}} triangles first.",
   "density": "Density",
   "densities": {
     "coarse": "Coarse",
     "medium": "Medium",
     "fine": "Fine"
   },
-  "generate": "Create net",
-  "regenerate": "Create net again",
+  "generate": "Create",
+  "regenerate": "Create again",
   "stop": "Stop",
   "jobs": {
     "generate": "Creating net",
@@ -31,46 +29,65 @@
     "map": "Preparing the surface",
     "load": "Loading the net"
   },
-  "editHint": "Points appear near the pointer. Click a point and drag it. Shift chooses more points, Ctrl removes, a rectangle chooses several. With Alt the point moves along the surface normal.",
-  "snap": "Snap to the scan while dragging",
-  "chosen": "Chosen points",
-  "none": "none",
-  "fit": {
-    "all": "Snap to scan",
-    "chosen": "Snap chosen"
+  "tools": {
+    "face": {
+      "label": "Place face",
+      "description": "Click four corners on the scan, one after another."
+    },
+    "fit": {
+      "all": {
+        "label": "Snap to scan",
+        "description": "Lay the whole net onto the scan."
+      },
+      "chosen": {
+        "label": "Snap chosen",
+        "description": "Lay only the chosen points onto the scan."
+      }
+    },
+    "smooth": {
+      "all": {
+        "label": "Smooth",
+        "description": "Calm the whole net; it stays close to the scan."
+      },
+      "chosen": {
+        "label": "Smooth chosen",
+        "description": "Calm only the chosen points."
+      }
+    },
+    "flatten": {
+      "label": "Lay on a plane",
+      "description": "Lay the chosen points (at least 3) on their best-fit plane."
+    },
+    "snap": {
+      "label": "Snap to scan",
+      "description": "Dragged points and new rows land on the scan."
+    }
   },
-  "smooth": {
-    "all": "Smooth",
-    "chosen": "Smooth chosen"
-  },
-  "flatten": "Lay chosen on a plane",
-  "chooseAll": "Choose all",
-  "chooseNone": "Choose none",
-  "heatmap": "Show the deviation as colour",
+  "chosenPoints_one": "{{count}} point chosen",
+  "chosenPoints_other": "{{count}} points chosen",
+  "chosenEdges_one": "{{count}} edge chosen",
+  "chosenEdges_other": "{{count}} edges chosen",
+  "heatmap": "Heatmap",
+  "legend": "Green: within tolerance · Yellow to red: outside the scan · Blue: inside · Grey: far away",
   "scale": "Colour scale (mm)",
-  "legend": "Green: within ±{{tolerance}}. Yellow to red: the surface lies outside the scan, blue: inside, grey: far away.",
-  "measuring": "Measuring the deviation …",
-  "result": {
-    "withinTolerance": "Within tolerance",
-    "rms": "Deviation RMS",
-    "p95": "Deviation 95 %",
-    "max": "Deviation max.",
-    "unmeasured": "{{share}} of the surface lies far from the scan and is not counted.",
-    "quads": "Quads",
-    "faces": "CAD faces",
-    "facesHint": "The white lines show where one CAD face meets the next. Every irregular point draws lines across the net; fewer such points give larger faces.",
-    "points": "Control points",
-    "irregular": "Irregular points",
-    "shape": "Result",
-    "closedBody": "Closed body",
-    "openSurface": "Open surface",
-    "openHint": "The net has open borders. It becomes a surface, not a body."
-  },
-  "build": {
-    "addFace": "Place face",
-    "placing": "Place corner {{count}} of 4 …",
-    "startHint": "Place face, then click four corners on the scan. Then drag a border edge: a new row grows on, aligned with the one before.",
-    "faceHint": "Click four corners on the scan, in order around the face. Backspace takes the last one back, Esc cancels.",
-    "growHint": "Grab a border edge and drag: a new row grows outward along the surface, over edges and fillets too; with Shift the whole side up to the next corner. With Ctrl+Shift every border side facing the drag grows: dragged towards a corner of the part, the net wraps round the corner. S over an edge inserts a row across it (more resolution, e.g. at fillets). New points snap to the scan."
+  "score": "within tolerance · RMS {{rms}} · max. {{max}}",
+  "measuring": "Measuring …",
+  "quads_one": "{{count}} quad",
+  "quads_other": "{{count}} quads",
+  "faces_one": "{{count}} CAD face",
+  "faces_other": "{{count}} CAD faces",
+  "irregular_one": "{{count}} irregular point",
+  "irregular_other": "{{count}} irregular points",
+  "irregularHint": "Red points: face borders start here. Fewer of them give larger CAD faces.",
+  "closedBody": "Body",
+  "openSurface": "Open surface",
+  "hints": {
+    "start": "Place face, then click four corners on the scan",
+    "face": "Click corner {{count}} of 4 on the scan · Backspace: back · Esc: cancel",
+    "point": "Drag: move · onto a border point: join · Alt: along the normal · Delete: remove",
+    "border": "Drag: new row · onto border points: join faces · Double click: whole side · S: insert a row",
+    "edge": "Click: choose · Double click: edge chain · Drag: move · S: insert a row · Delete: remove",
+    "rows": "Release: add the row · yellow points get joined · Esc: cancel",
+    "idle": "Drag a border edge: extend the net · Drag a point: shape · Rectangle: choose points"
   }
 }

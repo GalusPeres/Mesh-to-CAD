@@ -104,12 +104,12 @@ export function controlOffsets(
   return offsets;
 }
 
-/** Number of control points with a valence other than 4 inside the net (irregular points). */
-export function irregularCount(
+/** Control points inside the net whose valence is not 4 (irregular points). */
+export function irregularPoints(
   edges: Uint32Array,
   boundaryEdges: Uint8Array,
   controlCount: number,
-): number {
+): number[] {
   const valence = new Uint16Array(controlCount);
   const onBorder = new Uint8Array(controlCount);
   for (let e = 0; e < edges.length / 2; e += 1) {
@@ -122,9 +122,9 @@ export function irregularCount(
       onBorder[b] = 1;
     }
   }
-  let count = 0;
-  for (let i = 0; i < controlCount; i += 1) if (!onBorder[i] && valence[i] !== 4) count += 1;
-  return count;
+  const irregular: number[] = [];
+  for (let i = 0; i < controlCount; i += 1) if (!onBorder[i] && valence[i] !== 4) irregular.push(i);
+  return irregular;
 }
 
 export interface Plane {

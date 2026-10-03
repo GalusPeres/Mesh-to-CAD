@@ -10,6 +10,8 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   /** Accessible name and tooltip text. */
   label: string;
   shortcut?: string;
+  /** One sentence under the label in the tooltip. */
+  description?: string;
   /** Toggle buttons pass their state. */
   pressed?: boolean;
 }
@@ -18,13 +20,14 @@ export function IconButton({
   icon: Icon,
   label,
   shortcut,
+  description,
   pressed,
   className,
   type = 'button',
   ...rest
 }: IconButtonProps) {
   return (
-    <Tooltip label={label} shortcut={shortcut}>
+    <Tooltip label={label} shortcut={shortcut} description={description}>
       <button
         type={type}
         aria-label={label}

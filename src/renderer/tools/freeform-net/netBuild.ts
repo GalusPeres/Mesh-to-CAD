@@ -1,26 +1,12 @@
 // Building a net by hand, as in QuickSurface: a face from four clicked points, a new
-// row of faces dragged out of a border edge (or a whole border chain), and a new
-// loop through a ring of faces (S). Every operation keeps the net made of quads,
-// oriented alike, so its rows stay aligned and its surface stays smooth.
+// row of faces dragged out of border edges (its points dropped onto the scan or onto
+// points of the net, which joins pieces), a new loop through a ring of faces (S), and
+// two points welded into one. Every operation keeps the net made of quads, oriented
+// alike, so its rows stay aligned and its surface stays smooth.
 
 import type { Vec3 } from '../../viewport/api';
 import type { Net } from './netModel';
-
-/** An edge of a quad, directed as in that quad (counter-clockwise seen from outside). */
-export interface Edge {
-  a: number;
-  b: number;
-}
-
-const key = (a: number, b: number): string => (a < b ? `${a},${b}` : `${b},${a}`);
-
-function quadCount(net: Net): number {
-  return net.quads.length / 4;
-}
-
-function corner(net: Net, quad: number, k: number): number {
-  return net.quads[quad * 4 + (k % 4)] ?? 0;
-}
+import { type Edge, corner, edgeKey, edgeQuads, quadCount } from './netTopology';
 
 function point(net: Net, vertex: number): Vec3 {
   return [
@@ -28,31 +14,6 @@ function point(net: Net, vertex: number): Vec3 {
     net.vertices[vertex * 3 + 1] ?? 0,
     net.vertices[vertex * 3 + 2] ?? 0,
   ];
-}
-
-/** Quads (and the edge's position k in each) by undirected edge. */
-function edgeQuads(net: Net): Map<string, { quad: number; k: number }[]> {
-  const result = new Map<string, { quad: number; k: number }[]>();
-  for (let quad = 0; quad < quadCount(net); quad += 1) {
-    for (let k = 0; k < 4; k += 1) {
-      const id = key(corner(net, quad, k), corner(net, quad, k + 1));
-      const list = result.get(id);
-      if (list) list.push({ quad, k });
-      else result.set(id, [{ quad, k }]);
-    }
-  }
-  return result;
-}
-
-/** Edges used by one quad only, directed as in that quad. */
-export function borderEdges(net: Net): Edge[] {
-  const edges: Edge[] = [];
-  for (const users of edgeQuads(net).values()) {
-    const only = users.length === 1 ? users[0] : undefined;
-    if (only)
-      edges.push({ a: corner(net, only.quad, only.k), b: corner(net, only.quad, only.k + 1) });
-  }
-  return edges;
 }
 
 /** A net with one quad more, from four new points, facing `outward`. */
@@ -80,52 +41,25 @@ export function addQuad(net: Net | null, corners: readonly Vec3[], outward: Vec3
   return { vertices, quads };
 }
 
-/**
- * The border chain through a border edge: the border edges before and after it up to
- * the net's corners (border points with one quad), or with `aroundCorners` the whole
- * border loop it belongs to.
- */
-export function borderChain(net: Net, edge: Edge, aroundCorners = false): Edge[] {
-  const border = borderEdges(net);
-  const starting = new Map<number, Edge>();
-  const ending = new Map<number, Edge>();
-  for (const item of border) {
-    starting.set(item.a, item);
-    ending.set(item.b, item);
-  }
-  const quadsAt = new Map<number, number>();
-  for (const vertex of net.quads) quadsAt.set(vertex, (quadsAt.get(vertex) ?? 0) + 1);
-  // A corner of the net (one quad) ends the chain; a regular border point has two.
-  const passes = (vertex: number) => aroundCorners || (quadsAt.get(vertex) ?? 0) === 2;
-  const chain: Edge[] = [edge];
-  const seen = new Set([key(edge.a, edge.b)]);
-  for (let current = edge; passes(current.b);) {
-    const next = starting.get(current.b);
-    if (!next || seen.has(key(next.a, next.b))) break;
-    seen.add(key(next.a, next.b));
-    chain.push(next);
-    current = next;
-  }
-  for (let current = edge; passes(current.a);) {
-    const previous = ending.get(current.a);
-    if (!previous || seen.has(key(previous.a, previous.b))) break;
-    seen.add(key(previous.a, previous.b));
-    chain.unshift(previous);
-    current = previous;
-  }
-  return chain;
-}
+/** Where a new row point goes: a new point there, or an existing point it joins. */
+export type RowTarget = Vec3 | { onto: number };
+
+/** The target is an existing point (a join), not a position. */
+export const joinsPoint = (target: RowTarget): target is { onto: number } => !Array.isArray(target);
 
 /**
  * A new row of quads along border edges (consecutive, as `borderChain` gives them):
- * every chain point gets a new point at `positions(point)`, and every edge a quad
- * between them, oriented like its neighbour. Returns the net and the new points.
+ * every chain point gets a new point at its target, or joins an existing point (a row
+ * dropped onto another piece of the net bridges the gap), and every edge a quad
+ * between them, oriented like its neighbour. A quad that would collapse (two corners
+ * joined into one point) is left out. Returns the net, the new points and the edges
+ * along the outside of the row (directed as in their quads).
  */
 export function extrudeEdges(
   net: Net,
   chain: readonly Edge[],
-  positions: (vertex: number) => Vec3,
-): { net: Net; added: number[] } {
+  targets: (vertex: number) => RowTarget,
+): { net: Net; added: number[]; outer: Edge[] } {
   const points: number[] = [];
   chain.forEach((edge, i) => {
     if (i === 0) points.push(edge.a);
@@ -135,17 +69,60 @@ export function extrudeEdges(
   if (closed) points.pop();
   const base = net.vertices.length / 3;
   const copy = new Map<number, number>();
-  points.forEach((vertex, i) => copy.set(vertex, base + i));
-  const vertices = new Float64Array((base + points.length) * 3);
+  const created: Vec3[] = [];
+  for (const vertex of points) {
+    const target = targets(vertex);
+    if (joinsPoint(target)) copy.set(vertex, target.onto);
+    else {
+      copy.set(vertex, base + created.length);
+      created.push(target);
+    }
+  }
+  const vertices = new Float64Array((base + created.length) * 3);
   vertices.set(net.vertices);
-  points.forEach((vertex, i) => vertices.set(positions(vertex), (base + i) * 3));
-  const quads = new Uint32Array(net.quads.length + chain.length * 4);
+  created.forEach((position, i) => vertices.set(position, (base + i) * 3));
+  // The neighbour runs a -> b, so the new quad runs b -> a -> a' -> b' (outer edge a' -> b').
+  const rows = chain
+    .map(({ a, b }) => [b, a, copy.get(a) ?? a, copy.get(b) ?? b])
+    .filter((quad) => new Set(quad).size === 4);
+  const quads = new Uint32Array(net.quads.length + rows.length * 4);
   quads.set(net.quads);
-  chain.forEach(({ a, b }, i) => {
-    // The neighbour runs a -> b, so the new quad runs b -> a.
-    quads.set([b, a, copy.get(a) ?? a, copy.get(b) ?? b], net.quads.length + i * 4);
-  });
-  return { net: { vertices, quads }, added: points.map((vertex) => copy.get(vertex) ?? vertex) };
+  rows.forEach((quad, i) => quads.set(quad, net.quads.length + i * 4));
+  return {
+    net: { vertices, quads },
+    added: created.map((_, i) => base + i),
+    outer: rows.map(([, , a, b]) => ({ a: a ?? 0, b: b ?? 0 })),
+  };
+}
+
+/**
+ * The net with point `from` welded onto point `into` (which keeps its place), or null
+ * when that would break the net: both in one quad, or an edge then used by more than
+ * two quads or twice in one direction (opposite orientations).
+ */
+export function mergePoints(net: Net, from: number, into: number): Net | null {
+  if (from === into) return null;
+  const renamed = Uint32Array.from(net.quads, (vertex) => (vertex === from ? into : vertex));
+  const directed = new Set<string>();
+  const uses = new Map<string, number>();
+  for (let quad = 0; quad < renamed.length / 4; quad += 1) {
+    const corners = renamed.subarray(quad * 4, quad * 4 + 4);
+    if (new Set(corners).size < 4) return null;
+    for (let k = 0; k < 4; k += 1) {
+      const [p, q] = [corners[k] ?? 0, corners[(k + 1) % 4] ?? 0];
+      if (directed.has(`${p}>${q}`)) return null;
+      directed.add(`${p}>${q}`);
+      const id = edgeKey(p, q);
+      uses.set(id, (uses.get(id) ?? 0) + 1);
+      if ((uses.get(id) ?? 0) > 2) return null;
+    }
+  }
+  // Drop the point `from`; later points move down by one.
+  const quads = Uint32Array.from(renamed, (vertex) => (vertex > from ? vertex - 1 : vertex));
+  const vertices = new Float64Array(net.vertices.length - 3);
+  vertices.set(net.vertices.subarray(0, from * 3));
+  vertices.set(net.vertices.subarray(from * 3 + 3), from * 3);
+  return { vertices, quads };
 }
 
 /**
@@ -155,7 +132,7 @@ export function extrudeEdges(
  */
 export function splitRing(net: Net, a: number, b: number): { net: Net; added: number[] } {
   const users = edgeQuads(net);
-  const start = users.get(key(a, b));
+  const start = users.get(edgeKey(a, b));
   if (!start) return { net, added: [] };
   // Walk across the ring in both directions from the edge.
   const crossing = new Map<number, number>();
@@ -165,7 +142,7 @@ export function splitRing(net: Net, a: number, b: number): { net: Net; added: nu
     for (;;) {
       if (crossing.has(currentQuad)) return;
       crossing.set(currentQuad, currentK);
-      const opposite = key(
+      const opposite = edgeKey(
         corner(net, currentQuad, currentK + 2),
         corner(net, currentQuad, currentK + 3),
       );
@@ -181,7 +158,7 @@ export function splitRing(net: Net, a: number, b: number): { net: Net; added: nu
   const middles = new Map<string, number>();
   const extra: number[] = [];
   const middle = (p: number, q: number): number => {
-    const id = key(p, q);
+    const id = edgeKey(p, q);
     const existing = middles.get(id);
     if (existing !== undefined) return existing;
     const created = base + middles.size;
@@ -218,138 +195,21 @@ export function splitRing(net: Net, a: number, b: number): { net: Net; added: nu
   };
 }
 
-const cross = (u: Vec3, v: Vec3): Vec3 => [
-  u[1] * v[2] - u[2] * v[1],
-  u[2] * v[0] - u[0] * v[2],
-  u[0] * v[1] - u[1] * v[0],
-];
-
-function unit(v: Vec3): Vec3 {
-  const length = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / length, v[1] / length, v[2] / length];
-}
-
 /**
- * The direction a border edge grows in: along the surface, away from its quad (the
- * quad lies left of a -> b seen from outside, along `normal`).
+ * The net without the quads `drop` picks (by their corners) and without the points no
+ * quad uses any more; null if nothing or everything would be removed.
  */
-export function edgeOutward(a: Vec3, b: Vec3, normal: Vec3): Vec3 {
-  return unit(cross([b[0] - a[0], b[1] - a[1], b[2] - a[2]], normal));
-}
-
-/**
- * Per chain point the step of a new row of unit width: the mean outward direction of
- * its chain edges, lengthened at a corner (a mitre) so the new row keeps its width.
- */
-export function outwardSteps(
-  chain: readonly Edge[],
-  pointOf: (vertex: number) => Vec3,
-  normalOf: (vertex: number) => Vec3,
-): Map<number, Vec3> {
-  const directions = new Map<number, Vec3[]>();
-  for (const { a, b } of chain) {
-    const normal = unit(
-      normalOf(a).map((value, axis) => value + (normalOf(b)[axis] ?? 0)) as unknown as Vec3,
-    );
-    const outward = edgeOutward(pointOf(a), pointOf(b), normal);
-    for (const vertex of [a, b]) {
-      const list = directions.get(vertex);
-      if (list) list.push(outward);
-      else directions.set(vertex, [outward]);
-    }
+export function removeQuads(net: Net, drop: (corners: number[]) => boolean): Net | null {
+  const kept: number[] = [];
+  for (let quad = 0; quad < quadCount(net); quad += 1) {
+    const corners = [0, 1, 2, 3].map((k) => corner(net, quad, k));
+    if (!drop(corners)) kept.push(...corners);
   }
-  const steps = new Map<number, Vec3>();
-  for (const [vertex, list] of directions) {
-    const sum = list.reduce<Vec3>(
-      (total, d) => [total[0] + d[0], total[1] + d[1], total[2] + d[2]],
-      [0, 0, 0],
-    );
-    const mean = unit(sum);
-    // Mitre: the step keeps distance 1 from every edge it belongs to.
-    const reach = Math.min(...list.map((d) => d[0] * mean[0] + d[1] * mean[1] + d[2] * mean[2]));
-    const scale = 1 / Math.max(reach, 0.35);
-    steps.set(vertex, [mean[0] * scale, mean[1] * scale, mean[2] * scale]);
-  }
-  return steps;
-}
-
-/**
- * The run of `loop` (a border chain in order) through `edge` whose edges are all kept,
- * wrapping round a closed loop: the sides of a border that face one way.
- */
-export function keptRun(loop: readonly Edge[], kept: readonly boolean[], edge: Edge): Edge[] {
-  const count = loop.length;
-  const at = loop.findIndex((item) => item.a === edge.a && item.b === edge.b);
-  if (at < 0 || !kept[at]) return [];
-  if (kept.every(Boolean)) return [...loop];
-  const closed = count > 2 && loop[0]?.a === loop[count - 1]?.b;
-  // Back from the edge while kept (round the start of a closed loop), then forward.
-  let first = at;
-  for (let step = 1; step < count; step += 1) {
-    const previous = first - 1;
-    if (previous < 0 && !closed) break;
-    if (!kept[(previous + count) % count]) break;
-    first = previous;
-  }
-  const run: Edge[] = [];
-  for (let i = first; run.length < count; i += 1) {
-    if (i >= count && !closed) break;
-    const index = ((i % count) + count) % count;
-    if (!kept[index]) break;
-    run.push(loop[index] as Edge);
-  }
-  return run;
-}
-
-/** Step length of a walk on the scan (mm). */
-export const WALK_STEP_MM = 0.25;
-
-export interface SurfacePoint {
-  point: Vec3;
-  normal: Vec3;
-}
-
-/**
- * The point `length` along a surface from `start`, setting out in `direction`: small
- * steps, each pulled back onto the surface, the heading kept tangent to it. Over a
- * rounded edge the walk follows the rounding and goes on down the wall, where a step
- * straight out would leave the surface and fall back onto the edge.
- */
-export function walkOnSurface(
-  start: Vec3,
-  direction: Vec3,
-  length: number,
-  closest: (point: Vec3) => SurfacePoint | null,
-  step = WALK_STEP_MM,
-): Vec3 {
-  let point = start;
-  let heading = unit(direction);
-  const count = Math.max(1, Math.ceil(length / step));
-  const each = length / count;
-  for (let i = 0; i < count; i += 1) {
-    const ahead: Vec3 = [
-      point[0] + heading[0] * each,
-      point[1] + heading[1] * each,
-      point[2] + heading[2] * each,
-    ];
-    const hit = closest(ahead);
-    if (!hit) {
-      point = ahead;
-      continue;
-    }
-    const n = hit.normal;
-    const tangent = (v: Vec3): Vec3 => {
-      const along = v[0] * n[0] + v[1] * n[1] + v[2] * n[2];
-      return [v[0] - along * n[0], v[1] - along * n[1], v[2] - along * n[2]];
-    };
-    let onward = tangent([
-      hit.point[0] - point[0],
-      hit.point[1] - point[1],
-      hit.point[2] - point[2],
-    ]);
-    if (Math.hypot(onward[0], onward[1], onward[2]) < 1e-9) onward = tangent(heading);
-    heading = unit(onward);
-    point = hit.point;
-  }
-  return point;
+  if (kept.length === 0 || kept.length === net.quads.length) return null;
+  // Remaining points keep their order, so their numbers only shift down.
+  const used = [...new Set(kept)].sort((a, b) => a - b);
+  const index = new Map(used.map((vertex, i) => [vertex, i]));
+  const vertices = new Float64Array(used.length * 3);
+  used.forEach((vertex, i) => vertices.set(point(net, vertex), i * 3));
+  return { vertices, quads: Uint32Array.from(kept, (vertex) => index.get(vertex) ?? 0) };
 }

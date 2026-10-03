@@ -4,7 +4,7 @@ import type { LimitMapResult } from '@shared/protocol/generated/net';
 
 import { colorize, deviationSummary, heatmapScale } from './heatmap';
 import { LimitSurface } from './limitSurface';
-import { NetHistory, controlOffsets, irregularCount } from './netModel';
+import { NetHistory, controlOffsets, irregularPoints } from './netModel';
 
 /**
  * Three control points; dense vertices 0-2 are their limits (a symmetric positive
@@ -106,8 +106,8 @@ describe('NetHistory', () => {
   });
 });
 
-describe('irregularCount', () => {
-  it('counts inner control points whose valence is not four', () => {
+describe('irregularPoints', () => {
+  it('finds inner control points whose valence is not four', () => {
     // A 3 x 3 grid of quads: one inner point of valence 4, the rest on the border.
     const edges: number[] = [];
     const id = (i: number, j: number) => i * 4 + j;
@@ -122,7 +122,7 @@ describe('irregularCount', () => {
       const onBorder = (v: number) => v % 4 === 0 || v % 4 === 3 || v < 4 || v >= 12;
       return onBorder(a) && onBorder(b) ? 1 : 0;
     });
-    expect(irregularCount(Uint32Array.from(edges), boundary, 16)).toBe(0);
+    expect(irregularPoints(Uint32Array.from(edges), boundary, 16)).toEqual([]);
   });
 });
 

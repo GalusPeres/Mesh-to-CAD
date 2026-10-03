@@ -1,7 +1,7 @@
 // The net in the viewport: its limit surface (heatmap or plain colour), the net lines
 // drawn on the surface, the outlines of the CAD faces it becomes (patch layout and
-// open border, in white), and the control points at their limit positions. All four share the dense position buffer of the LimitSurface, so a
-// drag updates one array.
+// open border, in white), and the control points at their limit positions. All four
+// share the dense position buffer of the LimitSurface, so a drag updates one array.
 
 import * as THREE from 'three';
 
@@ -138,23 +138,26 @@ export class NetOverlay {
   }
 
   /**
-   * Colour the control points: hovered, chosen or plain. Only chosen points, the
-   * hovered one and those `shown` (near the pointer) are drawn, so a dense net does
-   * not cover the surface and its heatmap with dots.
+   * Colour the control points: hovered, chosen, irregular (a warning, as in
+   * QuickSurface) or plain. Only chosen, irregular and hovered points and those `shown`
+   * (near the pointer) are drawn, so a dense net does not cover its heatmap with dots.
    */
   paintPoints(
     selected: ReadonlySet<number>,
     hover: number | null,
     shown: (control: number) => boolean,
+    irregular: ReadonlySet<number> = new Set(),
   ): void {
     const plain = rgb(NET_COLORS.point);
     const chosen = rgb(SCENE_COLORS.selection);
     const hovered = rgb(NET_COLORS.hover);
+    const warning = rgb(NET_COLORS.irregular);
     for (let i = 0; i < this.surface.controlCount; i += 1) {
       const isChosen = selected.has(i);
-      const color = i === hover ? hovered : isChosen ? chosen : plain;
+      const isIrregular = irregular.has(i);
+      const color = i === hover ? hovered : isChosen ? chosen : isIrregular ? warning : plain;
       this.pointColors.set(color, i * 4);
-      this.pointColors[i * 4 + 3] = i === hover || isChosen || shown(i) ? 1 : 0;
+      this.pointColors[i * 4 + 3] = i === hover || isChosen || isIrregular || shown(i) ? 1 : 0;
     }
     (this.pointGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true;
   }

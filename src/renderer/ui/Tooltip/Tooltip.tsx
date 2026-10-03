@@ -5,7 +5,9 @@ import styles from './Tooltip.module.css';
 
 export function TooltipProvider({ children }: { children: ReactNode }) {
   return (
-    <RadixTooltip.Provider delayDuration={500} skipDelayDuration={200}>
+    // Not hoverable: a tooltip closes as soon as the pointer leaves its control, so the
+    // control next to it (often under the open tooltip's grace area) gets its own.
+    <RadixTooltip.Provider delayDuration={500} skipDelayDuration={200} disableHoverableContent>
       {children}
     </RadixTooltip.Provider>
   );

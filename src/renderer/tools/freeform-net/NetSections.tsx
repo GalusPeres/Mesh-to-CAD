@@ -1,3 +1,8 @@
+// The freeform-net panel's sections, kept short: controls as icon buttons with their
+// explanation in the tooltip, numbers instead of sentences. What the pointer does is
+// told in the status bar (freeformNet.status.tsx), not here.
+
+import { Crosshair, Magnet, Palette, Square, SquarePlus, Waves } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
@@ -5,11 +10,10 @@ import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
 import { useFormatter } from '../../i18n/useFormatter';
 import { describeError } from '../../kernel/describeError';
 import { Button } from '../../ui/Button/Button';
-import { Checkbox } from '../../ui/Checkbox/Checkbox';
+import { IconButton } from '../../ui/IconButton/IconButton';
 import { InlineMessage } from '../../ui/InlineMessage/InlineMessage';
 import { PanelSection } from '../../ui/PanelSection/PanelSection';
 import { ProgressBar } from '../../ui/ProgressBar/ProgressBar';
-import { PropertyRow, PropertyValue } from '../../ui/PropertyRow/PropertyRow';
 import { SegmentedControl } from '../../ui/SegmentedControl/SegmentedControl';
 import styles from './FreeformNetPanel.module.css';
 import { HEATMAP_TOLERANCES } from './heatmap';
@@ -22,9 +26,12 @@ export type NetDensity = 'coarse' | 'medium' | 'fine';
 export const DENSITY_QUADS: Record<NetDensity, number> = { coarse: 600, medium: 1500, fine: 4000 };
 const DENSITIES: readonly NetDensity[] = ['coarse', 'medium', 'fine'];
 
-interface GenerateProps {
+interface SectionProps {
   editor: NetEditor;
   state: NetEditorState;
+}
+
+interface GenerateProps extends SectionProps {
   source: NetSource;
   density: NetDensity;
   selectionCount: number;
@@ -33,172 +40,143 @@ interface GenerateProps {
   onGenerate: () => void;
 }
 
+/** Auto net: over the whole scan or the selected triangles, in one of three densities. */
 export function GenerateSection(props: GenerateProps) {
   const { t } = useTranslation();
   const format = useFormatter();
-  const { state, source, selectionCount } = props;
-  const selectionMissing = source === 'selection' && selectionCount < MIN_FIT_FACES;
-  const generating = state.job?.kind === 'generate';
+  const { state, source } = props;
+  const selectionMissing = source === 'selection' && props.selectionCount < MIN_FIT_FACES;
   return (
     <PanelSection title={t(`${KEY}.sections.net`)}>
-      <PropertyRow label={t(`${KEY}.source`)}>
-        <SegmentedControl<NetSource>
-          value={source}
-          ariaLabel={t(`${KEY}.source`)}
-          segments={[
-            { value: 'scan', label: t(`${KEY}.sources.scan`) },
-            { value: 'selection', label: t(`${KEY}.sources.selection`) },
-          ]}
-          onChange={props.onSource}
-        />
-      </PropertyRow>
-      {source === 'selection' && (
-        <>
-          <PropertyValue label={t(`${KEY}.triangles`)} value={format.count(selectionCount)} />
-          {selectionMissing && (
-            <p className={styles.hint}>
-              {t(`${KEY}.selectionMissing`, { min: format.count(MIN_FIT_FACES) })}
-            </p>
-          )}
-        </>
-      )}
-      <PropertyRow label={t(`${KEY}.density`)}>
+      <SegmentedControl<NetSource>
+        value={source}
+        ariaLabel={t(`${KEY}.source`)}
+        segments={[
+          { value: 'scan', label: t(`${KEY}.sources.scan`) },
+          { value: 'selection', label: t(`${KEY}.sources.selection`) },
+        ]}
+        onChange={props.onSource}
+      />
+      <div className={styles.row}>
         <SegmentedControl<NetDensity>
           value={props.density}
           ariaLabel={t(`${KEY}.density`)}
           segments={DENSITIES.map((value) => ({ value, label: t(`${KEY}.densities.${value}`) }))}
           onChange={props.onDensity}
         />
-      </PropertyRow>
-      {generating ? (
-        <JobProgress editor={props.editor} state={state} />
-      ) : (
         <Button
           variant={state.hasNet ? 'secondary' : 'primary'}
-          className={styles.wide}
           disabled={selectionMissing || state.job !== null}
+          title={
+            selectionMissing
+              ? t(`${KEY}.selectionMissing`, { min: format.count(MIN_FIT_FACES) })
+              : undefined
+          }
           data-testid="freeform-net-generate"
           onClick={props.onGenerate}
         >
           {t(`${KEY}.${state.hasNet ? 'regenerate' : 'generate'}`)}
         </Button>
-      )}
+      </div>
+      {state.job?.kind === 'generate' && <JobProgress {...props} />}
     </PanelSection>
   );
 }
 
-function JobProgress({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
+function JobProgress({ editor, state }: SectionProps) {
   const { t } = useTranslation();
   const job = state.job;
   if (!job) return null;
   const label = job.stage ? t(`progress:${job.stage}`) : t(`${KEY}.jobs.${job.kind}`);
   return (
-    <div className={styles.progress} data-testid="freeform-net-progress">
+    <div className={styles.row} data-testid="freeform-net-progress">
       <ProgressBar fraction={job.fraction} label={label} />
-      <div className={styles.progressRow}>
-        <span className={styles.hint}>{label}</span>
-        <Button variant="ghost" onClick={() => editor.cancelJob()}>
-          {t(`${KEY}.stop`)}
-        </Button>
-      </div>
+      <Button variant="ghost" onClick={() => editor.cancelJob()}>
+        {t(`${KEY}.stop`)}
+      </Button>
     </div>
   );
 }
 
-/** Building the net by hand: a face by four clicks, rows dragged out of border edges. */
-export function BuildSection({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
+/** Building and shaping by hand: one row of icon tools, the choice as one line. */
+export function ToolsSection({ editor, state }: SectionProps) {
   const { t } = useTranslation();
-  return (
-    <PanelSection title={t(`${KEY}.sections.build`)}>
-      <Button
-        variant={state.facing ? 'primary' : 'secondary'}
-        className={styles.wide}
-        disabled={state.job !== null}
-        data-testid="freeform-net-add-face"
-        onClick={() => editor.setFacing(!state.facing)}
-      >
-        {t(`${KEY}.build.${state.facing ? 'placing' : 'addFace'}`, { count: state.facePoints + 1 })}
-      </Button>
-      <p className={styles.hint}>
-        {t(`${KEY}.build.${state.facing ? 'faceHint' : state.hasNet ? 'growHint' : 'startHint'}`)}
-      </p>
-    </PanelSection>
-  );
-}
-
-export function EditSection({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
-  const { t } = useTranslation();
-  const format = useFormatter();
   const busy = state.job !== null;
   const scope = state.selected > 0 ? 'chosen' : 'all';
+  const tool = (name: string) => ({
+    label: t(`${KEY}.tools.${name}.label`),
+    description: t(`${KEY}.tools.${name}.description`),
+  });
   const fitting = state.job?.kind === 'fit' || state.job?.kind === 'smooth';
   return (
-    <PanelSection title={t(`${KEY}.sections.edit`)}>
-      <p className={styles.hint}>{t(`${KEY}.editHint`)}</p>
-      <Checkbox
-        checked={state.snap}
-        label={t(`${KEY}.snap`)}
-        testId="freeform-net-snap"
-        onChange={(snap) => editor.setSnap(snap)}
-      />
-      <PropertyValue
-        label={t(`${KEY}.chosen`)}
-        value={state.selected > 0 ? format.count(state.selected) : t(`${KEY}.none`)}
-      />
-      <div className={styles.buttons}>
-        <Button
+    <PanelSection title={t(`${KEY}.sections.build`)}>
+      <div className={styles.toolbar}>
+        <IconButton
+          icon={SquarePlus}
+          {...tool('face')}
+          pressed={state.facing}
           disabled={busy}
+          data-testid="freeform-net-add-face"
+          onClick={() => editor.build.setFacing(!state.facing)}
+        />
+        <IconButton
+          icon={Magnet}
+          {...tool(`fit.${scope}`)}
+          disabled={busy || !state.hasNet}
           data-testid="freeform-net-fit"
           onClick={() => void editor.fit(false)}
-        >
-          {t(`${KEY}.fit.${scope}`)}
-        </Button>
-        <Button
-          disabled={busy}
+        />
+        <IconButton
+          icon={Waves}
+          {...tool(`smooth.${scope}`)}
+          disabled={busy || !state.hasNet}
           data-testid="freeform-net-smooth"
           onClick={() => void editor.fit(true)}
-        >
-          {t(`${KEY}.smooth.${scope}`)}
-        </Button>
+        />
+        <IconButton
+          icon={Square}
+          {...tool('flatten')}
+          disabled={busy || state.selected < 3}
+          data-testid="freeform-net-flatten"
+          onClick={() => void editor.flatten()}
+        />
+        <span className={styles.separator} aria-hidden />
+        <IconButton
+          icon={Crosshair}
+          {...tool('snap')}
+          pressed={state.snap}
+          data-testid="freeform-net-snap"
+          onClick={() => editor.setSnap(!state.snap)}
+        />
       </div>
-      <Button
-        className={styles.wide}
-        disabled={busy || state.selected < 3}
-        data-testid="freeform-net-flatten"
-        onClick={() => void editor.flatten()}
-      >
-        {t(`${KEY}.flatten`)}
-      </Button>
-      <div className={styles.buttons}>
-        <Button variant="ghost" disabled={busy} onClick={() => editor.chooseAll()}>
-          {t(`${KEY}.chooseAll`)}
-        </Button>
-        <Button
-          variant="ghost"
-          disabled={state.selected === 0}
-          onClick={() => editor.choose([], 'replace')}
-        >
-          {t(`${KEY}.chooseNone`)}
-        </Button>
-      </div>
+      {(state.selected > 0 || state.chosenEdges > 0) && (
+        <p className={styles.facts}>
+          {state.chosenEdges > 0
+            ? t(`${KEY}.chosenEdges`, { count: state.chosenEdges })
+            : t(`${KEY}.chosenPoints`, { count: state.selected })}
+        </p>
+      )}
       {fitting && <JobProgress editor={editor} state={state} />}
     </PanelSection>
   );
 }
 
-export function DeviationSection({ editor, state }: { editor: NetEditor; state: NetEditorState }) {
+/** Deviation from the scan: heatmap on/off, colour scale, and the share within it. */
+export function DeviationSection({ editor, state }: SectionProps) {
   const { t } = useTranslation();
   const format = useFormatter();
   const summary = state.summary;
   return (
     <PanelSection title={t(`${KEY}.sections.deviation`)}>
-      <Checkbox
-        checked={state.heatmap}
-        label={t(`${KEY}.heatmap`)}
-        testId="freeform-net-heatmap"
-        onChange={(heatmap) => editor.setHeatmap(heatmap)}
-      />
-      <PropertyRow label={t(`${KEY}.scale`)}>
+      <div className={styles.row}>
+        <IconButton
+          icon={Palette}
+          label={t(`${KEY}.heatmap`)}
+          description={t(`${KEY}.legend`)}
+          pressed={state.heatmap}
+          data-testid="freeform-net-heatmap"
+          onClick={() => editor.setHeatmap(!state.heatmap)}
+        />
         <SegmentedControl<string>
           value={String(state.tolerance)}
           ariaLabel={t(`${KEY}.scale`)}
@@ -208,56 +186,44 @@ export function DeviationSection({ editor, state }: { editor: NetEditor; state: 
           }))}
           onChange={(value) => editor.setTolerance(Number(value))}
         />
-      </PropertyRow>
-      <p className={styles.hint}>
-        {t(`${KEY}.legend`, { tolerance: format.length(state.tolerance) })}
-      </p>
+      </div>
       {summary && summary.rms !== null ? (
-        <>
-          {summary.withinTolerance !== null && (
-            <PropertyValue
-              label={t(`${KEY}.result.withinTolerance`)}
-              value={format.percent(summary.withinTolerance)}
-            />
-          )}
-          <PropertyValue label={t(`${KEY}.result.rms`)} value={format.length(summary.rms)} />
-          {summary.p95 !== null && (
-            <PropertyValue label={t(`${KEY}.result.p95`)} value={format.length(summary.p95)} />
-          )}
-          {summary.max !== null && (
-            <PropertyValue label={t(`${KEY}.result.max`)} value={format.length(summary.max)} />
-          )}
-          {summary.measured < summary.total && (
-            <p className={styles.hint}>
-              {t(`${KEY}.result.unmeasured`, {
-                share: format.percent(1 - summary.measured / summary.total),
-              })}
-            </p>
-          )}
-        </>
+        <div className={styles.score} data-testid="freeform-net-score">
+          <span className={styles.big}>
+            {summary.withinTolerance !== null ? format.percent(summary.withinTolerance) : '–'}
+          </span>
+          <span className={styles.facts}>
+            {t(`${KEY}.score`, {
+              rms: format.length(summary.rms),
+              max: format.length(summary.max ?? summary.rms),
+            })}
+          </span>
+        </div>
       ) : (
-        <p className={styles.hint}>{t(`${KEY}.measuring`)}</p>
+        <p className={styles.facts}>{t(`${KEY}.measuring`)}</p>
       )}
+      <NetFacts state={state} />
     </PanelSection>
   );
 }
 
-export function ResultSection({ state }: { state: NetEditorState }) {
+/** One line about the result: quads, CAD faces, irregular points, surface or body. */
+function NetFacts({ state }: { state: NetEditorState }) {
   const { t } = useTranslation();
-  const format = useFormatter();
   return (
-    <PanelSection title={t('common:sections.result')}>
-      <PropertyValue label={t(`${KEY}.result.quads`)} value={format.count(state.quads)} />
-      <PropertyValue label={t(`${KEY}.result.faces`)} value={format.count(state.faces)} />
-      <p className={styles.hint}>{t(`${KEY}.result.facesHint`)}</p>
-      <PropertyValue label={t(`${KEY}.result.points`)} value={format.count(state.controlPoints)} />
-      <PropertyValue label={t(`${KEY}.result.irregular`)} value={format.count(state.irregular)} />
-      <PropertyValue
-        label={t(`${KEY}.result.shape`)}
-        value={t(`${KEY}.result.${state.closed ? 'closedBody' : 'openSurface'}`)}
-      />
-      {!state.closed && <p className={styles.hint}>{t(`${KEY}.result.openHint`)}</p>}
-    </PanelSection>
+    <p className={styles.facts} data-testid="freeform-net-facts">
+      {t(`${KEY}.quads`, { count: state.quads })}
+      {' · '}
+      {t(`${KEY}.faces`, { count: state.faces })}
+      {state.irregular > 0 && (
+        <span className={styles.warning} title={t(`${KEY}.irregularHint`)}>
+          {' · '}
+          {t(`${KEY}.irregular`, { count: state.irregular })}
+        </span>
+      )}
+      {' · '}
+      {t(`${KEY}.${state.closed ? 'closedBody' : 'openSurface'}`)}
+    </p>
   );
 }
 

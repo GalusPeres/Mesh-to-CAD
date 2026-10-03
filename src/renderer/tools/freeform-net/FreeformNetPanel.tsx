@@ -20,15 +20,13 @@ import styles from './FreeformNetPanel.module.css';
 import { FREEFORM_NET_TOOL_ID } from './netEditor';
 import type { BoxRectangle } from './netInteraction';
 import {
-  BuildSection,
   DENSITY_QUADS,
   DeviationSection,
-  EditSection,
   ErrorMessage,
   GenerateSection,
   type NetDensity,
   type NetSource,
-  ResultSection,
+  ToolsSection,
 } from './NetSections';
 import { useNetEditor, useNetState } from './useNetEditor';
 
@@ -45,9 +43,10 @@ function useSelectionFaces(): Uint32Array {
 }
 
 /**
- * Freiform-Netz: a clean quad net is laid over the scan (or the selected triangles)
- * and snapped to it; its control points can be dragged while the surface and its
- * deviation from the scan update live. OK turns the net into B-spline CAD faces.
+ * Freeform net: a clean quad net is laid over the scan (automatically, or by hand face
+ * by face and row by row) and snapped to it; its control points can be dragged while
+ * the surface and its deviation from the scan update live. OK turns the net into
+ * B-spline CAD faces.
  */
 export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
   const { t } = useTranslation();
@@ -111,15 +110,9 @@ export function FreeformNetPanel({ editTarget, close }: ToolPanelProps) {
             onDensity={setDensity}
             onGenerate={generate}
           />
-          <BuildSection editor={editor} state={state} />
+          <ToolsSection editor={editor} state={state} />
           <ErrorMessage state={state} />
-          {state.hasNet && (
-            <>
-              <EditSection editor={editor} state={state} />
-              <DeviationSection editor={editor} state={state} />
-              <ResultSection state={state} />
-            </>
-          )}
+          {state.hasNet && <DeviationSection editor={editor} state={state} />}
         </>
       )}
       {commit.error && (
