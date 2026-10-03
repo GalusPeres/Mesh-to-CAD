@@ -61,6 +61,17 @@ is written by `npm run codegen` only.
    screenshots. What looks wrong is fixed before anyone else sees it.
 3. Committed with `Closes #n`, pushed. No co-author or "generated with" lines.
 
+## Talking with the user
+
+- Answer in German, short and plain. No long lists, no recaps of what was already said.
+- When the user wants to talk ("wir müssen reden") or asks a question: start nothing new
+  and answer first, until the question is settled. Work already running (CI, the app,
+  other chats) keeps running; never cancel it for this.
+- Decide what you can decide yourself from the job, the research and the code; ask only
+  what only the user can answer.
+- Show results working in the app before reporting them; the user should not be the one
+  who finds the flaws.
+
 ## Never
 
 - Touch the user's own app data or recovery sessions; automation runs in its own profile
