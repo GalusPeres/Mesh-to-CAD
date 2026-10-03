@@ -83,7 +83,7 @@ Everything is discovered from its own files; there is no central list to edit.
 
 ## Commits and pull requests
 
-- Branch from `main` (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`).
+- Branch from `dev`, the integration branch (`feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`).
 - Write [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`,
   `test:`, `refactor:`, `build:`, `ci:`, `chore:`).
 - Add a changelog fragment `changes/<topic>.md` instead of editing `CHANGELOG.md` (see

@@ -16,6 +16,7 @@ from m2c_kernel.protocol.errors import Cancelled
 from m2c_kernel.segmentation.api import LevelOfDetailCache, Segmentation, segment
 from m2c_kernel.session.jobs import JobContext, seeded_rng
 from tests.segmentation.conftest import NoisyPart, noisy_block
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -63,7 +64,7 @@ def test_the_block_splits_into_its_sixteen_surfaces(small_block: NoisyPart, smal
     ious = _ious(small_block, small_run.result.labels)
     assert 14 <= count <= 18
     assert np.mean(ious) >= 0.92
-    assert small_run.seconds < 30.0
+    assert small_run.seconds < budget(30.0)
 
 
 def test_regions_report_the_type_of_their_surface(small_block: NoisyPart, small_run: Run) -> None:
@@ -142,4 +143,4 @@ def test_the_full_size_block_is_segmented_accurately_within_twenty_seconds() -> 
     ious = _ious(block, run.result.labels)
     assert 14 <= len(run.result.kinds) <= 18
     assert np.mean(ious) >= 0.94
-    assert run.seconds < 20.0
+    assert run.seconds < budget(20.0)

@@ -11,6 +11,7 @@ import trimesh
 from m2c_kernel.document.results import Body
 from m2c_kernel.inspection.api import BodyInput, reference_for, signed_distances
 from tests.inspection.scene import SIGMA, _block_shape
+from tests.timing import budget
 
 pytestmark = [pytest.mark.occt, pytest.mark.slow]
 
@@ -31,4 +32,4 @@ def test_one_million_points_in_under_12_seconds() -> None:
 
     assert np.isfinite(result.distances).all()
     assert float(np.std(result.distances)) == pytest.approx(SIGMA, abs=0.003)
-    assert elapsed < 12.0, f"{elapsed:.1f} s"
+    assert elapsed < budget(12.0), f"{elapsed:.1f} s"

@@ -31,6 +31,8 @@ interface Start {
 
 interface Rows {
   runs: Edge[][];
+  /** Added to the pointer's travel: from the grabbed edge's middle to the press. */
+  lead: ScreenPoint;
   starts: Map<number, Start>;
   /** Border points of the rest of the net that a dropped point may join. */
   joinable: { vertex: number; screen: ScreenPoint }[];
@@ -81,8 +83,12 @@ export class RowDrag {
     return this.rows !== null;
   }
 
-  /** Start dragging rows out of these border runs; false if one is off screen. */
-  begin(runs: Edge[][]): boolean {
+  /**
+   * Start dragging rows out of these border runs; false if one is off screen. `lead`
+   * shifts every point on top of the pointer's travel (the press was that far from
+   * the grabbed edge).
+   */
+  begin(runs: Edge[][], lead: ScreenPoint = { x: 0, y: 0 }): boolean {
     const net = this.host.net();
     if (!net || runs.length === 0) return false;
     const starts = new Map<number, Start>();
@@ -97,7 +103,7 @@ export class RowDrag {
       }
     }
     const joinable = joinableBorder(net, (v) => this.host.screenOf(v), new Set(starts.keys()));
-    this.rows = { runs, starts, joinable, targets: new Map() };
+    this.rows = { runs, lead, starts, joinable, targets: new Map() };
     return true;
   }
 
@@ -107,7 +113,10 @@ export class RowDrag {
     if (!rows) return;
     const taken = new Set<number>();
     for (const [vertex, start] of rows.starts) {
-      const at = { x: start.screen.x + delta.x, y: start.screen.y + delta.y };
+      const at = {
+        x: start.screen.x + delta.x + rows.lead.x,
+        y: start.screen.y + delta.y + rows.lead.y,
+      };
       const join = nearestJoin(rows.joinable, at, taken);
       if (join !== null) taken.add(join);
       rows.targets.set(vertex, join !== null ? { onto: join } : this.place(start, at));

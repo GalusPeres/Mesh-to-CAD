@@ -176,7 +176,7 @@ export function createNetInteraction(
     const delta = { x: at.x - current.start.x, y: at.y - current.start.y };
     if (!current.drag) {
       if (!far(at, current.start, DRAG_THRESHOLD_PX)) return;
-      if (current.duplicate && current.border && build.beginRows(current.edge))
+      if (current.duplicate && current.border && build.beginRows(current.edge, current.start))
         current.drag = 'rows';
       else if (beginEdgePoints(current.edge)) current.drag = 'points';
       else {

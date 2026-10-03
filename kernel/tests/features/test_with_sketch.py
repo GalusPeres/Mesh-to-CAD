@@ -30,6 +30,7 @@ from m2c_kernel.session.session import Session
 from m2c_kernel.sketch.params import SketchParams
 from tests.sketch.conftest import PLATE_SPEC, noisy_plate
 from tests.synthetic.parts import build_test_plate
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -156,7 +157,7 @@ def test_preview_of_a_real_extrusion_is_fast(
     )
     elapsed = time.perf_counter() - started
     assert preview.status is not None and preview.status.state == "ok"
-    assert elapsed < 0.5
+    assert elapsed < budget(0.5)
 
 
 def test_preview_items_carry_the_result_key_for_the_deviation(

@@ -16,8 +16,8 @@ import { RowDrag, joinableBorder, nearestJoin } from './netRows';
 import type { NetEditorState } from './netState';
 import { type Edge, borderEdges, borderRuns, edgeKey, edgeLoop, edgeQuads } from './netTopology';
 
-/** The "D" grip of a hovered border edge sits this far out, in parts of its quad. */
-const HANDLE_OFFSET = 0.35;
+/** The "D" grip of a border edge sits this far out from its middle, in parts of its length. */
+const HANDLE_OFFSET = 0.4;
 /** The grip is under the pointer within this distance. */
 const HANDLE_PICK_PX = 10;
 
@@ -140,13 +140,20 @@ export class NetBuilder {
     this.draw();
   }
 
-  /** The border edge whose "D" grip is under the pointer (it becomes the hovered one). */
+  /**
+   * The border edge whose "D" grip is under the pointer (it becomes the hovered one).
+   * A pointer nearer to the edge itself grabs the edge, so a short grip never takes
+   * over a plain drag.
+   */
   handleAt(at: ScreenPoint): Edge | null {
     let best: Edge | null = null;
     let bestDistance = HANDLE_PICK_PX;
     for (const { edge, grip } of this.grips()) {
-      const screen = this.host.viewport.worldToScreen(grip);
+      const { viewport } = this.host;
+      const screen = viewport.worldToScreen(grip);
       const distance = screen ? Math.hypot(screen.x - at.x, screen.y - at.y) : Infinity;
+      const [a, b] = [this.host.screenOf(edge.a), this.host.screenOf(edge.b)];
+      if (a && b && segmentDistance(at, a, b) < distance) continue;
       if (distance <= bestDistance) {
         best = edge;
         bestDistance = distance;
@@ -203,11 +210,18 @@ export class NetBuilder {
    * Start duplicating border edges into new rows: every chosen border edge if `edge` is
    * chosen, else `edge` alone (which becomes the choice). False if it is no border.
    */
-  beginRows(edge: Edge): boolean {
+  /**
+   * Start dragging rows out of the grabbed edge (and the chosen ones), pressed at
+   * `press`: the grabbed edge's middle goes where the pointer is, so a row dropped
+   * from the grip lands under the pointer, not a grip's length behind it.
+   */
+  beginRows(edge: Edge, press: ScreenPoint): boolean {
     const net = this.host.net();
     if (!net || this.host.busy()) return false;
     if (!this.isChosen(edge)) this.chooseEdges([edge], 'replace');
-    return this.rows.begin(borderRuns(net, this.chosenEdges()));
+    const [a, b] = [this.host.screenOf(edge.a), this.host.screenOf(edge.b)];
+    const lead = a && b ? { x: press.x - (a.x + b.x) / 2, y: press.y - (a.y + b.y) / 2 } : null;
+    return this.rows.begin(borderRuns(net, this.chosenEdges()), lead ?? { x: 0, y: 0 });
   }
 
   /** The pointer moved by `delta` (screen pixels) since the drag began. */
@@ -301,12 +315,18 @@ export class NetBuilder {
     if (!net || quad === undefined) return null;
     const corners = [0, 1, 2, 3].map((k) => this.host.limitPoint(net.quads[quad * 4 + k] ?? 0));
     const [a, b] = [this.host.limitPoint(edge.a), this.host.limitPoint(edge.b)];
-    const out = (axis: 0 | 1 | 2) => {
-      const centre = corners.reduce((sum, p) => sum + p[axis], 0) / 4;
-      const middle = (a[axis] + b[axis]) / 2;
-      return middle + (middle - centre) * HANDLE_OFFSET;
-    };
-    return [out(0), out(1), out(2)];
+    const middle: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+    const outward = [0, 1, 2].map(
+      (axis) => (middle[axis] ?? 0) - corners.reduce((sum, p) => sum + (p[axis] ?? 0), 0) / 4,
+    );
+    const depth = Math.hypot(...outward);
+    if (depth < 1e-9) return null;
+    const reach = (Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) * HANDLE_OFFSET) / depth;
+    return [
+      middle[0] + (outward[0] ?? 0) * reach,
+      middle[1] + (outward[1] ?? 0) * reach,
+      middle[2] + (outward[2] ?? 0) * reach,
+    ];
   }
 
   private draw(): void {
@@ -336,4 +356,13 @@ export class NetBuilder {
     this.guides.show({ segments, points, chosen, handles, joins });
     this.host.viewport.invalidate();
   }
+}
+
+/** Distance on screen from `p` to the segment from `a` to `b`. */
+function segmentDistance(p: ScreenPoint, a: ScreenPoint, b: ScreenPoint): number {
+  const [dx, dy] = [b.x - a.x, b.y - a.y];
+  const length = dx * dx + dy * dy;
+  const t =
+    length > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length)) : 0;
+  return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
 }

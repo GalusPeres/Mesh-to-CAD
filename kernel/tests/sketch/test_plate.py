@@ -21,6 +21,7 @@ from tests.sketch.conftest import (
     plate_section,
 )
 from tests.synthetic.parts import build_test_plate
+from tests.timing import budget
 
 pytestmark = pytest.mark.occt
 
@@ -151,7 +152,7 @@ def test_section_and_fit_are_fast() -> None:
         section = scan.section(geometry)
         auto_fit(SketchParams(section=PLATE_SPEC), section, "metric", refit=False)
         timings.append(time.perf_counter() - start)
-    assert min(timings) < 0.3
+    assert min(timings) < budget(0.3)
 
 
 def test_measured_values_without_snapping() -> None:

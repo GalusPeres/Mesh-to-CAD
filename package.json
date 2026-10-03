@@ -25,6 +25,7 @@
     "format": "prettier --write . && node scripts/py.mjs -m ruff format kernel",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
+    "usertest": "node tools/usertest/run.mjs",
     "kernel:test": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel -m \"not slow\"",
     "kernel:test:all": "node scripts/py.mjs -m pytest -c kernel/pyproject.toml --rootdir kernel",
     "kernel:lint": "node scripts/py.mjs -m ruff check kernel && node scripts/py.mjs -m ruff format --check kernel && node scripts/py.mjs --cwd kernel -m mypy",
