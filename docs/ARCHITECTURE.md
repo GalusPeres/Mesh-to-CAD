@@ -916,7 +916,8 @@ after the rebuild; features only add display sources for non-body geometry.
 
 `operation` is `newBody`, `add`, `cut` or `intersect`; `targetBody` is required for all but
 `newBody`. _Radius aus Scan_ in the fillet tool is a preview helper, not a stored parameter: it
-fits a cylinder to the scan triangles along the picked edges and proposes the (snapped) radius.
+calls `fillet.scanRadius`, which fits a line-arc-line corner in cross-sections along the picked
+edges (`fitting/corner.py`) and proposes the median radius, snapped.
 
 **Sketch semantics.** The stored entities are authoritative. A rebuild builds profile faces from
 them; it does not re-fit the section. If the plane moves (for example because its reference was

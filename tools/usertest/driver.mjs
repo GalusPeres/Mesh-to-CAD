@@ -91,7 +91,7 @@ export function createDriver(client, out) {
   /** The open tool's automation info (net, border edges with screen positions, state). */
   const toolInfo = () => ui({ type: 'toolInfo' });
 
-  /** Revision, open tool and selected triangle count of the app. */
+  /** The app's view: revision, open tool, what is visible, the deviation map. */
   const state = () => ui({ type: 'state' });
 
   /** What the pointer finds at a screen point: scan, body, edge or item. */
@@ -155,6 +155,7 @@ export function createDriver(client, out) {
     shot,
     check,
     kernel: client.kernel,
+    ui,
     failures,
   };
 }

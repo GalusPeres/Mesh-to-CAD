@@ -7,12 +7,25 @@ import type { AutomationAction } from '@shared/automation';
 
 import { allCommands, commandById, runCommand } from '../app/commands/registry';
 import { i18n } from '../i18n';
+import { deviationStore, isDeviationShown } from '../inspection/deviationStore';
 import { replaceSelection } from '../selection/api';
 import { selectionStore } from '../selection/selectionStore';
 import { documentStore } from '../state/documentStore';
 import { toolStore } from '../state/toolStore';
+import { viewStore } from '../state/viewStore';
 import { getViewport } from '../viewport/api';
 import { toolInfo } from './toolInfo';
+
+/** Whether the deviation colours are shown, and for which revision the map was made. */
+function deviationState() {
+  const summary = deviationStore.getState().summary;
+  return {
+    shown: isDeviationShown(),
+    revision: summary?.revision ?? null,
+    min: summary?.stats.min ?? null,
+    max: summary?.stats.max ?? null,
+  };
+}
 
 async function handle(action: AutomationAction): Promise<unknown> {
   switch (action.type) {
@@ -21,6 +34,8 @@ async function handle(action: AutomationAction): Promise<unknown> {
         revision: documentStore.getState().snapshot?.revision ?? null,
         activeTool: toolStore.getState().activeToolId,
         selectedFaces: selectionStore.getState().count,
+        visibility: viewStore.getState().visibility,
+        deviation: deviationState(),
       };
     case 'listCommands':
       return allCommands().map((command) => ({

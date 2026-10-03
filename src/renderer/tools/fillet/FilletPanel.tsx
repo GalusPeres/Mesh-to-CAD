@@ -7,10 +7,11 @@ import {
   type FilletParams,
   type FilletParamsInput,
 } from '@shared/protocol/generated/feature-fillet';
-import { MIN_FIT_FACES } from '@shared/protocol/generated/limits';
 
+import { setToolInfoProvider } from '../../automation/toolInfo';
 import { featureNames } from '../../features/registry';
 import { describeError } from '../../kernel/describeError';
+import { kernel } from '../../kernel/kernel';
 import { useDocument } from '../../state/documentStore';
 import { setDraftHistoryHandler } from '../../state/historyStore';
 import { setDraftDirty } from '../../state/toolStore';
@@ -29,16 +30,8 @@ import { availableBodies, isPositiveLength, storedParams } from '../extrude/soli
 import { SolidResult, useBodyLabel } from '../extrude/solid/SolidSections';
 import { useSolidFeature } from '../extrude/solid/useSolidFeature';
 import { edgeDraftReducer, initialDraft } from './edgeDraft';
-import {
-  edgeForRef,
-  edgeRef,
-  edgeSegments,
-  nearestEdge,
-  pickTolerance,
-  touchesFeature,
-} from './edges';
+import { edgeForRef, edgeRef, nearestEdge, pickTolerance, touchesFeature } from './edges';
 import styles from './FilletPanel.module.css';
-import { radiusFromScan } from './radiusFromScan';
 import {
   useBodyEdgePayload,
   useEdgePayloads,
@@ -50,8 +43,7 @@ type Mode = FilletParams['mode'];
 type Notice = 'otherBody' | 'ownEdge' | 'notOnBody';
 type Measurement =
   | { status: 'running' }
-  | { status: 'ok'; radius: number; measured: number }
-  | { status: 'tooFewFaces'; count: number }
+  | { status: 'ok'; radius: number; measured: number; rms: number }
   | { status: 'error'; message: string; details?: string };
 
 const MODES: readonly Mode[] = ['fillet', 'chamfer'];
@@ -153,17 +145,17 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
   useEdgePickInteraction(pick);
 
   const measure = useCallback(() => {
-    if (!payload || !faceTags) return;
-    const ids = new Set<number>();
-    for (const ref of draft.edges) {
-      const edge = edgeForRef(payload, faceTags, ref);
-      if (edge !== null) ids.add(edge);
-    }
+    if (!draft.body || draft.edges.length === 0) return;
     setMeasurement({ status: 'running' });
-    radiusFromScan(edgeSegments(payload, ids))
-      .then((result) => {
-        setMeasurement(result);
-        if (result.status === 'ok') setSize(round3(result.radius));
+    kernel()
+      .call(
+        'fillet.scanRadius',
+        { targetBody: draft.body, edges: draft.edges, before: editTarget },
+        { lane: 'fillet.scanRadius' },
+      )
+      .result.then((result) => {
+        setMeasurement({ status: 'ok', ...result });
+        if (result.radius > 0) setSize(round3(result.radius));
       })
       .catch((error: unknown) => {
         const failure = toFailure(error);
@@ -173,7 +165,7 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
           details: failure.details,
         });
       });
-  }, [payload, faceTags, draft.edges, t]);
+  }, [draft.body, draft.edges, editTarget, t]);
 
   const params = useMemo<FilletParamsInput | null>(() => {
     if (!draft.body || draft.edges.length === 0 || !isPositiveLength(size)) return null;
@@ -185,6 +177,19 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
     editTarget,
     params as Record<string, unknown> | null,
     close,
+  );
+
+  useEffect(
+    () =>
+      setToolInfoProvider(() => ({
+        state: { job: measurement?.status === 'running' },
+        body: draft.body,
+        edges: draft.edges.length,
+        mode,
+        size,
+        measurement,
+      })),
+    [draft.body, draft.edges, mode, size, measurement],
   );
 
   const body = bodies.find((item) => item.id === draft.body);
@@ -241,7 +246,8 @@ export function FilletPanel({ editTarget, close }: ToolPanelProps) {
         {mode === 'fillet' && (
           <>
             <Button
-              disabled={draft.edges.length === 0 || !payload || measurement?.status === 'running'}
+              disabled={draft.edges.length === 0 || measurement?.status === 'running'}
+              data-testid="fillet-from-scan"
               onClick={measure}
             >
               {t('tools:fillet.fromScan')}
@@ -264,17 +270,12 @@ function MeasurementLine({ measurement }: { measurement: Measurement | null }) {
     case 'ok':
       return (
         <p>
-          {t('tools:fillet.measured', {
+          {t(measurement.radius > 0 ? 'tools:fillet.measured' : 'tools:fillet.sharp', {
             value: measurement.radius,
             measured: measurement.measured,
+            rms: measurement.rms,
           })}
         </p>
-      );
-    case 'tooFewFaces':
-      return (
-        <InlineMessage severity="warning">
-          {t('tools:fillet.tooFewFaces', { count: measurement.count, min: MIN_FIT_FACES })}
-        </InlineMessage>
       );
     case 'error':
       return (

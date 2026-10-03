@@ -85,3 +85,22 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.radius {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.radius:hover {
+  background: var(--bg-hover);
+}
+
+.radiusOff {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}

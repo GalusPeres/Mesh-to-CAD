@@ -23,6 +23,7 @@ export const CAD_ERROR_CODES = [
   'cad.chamferFailed',
   'cad.edgeNotFound',
   'cad.noEdges',
+  'cad.noScanAtEdges',
   'cad.targetRequired',
   'cad.toolsRequired',
   'cad.toolIsTarget',

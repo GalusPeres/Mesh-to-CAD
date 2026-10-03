@@ -22,6 +22,7 @@
     "chamferFailed": "Fase fehlgeschlagen: Abstand {{size, length}} ist zu groß für die gewählten Kanten.",
     "edgeNotFound": "Kante {{index}} gibt es nicht mehr. Kanten neu wählen.",
     "noEdges": "Mindestens eine Kante wählen.",
+    "noScanAtEdges": "Radius aus Scan nicht möglich: an den Kanten zeigt der Scan keine Rundung.",
     "targetRequired": "Zielkörper wählen.",
     "toolsRequired": "Mindestens einen Werkzeugkörper wählen.",
     "toolIsTarget": "Der Zielkörper kann nicht zugleich Werkzeug sein.",

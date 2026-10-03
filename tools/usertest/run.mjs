@@ -16,12 +16,14 @@ import { INSTANCE, automationClient } from '../automation/client.mjs';
 import { writeBlockPart } from './block.mjs';
 import { createDriver } from './driver.mjs';
 import { hideTest } from './hide.mjs';
+import { buttonRadiiTest } from './buttonRadii.mjs';
 import { loftTest } from './loft.mjs';
 import { loftEndTest } from './loftend.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
 import { recognizeTest } from './recognize.mjs';
 import { writeRoundedBlock } from './rounded.mjs';
+import { writeRoundedPart } from './roundedPart.mjs';
 import { roundingTest } from './rounding.mjs';
 import { sketchTest } from './sketch.mjs';
 import { solidTest } from './solid.mjs';
@@ -37,6 +39,7 @@ const TESTS = {
   hide: hideTest,
   solid: solidTest,
   rounding: roundingTest,
+  radii: buttonRadiiTest,
 };
 
 /** The part a test runs on, when it is not the plate with the boss. */
@@ -44,6 +47,7 @@ const PARTS = {
   recognize: writeButtonsPart,
   solid: writeTubPart,
   rounding: writeBlockPart,
+  radii: writeRoundedPart,
   loftend: writeRoundedBlock,
 };
 

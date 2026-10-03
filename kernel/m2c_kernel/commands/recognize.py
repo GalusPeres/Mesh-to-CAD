@@ -23,13 +23,17 @@ import numpy as np
 
 from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.codes.regions import ErrorCode
-from m2c_kernel.document.ops import AddFeature, NewFeature, apply_ops
+from m2c_kernel.document.model import Document
+from m2c_kernel.document.ops import AddFeature, DeleteFeature, NewFeature, apply_ops
+from m2c_kernel.document.rebuild import rebuild
 from m2c_kernel.geometry import Vec3
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
 from m2c_kernel.protocol.wire import F32Array, RawObject, U32Array
 from m2c_kernel.recognition.api import Recognition, recognize
-from m2c_kernel.recognition.build import plan_features, plane_faces
+from m2c_kernel.recognition.build import FeaturePlan, plan_features, plane_faces
+from m2c_kernel.recognition.build_rounding import fillet_ops
+from m2c_kernel.recognition.build_tops import top_faces
 from m2c_kernel.recognition.shapes import ShapeKind
 from m2c_kernel.segmentation.lod import LEVELS_OF_DETAIL
 from m2c_kernel.session.jobs import JobContext
@@ -66,14 +70,20 @@ class RecognizedFeature:
     level: float
     """Height of the plane the feature stands on, above its base plane."""
     height: float
-    """Height of a boss, depth of a pocket (from its level)."""
-    top: Literal["flat", "domed", "through"]
+    """Height of a boss, depth of a pocket (from its level); of an inclined top at the
+    centre of its contour."""
+    tilt: float
+    """Angle of an inclined top against the base plane (radians); 0 otherwise."""
+    top: Literal["flat", "inclined", "domed", "through"]
     rms: float
     """RMS distance of the measured contour to the fitted outline."""
     parent: int | None
     """The pocket the feature stands in."""
     group: int
     """Features of the same shape, size, height and top share a group number (0, 1, ...)."""
+    rounding: float | None
+    """Radius of the top edge's rounding (a pocket's mouth), shared by the group's
+    features (design value); 0 for a sharp edge, None where the scan did not show it."""
     label: Vec3
     """Where to put the feature's label (top centre, part coordinates)."""
 
@@ -109,7 +119,13 @@ def recognize_run(ctx: JobContext, params: RecognizeParams) -> RecognizeResult:
     )
     # Filled holes are not part of the scanned surface.
     faces = working.faces[~working.synthetic]
-    recognition = recognize(working.vertices, faces, _noise(scan.noise), ctx.check_cancelled)
+    recognition = recognize(
+        working.vertices,
+        faces,
+        _noise(scan.noise),
+        ctx.check_cancelled,
+        session.document.settings.snap_units,
+    )
     _LAST.clear()
     _LAST[mesh.key] = recognition
     return _result(recognition)
@@ -134,6 +150,9 @@ class BuildParams:
     names: list[str] | None = None
     """Display names of the chosen features (in the order of `features`) for their
     extrusions, in the user's language."""
+    round_edges: list[int] | None = None
+    """Chosen features whose top edges get their group's rounding (one fillet per
+    group); None rounds every chosen feature with a measured rounding."""
 
 
 @dataclass(frozen=True)
@@ -143,6 +162,9 @@ class BuildResult:
     """Ids of the added features."""
     skipped: list[int]
     """Chosen features that were not built (pockets and holes without a body)."""
+    unrounded: list[int]
+    """Features to round whose fillet failed or whose top edges were not found; they
+    are built with sharp edges."""
 
 
 @command("recognize.build", lane=True, exclusive=True)
@@ -177,7 +199,20 @@ def recognize_build(ctx: JobContext, params: BuildParams) -> BuildResult:
     ]
     names = dict(zip(params.features, params.names, strict=False)) if params.names else None
     plan = plan_features(
-        recognition, params.features, faces, document.next_id, params.target_body, names
+        recognition,
+        params.features,
+        faces,
+        document.next_id,
+        params.target_body,
+        names,
+        lambda index, margin: top_faces(
+            recognition.planes[recognition.features[index].plane],
+            recognition.features[index].relief,
+            centroids,
+            mesh.face_normals,
+            _noise(scan.noise),
+            margin,
+        ),
     )
     ops = [
         AddFeature(
@@ -189,10 +224,56 @@ def recognize_build(ctx: JobContext, params: BuildParams) -> BuildResult:
         )
         for item in plan.features
     ]
-    applied = apply_ops(document, ops, session.feature_types, session.blobs)
-    snapshot = session.commit(applied.document, "recognize", ctx)
-    added = [feature.id for feature in applied.document.features[len(document.features) :]]
-    return BuildResult(revision=snapshot.revision, added=added, skipped=plan.skipped)
+    built_document = apply_ops(document, ops, session.feature_types, session.blobs).document
+    wanted = params.features if params.round_edges is None else params.round_edges
+    radii = {
+        index: radius
+        for index in set(wanted) & set(params.features)
+        if (radius := recognition.radii[recognition.groups[index]])
+    }
+    unrounded: list[int] = []
+    if radii:
+        built_document, unrounded = _with_fillets(ctx, built_document, plan, radii, recognition)
+    snapshot = session.commit(built_document, "recognize", ctx)
+    added = [feature.id for feature in built_document.features[len(document.features) :]]
+    return BuildResult(
+        revision=snapshot.revision, added=added, skipped=plan.skipped, unrounded=unrounded
+    )
+
+
+def _with_fillets(
+    ctx: JobContext,
+    document: Document,
+    plan: FeaturePlan,
+    radii: dict[int, float],
+    recognition: Recognition,
+) -> tuple[Document, list[int]]:
+    """The document with one fillet per group after the extrusions.
+
+    Also returns the features left sharp: their edges were not found, or their fillet
+    failed and was dropped.
+    """
+    session = ctx.session
+    environment = session.environment()
+    bodies = rebuild(document, environment, ctx).bodies
+    fillets, unrounded = fillet_ops(plan.top_edges, radii, recognition.groups, bodies)
+    ops = [
+        AddFeature(feature=NewFeature(type="fillet", params=RawObject(item.params, ())))
+        for item in fillets
+    ]
+    with_fillets = apply_ops(document, ops, session.feature_types, session.blobs).document
+    statuses = rebuild(with_fillets, environment, ctx).statuses
+    added = with_fillets.features[len(document.features) :]
+    failed = [
+        (feature.id, fillet)
+        for feature, fillet in zip(added, fillets, strict=True)
+        if statuses[feature.id].state == "error"
+    ]
+    if failed:
+        drop = [DeleteFeature(id=feature_id) for feature_id, _ in failed]
+        with_fillets = apply_ops(with_fillets, drop, session.feature_types, session.blobs).document
+        unrounded += [index for _, fillet in failed for index in fillet.features]
+    return with_fillets, sorted(unrounded)
 
 
 def _vec3(values: np.ndarray) -> Vec3:
@@ -213,22 +294,12 @@ def _label_point(head: np.ndarray, holds_features: bool) -> np.ndarray:
 
 
 def _result(recognition: Recognition) -> RecognizeResult:
-    groups: dict[tuple[object, ...], int] = {}
     features: list[RecognizedFeature] = []
     rings: list[np.ndarray] = []
     for index, feature in enumerate(recognition.features):
         relief = feature.relief
         outline = feature.outline
-        values = outline.named()
-        size = tuple(
-            round(value, 3)
-            for name, value in values.items()
-            if name not in ("cx", "cy", "angle", "start")
-        )
-        # Free profiles differ from each other: each is its own group.
-        shape = (outline.kind, size) if outline.kind != "profile" else ("profile", index)
-        key = (feature.plane, relief.kind, relief.top, shape, round(relief.height, 3))
-        group = groups.setdefault(key, len(groups))
+        group = recognition.groups[index]
         sign = 1.0 if relief.kind == "boss" else -1.0
         top = relief.level + sign * relief.height
         foot = recognition.outline_3d(feature, relief.level)
@@ -239,13 +310,15 @@ def _result(recognition: Recognition) -> RecognizeResult:
                 plane=feature.plane,
                 kind=relief.kind,
                 shape=outline.kind,
-                params={name: float(value) for name, value in values.items()},
+                params={name: float(value) for name, value in outline.named().items()},
                 level=float(relief.level),
                 height=float(relief.height),
                 top=relief.top,
+                tilt=relief.tilt,
                 rms=float(outline.rms),
                 parent=relief.parent,
                 group=group,
+                rounding=recognition.radii[group],
                 label=_vec3(_label_point(head, bool(relief.children))),
             )
         )

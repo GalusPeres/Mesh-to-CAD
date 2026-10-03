@@ -24,10 +24,12 @@ export interface RecognizedFeature {
   params: Record<string, number>;
   level: number;
   height: number;
-  top: 'flat' | 'domed' | 'through';
+  tilt: number;
+  top: 'flat' | 'inclined' | 'domed' | 'through';
   rms: number;
   parent: number | null;
   group: number;
+  rounding: number | null;
   label: Vec3;
 }
 
@@ -44,12 +46,14 @@ export interface BuildParams {
   features: number[];
   targetBody?: string | null;
   names?: string[] | null;
+  roundEdges?: number[] | null;
 }
 
 export interface BuildResult {
   revision: number;
   added: string[];
   skipped: number[];
+  unrounded: number[];
 }
 
 export interface RecognizeMethods {

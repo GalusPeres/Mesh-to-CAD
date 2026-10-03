@@ -50,6 +50,7 @@ from m2c_kernel.recognition.contours import inside_contour, signed_area
 from m2c_kernel.recognition.measure import (
     UP_FACING,
     PlaneContext,
+    TopKind,
     boundary_contour,
     section_contour,
     top_of,
@@ -59,6 +60,7 @@ from m2c_kernel.recognition.measure import (
 from m2c_kernel.recognition.meshdata import MeshData
 from m2c_kernel.recognition.outline import Outline, fit_outline
 from m2c_kernel.recognition.planes import BasePlane
+from m2c_kernel.recognition.top_surface import TopSurface
 
 type IntArray = npt.NDArray[np.int64]
 type BoolArray = npt.NDArray[np.bool_]
@@ -91,11 +93,14 @@ class Relief:
             `top` is "through").
         outline: Fitted contour shape in the plane's (u, v) frame.
         level: Height of the plane it stands on, above the base plane (mm).
-        height: Height above (boss) or depth below (pocket) the level (mm).
-        top: "flat" or "domed" (for pockets: the floor), "through" for a pocket
-            without a floor.
+        height: Height above (boss) or depth below (pocket) the level (mm), of an
+            inclined top at the contour's centre.
+        top: "flat", "inclined" or "domed" (for pockets: the floor), "through" for
+            a pocket without a floor.
         contour: (k, 2) measured contour in the plane frame.
         vertices: Scan vertices of the feature.
+        top_surface: The heights of a flat, inclined or smoothly domed top (plane
+            frame), None for others; `height` holds at its centre.
         parent: Index of the enclosing pocket, if any.
     """
 
@@ -103,11 +108,36 @@ class Relief:
     outline: Outline
     level: float
     height: float
-    top: Literal["flat", "domed", "through"]
+    top: TopKind
     contour: FloatArray
     vertices: IntArray
+    top_surface: TopSurface | None = None
     parent: int | None = None
     children: list[int] = field(default_factory=list)
+
+    def top_at(self, uv: FloatArray) -> FloatArray:
+        """Height of the top (a pocket's floor) above the base plane at (k, 2) points.
+
+        The surface's shape at the feature's height (which design intent may round).
+        """
+        sign = 1.0 if self.kind == "boss" else -1.0
+        top = self.level + sign * self.height
+        if self.top_surface is None:
+            return np.full(len(uv), top)
+        surface = self.top_surface
+        result: FloatArray = top + surface.height(uv) - surface.coefficients[0]
+        return result
+
+    def top_gradient(self, uv: FloatArray) -> FloatArray:
+        """(k, 2) rise of the top per mm along u and v."""
+        if self.top_surface is None:
+            return np.zeros((len(uv), 2))
+        return self.top_surface.gradient(uv)
+
+    @property
+    def tilt(self) -> float:
+        """Angle of an inclined top against the base plane at its centre (radians)."""
+        return self.top_surface.tilt() if self.top_surface and self.top == "inclined" else 0.0
 
 
 def find_reliefs(data: MeshData, plane: BasePlane, noise: float) -> list[Relief]:
@@ -266,10 +296,11 @@ def _measure(
     if not walls_face(context, part, contour, height, outward=kind == "boss"):
         return None
     measured_at = height
-    top, top_rise = top_of(context, part, sign, level, height, area)
-    if top_rise is not None:
-        height = top_rise  # the flat top itself, free of the percentile's noise bias
-    if top == "through":
+    top = top_of(context, part, sign, level, height, area)
+    if top.surface is not None:
+        # The top itself at its centre, free of the percentile's noise bias.
+        height = sign * (top.surface.coefficients[0] - level)
+    if top.kind == "through":
         # Through: the hole ends at the far side; its points next to the far rim
         # (facing away from the plane) give the depth.
         rim = np.unique(context.graph[part].indices)
@@ -288,8 +319,9 @@ def _measure(
         outline=outline,
         level=level,
         height=height,
-        top=top,
+        top=top.kind,
         contour=contour,
+        top_surface=top.surface,
         vertices=part,
         parent=parent,
     )

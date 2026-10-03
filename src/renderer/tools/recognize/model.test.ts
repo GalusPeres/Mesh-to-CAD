@@ -21,10 +21,12 @@ function feature(overrides: Partial<RecognizedFeature>): RecognizedFeature {
     params: { cx: 0, cy: 0, radius: 4 },
     level: 0,
     height: 2,
+    tilt: 0,
     top: 'flat',
     rms: 0.01,
     parent: null,
     group: 0,
+    rounding: null,
     label: [0, 0, 2],
     ...overrides,
   };
