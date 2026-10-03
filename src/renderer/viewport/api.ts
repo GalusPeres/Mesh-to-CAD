@@ -160,6 +160,8 @@ export interface Overlay {
    * more for lines and points that sit on them.
    */
   applyDepthBias(material: unknown, scale?: number): void;
+  /** `applyDepthBias` for a fat-line `LineMaterial` (lines wider than one pixel). */
+  applyFatLineDepthBias(material: unknown, scale?: number): void;
 }
 
 /** The scan surface point nearest to a point, in part coordinates. */

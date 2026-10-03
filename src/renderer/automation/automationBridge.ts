@@ -43,16 +43,19 @@ async function handle(action: AutomationAction): Promise<unknown> {
     }
     case 'click':
       return click(action.target);
+    case 'key':
+      return press(action);
   }
 }
 
-/** Click like the user: by test id first, else the enabled button with that label. */
+/** Click like the user: by test id first, else the button with that label or aria-label. */
 function click(target: string): { clicked: string } {
   const byId = document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(target)}"]`);
   const element =
     byId ??
     [...document.querySelectorAll<HTMLElement>('button, [role="button"], [role="radio"]')].find(
-      (candidate) => candidate.textContent?.trim() === target,
+      (candidate) =>
+        candidate.textContent?.trim() === target || candidate.getAttribute('aria-label') === target,
     );
   if (!element) throw new Error(`nothing to click: ${target}`);
   if (element instanceof HTMLButtonElement && element.disabled) {
@@ -60,6 +63,22 @@ function click(target: string): { clicked: string } {
   }
   element.click();
   return { clicked: element.textContent?.trim() || target };
+}
+
+/** Press a key at the focused element (or the page), as keydown and keyup. */
+function press(action: Extract<AutomationAction, { type: 'key' }>): { pressed: string } {
+  const target = document.activeElement ?? document.body;
+  const init: KeyboardEventInit = {
+    key: action.key,
+    ctrlKey: action.ctrl ?? false,
+    shiftKey: action.shift ?? false,
+    altKey: action.alt ?? false,
+    bubbles: true,
+    cancelable: true,
+  };
+  target.dispatchEvent(new KeyboardEvent('keydown', init));
+  target.dispatchEvent(new KeyboardEvent('keyup', init));
+  return { pressed: action.key };
 }
 
 export function installAutomationBridge(): void {

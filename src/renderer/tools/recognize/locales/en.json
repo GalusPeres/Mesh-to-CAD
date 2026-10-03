@@ -1,0 +1,37 @@
+{
+  "label": "Recognise shapes",
+  "tooltip": "Finds flat faces and the buttons, pockets, slots, ring segments and holes on them, and builds them as editable sketches and extrusions.",
+  "found": "Found",
+  "computing": "Recognising shapes …",
+  "stop": "Cancel",
+  "stopped": "Recognition cancelled.",
+  "compute": "Recognise again",
+  "nothingFound": "No shapes found. Is the scan aligned and does it have flat faces?",
+  "featureCount_one": "{{formatted}} shape",
+  "featureCount_other": "{{formatted}} shapes",
+  "all": "All",
+  "none": "None",
+  "roles": {
+    "boss": "Raised",
+    "pocket": "Pocket",
+    "hole": "Hole"
+  },
+  "shapeNames": {
+    "circle": "Circle",
+    "slot": "Slot",
+    "roundedRect": "Rectangle",
+    "ringSegment": "Ring segment",
+    "profile": "Free outline"
+  },
+  "height": "height {{value}}",
+  "depth": "depth {{value}}",
+  "through": "through",
+  "domed": "domed",
+  "nested": "in pocket",
+  "profileHint": "Free outlines cannot be built automatically: redraw them with the sketch tool.",
+  "target": "Target",
+  "targetBody": "Body",
+  "newBodies": "New bodies",
+  "needsBody": "Pockets and holes are cut from a body. Create the base body first and choose it here; without a body only the raised shapes are built.",
+  "help": "Recognition reads the aligned scan like a designer: flat faces and, on them, raised shapes, pockets and holes outlined by a circle, slot, rectangle or ring segment. Equal shapes are made equal, sizes rounded to 0.05 mm. In the view, rings show the foot and top of every shape; clicking its label or its check box leaves it out. OK builds a plane per face, a sketch per height and an extrusion per group, all editable in the project tree afterwards."
+}

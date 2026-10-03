@@ -62,7 +62,10 @@ test uses this).
 | `apply_ops`                    | Apply document operations as one undoable step                                                   |
 | `kernel_call`                  | Call any kernel method (see `kernel/m2c_kernel/commands`)                                        |
 | `list_commands`, `run_command` | Run app commands: views, undo, tools                                                             |
-| `click`                        | Click a control by its `data-testid` or a button by its visible label                            |
+| `recognize_shapes`             | Flat faces and the raised shapes, pockets and holes on them, with fitted outlines                |
+| `build_shapes`                 | Build recognised shapes as plane, sketches and extrusions, joined to or cut from a body          |
+| `click`                        | Click a control by its `data-testid` or a button by its label or aria-label                      |
+| `press_key`                    | Press a key: Escape, Enter, tool shortcuts                                                       |
 | `screenshot`                   | Screenshot of the window                                                                         |
 
 Coordinates are part coordinates in millimetres, after the alignment.
@@ -71,6 +74,7 @@ Coordinates are part coordinates in millimetres, after the alignment.
 
 `POST http://127.0.0.1:<port>/rpc` with `Authorization: Bearer <token>` and a JSON body
 `{"method": ..., "params": ...}`. Methods: `ping`, `kernel.call` (`method`, `params`,
-optional `lane`), `ui` (`action`: `state`, `listCommands`, `runCommand`, `selectFaces`, `click`) and
+optional `lane`), `ui` (`action`: `state`, `listCommands`, `runCommand`, `selectFaces`, `click`,
+`key`) and
 `screenshot`. Typed arrays in kernel parameters are written as
 `{"$typed": "uint32", "values": [...]}`; long typed arrays in results are summarised.

@@ -6,8 +6,10 @@ export type AutomationAction =
   | { type: 'listCommands' }
   | { type: 'runCommand'; id: string }
   | { type: 'selectFaces'; faces: readonly number[] }
-  /** Click a control by its `data-testid`, or else a button by its visible label. */
-  | { type: 'click'; target: string };
+  /** Click a control by its `data-testid`, or else a button by its label or aria-label. */
+  | { type: 'click'; target: string }
+  /** Press a key (`Escape`, `Enter`, `k`, ...) like the user, with optional modifiers. */
+  | { type: 'key'; key: string; ctrl?: boolean; shift?: boolean; alt?: boolean };
 
 export interface AutomationRequest {
   requestId: number;

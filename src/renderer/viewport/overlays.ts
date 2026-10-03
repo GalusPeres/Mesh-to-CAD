@@ -27,5 +27,7 @@ export function createOverlayGroup(
       invalidate();
     },
     applyDepthBias: (material, scale) => bias.apply(material as THREE.Material, scale),
+    applyFatLineDepthBias: (material, scale) =>
+      bias.applyToFatLines(material as THREE.ShaderMaterial, scale),
   };
 }

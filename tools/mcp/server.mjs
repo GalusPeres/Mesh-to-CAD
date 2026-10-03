@@ -19,6 +19,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+import { registerRecognitionTools } from './recognition.mjs';
+
 const PRODUCT = 'Mesh-to-CAD';
 /** Profiles the app may run with: the user's, and the off-screen automation profile. */
 const PROFILES = [PRODUCT, `${PRODUCT}-automation`];
@@ -287,6 +289,24 @@ tool(
   },
   async ({ target }) => text(await ui({ type: 'click', target })),
 );
+
+tool(
+  'press_key',
+  {
+    description:
+      'Press a key in the app like the user: "Escape" closes a dialog or the open tool, ' +
+      '"Enter" confirms it, letters run tool shortcuts (e.g. "k" opens Formen erkennen).',
+    inputSchema: {
+      key: z.string().describe('KeyboardEvent.key, e.g. "Escape", "Enter", "k"'),
+      ctrl: z.boolean().optional(),
+      shift: z.boolean().optional(),
+      alt: z.boolean().optional(),
+    },
+  },
+  async (input) => text(await ui({ type: 'key', ...input })),
+);
+
+registerRecognitionTools({ tool, kernel, text, summarise });
 
 tool(
   'fit_shape',
