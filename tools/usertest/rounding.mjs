@@ -1,244 +1,178 @@
-// User test of rounded and inclined button tops (#24): on the plate built as a body,
-// Formen erkennen measures the top edges' rounding (R 0,5 for both round buttons, shown
-// and switchable per group) and the inclined top; OK adds the buttons to the plate with
-// one fillet for the group and extrudes the inclined button up to a fitted plane. Then,
-// built without the rounding, the fillet tool's Radius aus Scan finds the same radius on
-// a picked edge. The buttons are compared with the scan face by face.
+// User test of the issue's own case (#7): a block built straight (a plane on the
+// bottom, a sketch where one click fits the outline, an extrusion), then the rounded
+// edge the extrusion lacks: a net laid on it by hand, pushed past the block's faces,
+// and Zuschneiden cuts the block with it into one body with the rounding.
 
-import { PART } from './part.mjs';
-import { ROUNDED } from './roundedPart.mjs';
+import { BLOCK, blockVolume } from './block.mjs';
 
-const DEGREES = 180 / Math.PI;
-const TOLERANCE_MM = 0.05;
+const [LENGTH, DEPTH, HEIGHT] = BLOCK.size;
+const R = BLOCK.radius;
 
-const near = (value, expected, tolerance) =>
-  typeof value === 'number' && Math.abs(value - expected) <= tolerance;
+const features = async (d, type) =>
+  (await d.kernel('doc.get')).document.features.filter((feature) => feature.type === type);
 
-async function recognised(d) {
+async function newFeature(d, type) {
+  return d.until(async () => (await features(d, type)).at(-1)?.id, `the ${type} feature`);
+}
+
+/** The block's bottom as a fitted plane, its sketch and its extrusion. */
+async function straightBlock(d) {
+  const { faces } = await d.kernel('automation.facesInBox', {
+    min: [1, 1, -0.5],
+    max: [LENGTH - 1, DEPTH - 1, 0.5],
+    facing: [0, 0, -1],
+    maxAngleDeg: 10,
+  });
+  await d.select(faces);
+  await d.press('tool-fit-primitive');
+  await d.pressWhenReady('panel-ok');
+  const plane = await newFeature(d, 'fit');
+  await d.select([]);
+
+  await d.press(`tree-node-${plane}`);
+  await d.command('tool.section-sketch');
+  // The bottom plane faces down; the cut goes into the part.
+  await d.press('sketch-flip');
+  await d.pressWhenReady('panel-ok');
+  await d.until(async () => (await d.toolInfo())?.outlines?.length, 'the sketch mode');
+  await d.tap((await d.toolInfo()).outlines[0].screen);
+  const [shape] = await d.until(async () => (await d.toolInfo())?.shapes, 'the fitted outline');
+  await d.settle();
+  d.check(
+    'one click fits the 60 x 40 outline',
+    shape?.sizes?.length === LENGTH && shape?.sizes?.width === DEPTH,
+    `${shape?.kind} ${JSON.stringify(shape?.sizes)}`,
+  );
+  await d.press('panel-ok');
+  await newFeature(d, 'sketch');
+
+  await d.press('tool-extrude');
+  await d.pressWhenReady('panel-ok');
+  const extrude = await newFeature(d, 'extrude');
+  const body = await d.until(
+    async () => (await d.kernel('doc.get')).status.bodies.find((item) => item.id === extrude),
+    'the block',
+  );
+  d.check(
+    'the extrusion is the sharp block',
+    Math.abs(body.volume - LENGTH * DEPTH * HEIGHT) < 1,
+    `${body.volume.toFixed(1)} mm³`,
+  );
+  return { plane, body: extrude };
+}
+
+/** A face over the rounding by four clicks, finer three times, fitted, pushed past the block. */
+async function roundingNet(d) {
+  await d.command('view.iso');
+  // Turn the view half round to look at the rounded back edge.
+  await d.drag({ x: 650, y: 500 }, { x: 650 + Math.PI / 0.008, y: 500 }, { button: 2 }, 20);
+  await d.key('Escape');
+  await d.command('view.fitAll');
+  await d.press('tool-freeform-net');
+  const before = DEPTH - R - 2;
+  const below = HEIGHT - R - 2;
+  for (const point of [
+    [1, before, HEIGHT],
+    [LENGTH - 1, before, HEIGHT],
+    [LENGTH - 1, DEPTH, below],
+    [1, DEPTH, below],
+  ])
+    await d.tap(await d.at(point));
+  await d.settle();
+  const middle = [LENGTH / 2, DEPTH - R + R * Math.SQRT1_2, HEIGHT - R + R * Math.SQRT1_2];
+  for (let i = 0; i < 3; i += 1) {
+    await d.tap(await d.at(middle), { button: 2 });
+    await d.press('freeform-net-refine');
+    await d.settle();
+  }
+  // The right clicks chose points; Escape clears the choice, so the whole net is fitted.
+  await d.key('Escape');
+  for (let i = 0; i < 3; i += 1) {
+    await d.press('freeform-net-fit');
+    await d.settle();
+  }
+  const fitted = await d.toolInfo();
+  const summary = fitted?.state?.summary;
+  d.check(
+    'the net lies on the rounding',
+    fitted?.quads === 64 && summary?.rms < 0.05,
+    `${fitted?.quads} quads, RMS ${summary?.rms?.toFixed(3)} mm, max ${summary?.max?.toFixed(3)} mm`,
+  );
+  await d.shot('rounding-1-net');
+
+  await d.press('freeform-net-push');
+  await d.settle();
+  const pushed = await d.toolInfo();
+  const border = (pushed?.border ?? []).map((edge) => edge.middle);
+  const past = border.every(
+    ([x, y, z]) => x < 0 || x > LENGTH || y > DEPTH + 0.3 || z > HEIGHT + 0.3,
+  );
+  d.check(
+    'its border is pushed past the top, the back and both ends',
+    pushed?.state?.pushed?.moved > 0 && past,
+    `${pushed?.state?.pushed?.moved} points`,
+  );
+  await d.shot('rounding-2-pushed');
+  await d.press('panel-ok');
+  return newFeature(d, 'freeformNet');
+}
+
+async function previewed(d) {
+  await d.pause(500);
   return d.until(async () => {
     const info = await d.toolInfo();
-    return !info?.state?.job && info?.groups?.length ? info.groups : null;
-  }, 'the recognised shapes');
-}
-
-/** Open Formen erkennen and return its groups: the round buttons and the inclined one. */
-async function recognise(d) {
-  await d.press('tool-recognize');
-  const groups = await recognised(d);
-  return {
-    round: groups.find((group) => group.top === 'flat' && group.count === 2),
-    inclined: groups.find((group) => group.top === 'inclined'),
-  };
-}
-
-/** OK in the open panel; returns the features it added once they are there. */
-async function build(d) {
-  const before = (await d.kernel('doc.get')).document.features.length;
-  await d.press('panel-ok');
-  const snapshot = await d.until(async () => {
-    const current = await d.kernel('doc.get');
-    return current.document.features.length > before && !(await d.toolInfo()) ? current : null;
-  }, 'the built shapes');
-  return { snapshot, added: snapshot.document.features.slice(before) };
-}
-
-/** The plate as a body: a sketch of its outline extruded by its height. */
-async function plateBody(d) {
-  const [length, width, height] = PART.plate;
-  const corners = [
-    [0, 0],
-    [length, 0],
-    [length, width],
-    [0, width],
-  ];
-  const add = (type, params) => ({ type: 'addFeature', feature: { type, params } });
-  const { revision } = await d.kernel('doc.get');
-  await d.kernel('doc.apply', {
-    baseRevision: revision,
-    label: 'plate',
-    ops: [
-      add('sketch', {
-        section: { type: 'planar', plane: { type: 'standard', plane: 'XY' } },
-        points: corners.map(([x, y], i) => ({ id: `p${i}`, x, y })),
-        entities: corners.map((_, i) => ({
-          type: 'line',
-          id: `e${i}`,
-          start: `p${i}`,
-          end: `p${(i + 1) % 4}`,
-        })),
-      }),
-    ],
-  });
-  const sketch = (await d.kernel('doc.get')).document.features.at(-1).id;
-  const next = await d.kernel('doc.get');
-  await d.kernel('doc.apply', {
-    baseRevision: next.revision,
-    label: 'plate',
-    ops: [add('extrude', { sketch, extent: { type: 'distance', forward: height } })],
-  });
-  return (await d.kernel('doc.get')).document.features.at(-1).id;
-}
-
-/** Largest deviation per kind of button face (rounding, top, wall), in mm. */
-async function deviationByFace(d, plate) {
-  const { status } = await d.kernel('doc.get');
-  const map = await d.kernel('inspection.deviation', { bodies: [], maxDistance: 0.5 });
-  const largest = {};
-  for (const face of map.faces) {
-    const tag = status.bodies.find((body) => body.id === face.body)?.faceTags[face.face] ?? '';
-    if (tag.startsWith(`${plate}:`)) continue;
-    const kind = tag.includes(':fillet:')
-      ? 'rounding'
-      : tag.endsWith(':cap:end')
-        ? 'top'
-        : tag.includes(':side:')
-          ? 'wall'
-          : null;
-    if (kind) largest[kind] = Math.max(largest[kind] ?? 0, face.maxAbs);
-  }
-  return largest;
-}
-
-/** Space until the view shows `visibility` (scan and bodies, the scan, the bodies). */
-async function show(d, visibility) {
-  for (let presses = 0; (await d.state()).visibility !== visibility; presses += 1) {
-    if (presses === 3) throw new Error(`the view does not show ${visibility}`);
-    await d.command('view.cycleVisibility');
-  }
-}
-
-/** Zoom onto the part inside a box: select its triangles, fit the view, select nothing. */
-async function zoomTo(d, min, max) {
-  const { faces } = await d.kernel('automation.facesInBox', {
-    min,
-    max,
-    facing: null,
-    maxAngleDeg: 30,
-  });
-  await d.ui({ type: 'selectFaces', faces });
-  await d.command('view.fitSelection');
-  await d.command('selection.clear');
-}
-
-/** Close-ups of a round and the inclined button: bodies only (colours off), with the
- * scan, with the finished heatmap. */
-async function look(d, name) {
-  const top = 10 + ROUNDED.round.height;
-  const [rx, ry] = ROUNDED.round.centres[0];
-  const [ix, iy] = ROUNDED.inclined.centre;
-  const views = {
-    round: [
-      [rx - 6, ry - 6, 9],
-      [rx + 6, ry + 6, top + 1],
-    ],
-    inclined: [
-      [ix - 7, iy - 7, 9],
-      [ix + 7, iy + 7, top + 1],
-    ],
-  };
-  await d.command('view.iso');
-  for (const [button, [min, max]] of Object.entries(views)) {
-    await show(d, 'both');
-    await zoomTo(d, min, max);
-    await show(d, 'bodies');
-    await d.shot(`${name}-${button}-bodies`);
-    await show(d, 'both');
-    await d.shot(`${name}-${button}-scan`);
-  }
-  await d.press('stage-inspect');
-  await d.press('tool-deviation');
-  const revision = (await d.state()).revision;
-  await d.until(async () => {
-    const { deviation } = await d.state();
-    return deviation.shown && deviation.revision === revision;
-  }, 'the finished deviation map');
-  for (const [button, [min, max]] of Object.entries(views)) {
-    await zoomTo(d, min, max);
-    await d.shot(`${name}-${button}-heatmap`);
-  }
-  await d.key('Escape');
-  await d.press('stage-model');
+    return info?.preview === 'ok' || info?.preview === 'error' ? info : null;
+  }, 'the trim preview');
 }
 
 export async function roundingTest(d) {
-  const plate = await plateBody(d);
   await d.press('stage-model');
-  await d.command('view.iso');
-  await d.command('view.fitAll');
-  const { round, inclined } = await recognise(d);
-  d.check(
-    'both round buttons share the rounding from the scan',
-    near(round?.rounding, ROUNDED.round.rounding, 1e-6),
-    `R ${round?.rounding}`,
-  );
-  d.check(
-    'the inclined top is found with its tilt and no rounding',
-    near(inclined?.tilt * DEGREES, ROUNDED.inclined.tiltDeg, 1) && inclined?.rounding === 0,
-    `${(inclined?.tilt * DEGREES).toFixed(1)}°, R ${inclined?.rounding}`,
-  );
-  await d.press(`recognize-round-${round.id}`);
-  const off = (await d.toolInfo()).groups.find((group) => group.id === round.id);
-  await d.press(`recognize-round-${round.id}`);
-  const on = (await d.toolInfo()).groups.find((group) => group.id === round.id);
-  d.check('a click on R switches the rounding off and on', !off.rounded && on.rounded);
-  await d.shot('rounding-1-found');
+  const { plane, body } = await straightBlock(d);
+  const net = await roundingNet(d);
 
-  const first = await build(d);
-  const state = (feature) => first.snapshot.status.features[feature.id]?.state;
+  // Zuschneiden with the block and the net; the tree still has the plane chosen.
+  await d.press('tool-trim-solid');
+  const start = (await d.toolInfo()).inputs;
+  if (start.planes.includes(plane)) await d.press(`trim-solid-planes-${plane}`);
+  if (!start.surfaces.includes(net)) await d.press(`trim-solid-surfaces-${net}`);
+  if (!start.bodies.includes(body)) await d.press(`trim-solid-bodies-${body}`);
+  const trimmed = await previewed(d);
   d.check(
-    'every built feature is fine',
-    first.added.every((feature) => state(feature) === 'ok' || state(feature) === 'warning'),
-    first.added.map((feature) => `${feature.type} ${state(feature)}`).join(', '),
+    'the net cuts the corner off the block',
+    trimmed.canCommit && trimmed.stats?.pieces === 2 && trimmed.stats?.kept === 1,
+    `${trimmed.error ?? trimmed.state}, ${trimmed.stats?.pieces} pieces`,
   );
-  const fillets = first.added.filter((feature) => feature.type === 'fillet');
-  d.check(
-    'one fillet R 0,5 for the group of round buttons',
-    fillets.length === 1 &&
-      fillets[0].params.size === 0.5 &&
-      fillets[0].params.targetBody === plate,
-    fillets.map((feature) => feature.params.size).join(', '),
-  );
-  const toPlane = first.added.filter(
-    (feature) => feature.type === 'extrude' && feature.params.extent.type === 'toPlane',
-  );
-  d.check('the inclined button is extruded up to a fitted plane', toPlane.length === 1);
-  const largest = await deviationByFace(d, plate);
-  d.check(
-    'roundings, tops and walls stay within the tolerance',
-    Object.values(largest).every((value) => value <= TOLERANCE_MM),
-    Object.entries(largest)
-      .map(([kind, value]) => `${kind} ${value.toFixed(3)}`)
-      .join(', '),
-  );
-  await look(d, 'rounding-2-built');
+  await d.shot('rounding-3-trim');
+  await d.pressWhenReady('panel-ok');
 
-  // Built again without the rounding: the fillet tool measures the same radius.
-  await d.command('edit.undo');
-  await recognise(d);
-  await d.press(`recognize-round-${round.id}`);
-  const second = await build(d);
+  const doc = await d.until(async () => {
+    const current = await d.kernel('doc.get');
+    const trim = current.document.features.find((feature) => feature.type === 'trimSolid');
+    return trim && current.status.features[trim.id] ? current : null;
+  }, 'the trim feature');
+  const result = doc.status.bodies.find((item) => item.id === body);
+  d.check('Zuschneiden makes one body', result?.solids === 1, `${doc.status.bodies.length}`);
+  const removed = LENGTH * DEPTH * HEIGHT - blockVolume();
+  const error = result ? (result.volume - blockVolume()) / removed : 1;
   d.check(
-    'without the rounding no fillet is built',
-    second.added.every((feature) => feature.type !== 'fillet'),
+    'the corner it removed is the rounding’s',
+    Math.abs(error) < 0.1,
+    `${result?.volume.toFixed(1)} mm³ vs ${blockVolume().toFixed(1)} mm³ (${(error * 100).toFixed(1)} % of the corner)`,
   );
-  // Body edges can be picked where they are drawn.
-  await d.command('view.display.shadedEdges');
-  await d.press('tool-fillet');
-  const [x, y] = ROUNDED.round.centres[0];
-  const top = 10 + ROUNDED.round.height;
-  await d.tap(await d.at([x, y - ROUNDED.round.radius, top]));
-  await d.until(async () => (await d.toolInfo())?.edges === 1, 'the picked edge');
-  await d.press('fillet-from-scan');
-  const measured = await d.until(async () => {
-    const info = await d.toolInfo();
-    return info?.measurement && info.measurement.status !== 'running' ? info : null;
-  }, 'the radius from the scan');
+  const { stats } = await d.kernel('inspection.deviation', { bodies: [body], maxDistance: 2 });
+  // The largest deviation (about 0.3 mm) sits within 3 mm of the net's free ends, where
+  // the hand-placed net already fits worst before it is pushed.
   d.check(
-    'Radius aus Scan finds R 0,5 on the picked edge',
-    measured.measurement.status === 'ok' && near(measured.size, ROUNDED.round.rounding, 1e-6),
-    JSON.stringify(measured.measurement),
+    'it lies on the scan',
+    stats.rms !== null && stats.rms < 0.05 && Math.max(stats.max, -stats.min) < 0.35,
+    `RMS ${stats.rms?.toFixed(3)} mm, max ${stats.max?.toFixed(3)} / ${stats.min?.toFixed(3)} mm, ${(100 * (stats.within ?? 0)).toFixed(1)} % within tolerance`,
   );
-  await d.shot('rounding-3-fillet-tool');
-  await d.key('Escape');
-  await d.command('view.display.shaded');
+  const preflight = await d.kernel('export.preflight', { bodies: [] });
+  const check = preflight.bodies.find((item) => item.body === body);
+  d.check(
+    'it exports as one closed solid',
+    check && check.closed && check.valid && !check.blocking,
+    JSON.stringify(check?.problems ?? []),
+  );
+  await d.shot('rounding-4-body');
 }

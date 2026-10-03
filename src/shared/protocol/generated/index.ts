@@ -45,6 +45,7 @@ import type { ReferenceFeatureType } from './feature-reference';
 import type { RevolveFeatureType } from './feature-revolve';
 import type { SketchFeatureType } from './feature-sketch';
 import type { TrimFeatureType } from './feature-trim';
+import type { TrimSolidFeatureType } from './feature-trim-solid';
 
 export type KernelMethods = AlignmentMethods & AutomationMethods & DebugMethods & DocMethods & ExportMethods & FilletMethods & FitMethods & FreeformMethods & InspectionMethods & MeshMethods & NetMethods & ProjectMethods & RecognizeMethods & RegionsMethods & SceneMethods & SketchMethods & SurfacingMethods & SystemMethods;
 
@@ -136,6 +137,7 @@ export interface FeatureTypes {
   revolve: RevolveFeatureType;
   sketch: SketchFeatureType;
   trim: TrimFeatureType;
+  trimSolid: TrimSolidFeatureType;
 }
 
 export type FeatureTypeId = keyof FeatureTypes;
@@ -154,4 +156,5 @@ export const FEATURE_TYPE_IDS = [
   'revolve',
   'sketch',
   'trim',
+  'trimSolid',
 ] as const satisfies readonly FeatureTypeId[];

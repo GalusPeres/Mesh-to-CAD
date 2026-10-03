@@ -13,6 +13,7 @@ about the axis and a common start direction, otherwise the loft twists
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -100,18 +101,39 @@ def largest_loop(loops: list[FloatArray], axis: FloatArray) -> FloatArray | None
     return max(loops, key=lambda loop: abs(loop_area(loop, axis)))
 
 
-def normalise_section(
-    loop: FloatArray,
-    axis: FloatArray,
-    reference: FloatArray,
-    count: int = SECTION_POINTS,
-    smoothing: float = 1.0,
-) -> FloatArray:
-    """Resample a closed loop to `count` evenly spaced points.
+@dataclass(frozen=True)
+class Outline:
+    """A section loop, smoothed, counter-clockwise about the axis, measured by arc length.
 
-    The result runs counter-clockwise about `axis` and starts where the loop crosses
-    the half-plane of `reference` seen from its centroid. `smoothing` is the Gaussian
-    sigma in loop samples; it removes scanner noise without visibly rounding the section.
+    Arc lengths count from the start: where the loop crosses the half-plane of the
+    reference direction, seen from its centroid.
+    """
+
+    closed: FloatArray
+    """The smoothed loop with its first point repeated at the end."""
+    length: FloatArray
+    """Arc length at each point of `closed`."""
+    start: float
+
+    @property
+    def total(self) -> float:
+        return float(self.length[-1])
+
+    def at(self, arc: FloatArray) -> FloatArray:
+        """Points at arc lengths from the start."""
+        samples = (self.start + np.asarray(arc, dtype=np.float64)) % self.total
+        return np.column_stack(
+            [np.interp(samples, self.length, self.closed[:, k]) for k in range(3)]
+        )
+
+
+def outline(
+    loop: FloatArray, axis: FloatArray, reference: FloatArray, smoothing: float = 1.0
+) -> Outline:
+    """`loop` as an outline.
+
+    `smoothing` is the Gaussian sigma in loop samples; it removes scanner noise without
+    visibly rounding the section.
     """
     if loop_area(loop, axis) < 0:
         loop = loop[::-1]
@@ -122,9 +144,19 @@ def normalise_section(
     centre = smoothed.mean(axis=0)
     side = np.cross(axis, reference)
     angle = np.arctan2((smoothed - centre) @ side, (smoothed - centre) @ reference)
-    start = float(length[int(np.argmin(np.abs(angle)))])
-    samples = (start + np.linspace(0.0, length[-1], count, endpoint=False)) % length[-1]
-    return np.column_stack([np.interp(samples, length, closed[:, k]) for k in range(3)])
+    return Outline(closed, length, float(length[int(np.argmin(np.abs(angle)))]))
+
+
+def normalise_section(
+    loop: FloatArray,
+    axis: FloatArray,
+    reference: FloatArray,
+    count: int = SECTION_POINTS,
+    smoothing: float = 1.0,
+) -> FloatArray:
+    """Resample a closed loop to `count` evenly spaced points from the start of its outline."""
+    shape = outline(loop, axis, reference, smoothing)
+    return shape.at(np.linspace(0.0, shape.total, count, endpoint=False))
 
 
 def _without_duplicates(loop: FloatArray) -> FloatArray:

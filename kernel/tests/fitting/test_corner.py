@@ -128,6 +128,20 @@ def test_a_long_closed_outline_of_lines_and_arcs() -> None:
     assert result.spread[1] - result.spread[0] < 0.1
 
 
+def test_a_large_radius() -> None:
+    """R6 on the top of a 40 x 20 x 10 block: farther than the first reach can see."""
+    block = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 40.0, 20.0, 10.0).Shape()
+    back = _edges(
+        block,
+        lambda a, b: min(a.Z(), b.Z()) > 10.0 - 1e-6 and min(a.Y(), b.Y()) > 20.0 - 1e-6,
+    )
+    maker = BRepFilletAPI_MakeFillet(block)
+    maker.Add(6.0, back[0])
+    scan, _ = _scan(maker.Shape(), 0.02)
+    result = _measure(block, back[:1], scan)
+    assert result.radius == pytest.approx(6.0, abs=0.1)
+
+
 def test_a_noisy_scan() -> None:
     scan, _ = _scan(_rounded(_plate(), 0.8), 0.05, seed=4)
     result = _measure(_plate(), _top(_plate()), scan)

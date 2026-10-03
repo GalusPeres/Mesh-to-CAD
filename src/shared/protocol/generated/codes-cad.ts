@@ -29,6 +29,9 @@ export const CAD_ERROR_CODES = [
   'cad.toolIsTarget',
   'cad.unsupportedFit',
   'cad.noExtent',
+  'cad.trimNeedsSurface',
+  'cad.noClosedRegion',
+  'cad.noPieceKept',
 ] as const;
 export type CadErrorCode = (typeof CAD_ERROR_CODES)[number];
 

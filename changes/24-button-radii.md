@@ -7,8 +7,3 @@
   to the scan instead of a flat top.
 - `fillet.scanRadius` measures the radius of body edges from the scan, also on long edges that
   run around a whole outline; _Radius aus Scan_ in the fillet tool uses it.
-
-### Fixed
-
-- Construction that a later feature uses (planes, sketches, patches) is hidden in the 3D view,
-  and the eye in the project tree hides bodies and features there.

@@ -64,8 +64,27 @@ export function createDriver(client, out) {
     await pause(300);
   }
 
+  /** Click a button as soon as it is enabled (a preview may still be computing). */
+  async function pressWhenReady(target, timeoutMs = 120_000) {
+    const end = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        return await press(target);
+      } catch (error) {
+        if (!String(error).includes('disabled') || Date.now() > end) throw error;
+        await pause(500);
+      }
+    }
+  }
+
   async function command(id) {
     await ui({ type: 'runCommand', id });
+    await pause(300);
+  }
+
+  /** Select scan triangles, as the brush or the lasso would. */
+  async function select(faces) {
+    await ui({ type: 'selectFaces', faces: [...faces] });
     await pause(300);
   }
 
@@ -74,6 +93,8 @@ export function createDriver(client, out) {
 
   /** The app's view: revision, open tool, what is visible, the deviation map. */
   const state = () => ui({ type: 'state' });
+  /** What the pointer finds at a screen point: scan, body, edge or item. */
+  const pick = (screen) => ui({ type: 'pick', x: screen.x, y: screen.y });
 
   /** Wait until the open tool has no job running (fit, deviation, build). */
   async function settle(timeoutMs = 120_000) {
@@ -121,9 +142,13 @@ export function createDriver(client, out) {
     drag,
     key,
     press,
+    pressWhenReady,
     command,
+    select,
+    pause,
     toolInfo,
     state,
+    pick,
     settle,
     until,
     shot,

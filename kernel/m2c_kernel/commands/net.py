@@ -11,6 +11,8 @@ through `doc.apply` with a `freeformNet` feature.
   limit surface. It depends only on the quads, so the renderer asks again only after
   a topology change and redraws the surface itself while points are dragged.
 - `net.featureNet` returns the stored net of a feature for editing.
+- `net.pushPast` pushes the net's open border past planes and bodies, so that trimming
+  against them cuts cleanly, and fits the inner points to the scan again.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import numpy as np
 from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.codes.surfacing import ErrorCode, ProgressStage
 from m2c_kernel.document.rebuild import EvalMesh
+from m2c_kernel.document.results import Construction
 from m2c_kernel.features.types.freeform_net import FreeformNetParams, net_arrays
 from m2c_kernel.limits import MIN_FIT_FACES
 from m2c_kernel.mesh.child import ChildCallError
@@ -238,6 +241,94 @@ def net_feature_net(ctx: JobContext, params: FeatureNetParams) -> FeatureNetResu
         else ctx.session.blobs.get(stored.faces).astype(np.uint32, copy=False)
     )
     return FeatureNetResult(vertices, quads.astype(np.uint32), faces, document.scan.key)
+
+
+@dataclass(frozen=True, kw_only=True)
+class PushPastParams:
+    vertices: F64Array
+    quads: U32Array
+    planes: list[str]
+    """Plane features or origin planes."""
+    bodies: list[str]
+    tolerance: Annotated[float, Range(0.01, 5.0)] = 0.5
+    """How far past the faces the border goes (mm)."""
+    reach: Annotated[float, Range(0.1, 50.0)] = 2.0
+    """Border points farther than this from every face stay (mm)."""
+    fixed: U8Array | None = None
+    """Per control point, 1 for pinned points (their limit points stay)."""
+    faces: U32Array | None = None
+    """Scan triangles the net covers; None uses the whole scan."""
+
+
+@dataclass(frozen=True)
+class PushPastResult:
+    vertices: F64Array
+    moved: int
+    """Border points that were pushed."""
+    references: list[str]
+    """Planes and bodies that pushed at least one point."""
+
+
+@command("net.pushPast", lane=True)
+def net_push_past(ctx: JobContext, params: PushPastParams) -> PushPastResult:
+    """Push the net's open border past the given planes and bodies by `tolerance`.
+
+    Moving the border also moves the limit surface of the rows next to it, so the other
+    points are then fitted to the scan again with the pushed ones held.
+    """
+    from m2c_kernel.cad.distance import face_measures
+    from m2c_kernel.cad.references import reference_plane
+    from m2c_kernel.surfacing.push import Reference, plane_reference, push_past
+    from m2c_kernel.surfacing.subdivision import limit_matrix
+
+    cage, quads = _net(params.vertices, params.quads)
+    result = ctx.session.built(ctx).result
+    limits = limit_matrix(quads, len(cage)) @ cage
+
+    def construction(feature: str) -> Construction:
+        output = result.outputs.get(feature)
+        if output is None or output.construction is None:
+            raise KernelError(DocumentError.INPUT_UNAVAILABLE, {"feature": feature})
+        return output.construction
+
+    references = [
+        plane_reference(plane, *reference_plane(plane, construction), limits)
+        for plane in params.planes
+    ]
+    for body_id in params.bodies:
+        body = result.bodies.get(body_id)
+        if body is None:
+            raise KernelError(DocumentError.INPUT_UNAVAILABLE, {"feature": body_id})
+        references += [Reference(body_id, face) for face in face_measures(body.shape, params.reach)]
+    fixed = None if params.fixed is None else np.asarray(params.fixed, dtype=bool)
+    pushed = push_past(
+        cage, quads, references, tolerance=params.tolerance, reach=params.reach, fixed=fixed
+    )
+    vertices = pushed.vertices
+    if pushed.moved > 0:
+        held = np.any(vertices != cage, axis=1)
+        vertices = _fit_inside(
+            ctx, vertices, quads, params.faces, held | (fixed if fixed is not None else False)
+        )
+    return PushPastResult(vertices, pushed.moved, list(pushed.references))
+
+
+def _fit_inside(
+    ctx: JobContext, cage: np.ndarray, quads: np.ndarray, faces: np.ndarray | None, held: np.ndarray
+) -> np.ndarray:
+    """The net fitted to the scan with the pushed and the pinned points held."""
+    vertices, scan_faces = _part(_scan(ctx), faces)
+    try:
+        return fit_net(
+            cage,
+            quads,
+            vertices,
+            _normals(vertices, scan_faces),
+            fixed=held,
+            check_cancelled=ctx.check_cancelled,
+        )
+    except NetError as error:
+        raise KernelError(ErrorCode.NET_INVALID, details=str(error)) from error
 
 
 def _scan(ctx: JobContext) -> EvalMesh:

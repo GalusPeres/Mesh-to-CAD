@@ -26,7 +26,9 @@ from m2c_kernel.geometry import FloatArray, unit
 SLAB_MM = 0.25
 """Half width of the slab of scan points across the edge."""
 REACH_MM = 5.0
-"""The first fit uses the points this far from the corner."""
+"""The first fit uses the points this far from the corner..."""
+LONG_REACH_MM = 15.0
+"""...or this far, where the shorter reach found no faces or the largest radius it can measure."""
 WINDOW_FACTOR = 2.5
 MIN_WINDOW_MM = 1.0
 CAP_NOISE = 4.0
@@ -37,6 +39,7 @@ MIN_SIDE_POINTS = 2
 """A section measures only with scan points on both faces beyond the rounding."""
 MAX_OPENING_DEG = 170.0
 """Faces meeting flatter than this are no edge to round."""
+AT_REACH = 0.9
 RADIUS_STEPS = 48
 MAX_OFFSET_MM = 0.3
 """The scan's faces may lie this far from the modelled ones (a flat top on a slight dome)."""
@@ -74,6 +77,8 @@ class SectionFit:
     points: int
     corner: tuple[float, float] = (0.0, 0.0)
     """Where the scan's faces meet in the section's (face 1, across) frame (mm)."""
+    at_reach: bool = False
+    """The first fit found the largest radius the reach allows: measure farther out."""
 
 
 @dataclass(frozen=True)
@@ -114,11 +119,15 @@ def edge_radius(
     cap = max(CAP_NOISE * noise, MIN_CAP_MM)
     centres = np.array([frame.point for frame in frames])
     nearby = tree.query_ball_point(centres, REACH_MM, workers=-1)
-    fits = [
-        fit
-        for frame, indices in zip(frames, nearby, strict=True)
-        if (fit := section_radius(vertices[indices], frame, cap, max_radius)) is not None
-    ]
+    fits = []
+    for frame, indices in zip(frames, nearby, strict=True):
+        fit = section_radius(vertices[indices], frame, cap, max_radius)
+        # A rounding larger than the reach shows no straight faces near the corner.
+        if fit is None or fit.at_reach:
+            wide = tree.query_ball_point(frame.point, LONG_REACH_MM)
+            fit = section_radius(vertices[wide], frame, cap, max_radius, LONG_REACH_MM)
+        if fit is not None:
+            fits.append(fit)
     if not fits or len(fits) < max(3, len(frames) // 4):
         return None
     radii = np.array([fit.radius for fit in fits])
@@ -142,10 +151,11 @@ def section_radius(
     frame: CornerFrame,
     cap: float,
     max_radius: float | None = None,
+    reach: float = REACH_MM,
 ) -> SectionFit | None:
     """The radius of the corner in one cross-section, or None without enough points.
 
-    `near` are the scan points within `REACH_MM` of the corner.
+    `near` are the scan points within `reach` of the corner.
     """
     e1, e2 = section_axes(frame)
     opening = float(np.arccos(np.clip(e1 @ e2, -1.0, 1.0)))
@@ -157,15 +167,15 @@ def section_radius(
         return None
     w = np.cross(frame.tangent, e1)
     points = np.column_stack([nearby[slab] @ e1, nearby[slab] @ w])
-    wide = Corner(np.array([1.0, 0.0]), unit(np.array([e2 @ e1, e2 @ w])), REACH_MM)
+    wide = Corner(np.array([1.0, 0.0]), unit(np.array([e2 @ e1, e2 @ w])), reach)
     # The tangent length stays inside the reach.
-    largest = 0.9 * REACH_MM * float(np.tan(wide.half))
-    if max_radius is not None:
-        largest = min(largest, max_radius)
+    reachable = 0.9 * reach * float(np.tan(wide.half))
+    largest = reachable if max_radius is None else min(reachable, max_radius)
     # Dense scans give thousands of points: an even subset decides the first fit.
     first = points[:: max(1, len(points) // MAX_FIRST_POINTS)]
     origin = np.zeros((1, 2))
     radius = _best_radius(wide, first, origin, cap, largest)
+    at_reach = radius >= AT_REACH * reachable
     window = max(WINDOW_FACTOR * wide.tangent_length(radius), MIN_WINDOW_MM)
     inner = points[np.linalg.norm(points, axis=1) < window]
     if len(inner) < MIN_POINTS:
@@ -192,6 +202,7 @@ def section_radius(
         rms=float(np.sqrt(np.mean(distance[inliers] ** 2))),
         points=int(inliers.sum()),
         corner=(float(at[0, 0]), float(at[0, 1])),
+        at_reach=at_reach,
     )
 
 

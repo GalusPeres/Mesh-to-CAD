@@ -13,7 +13,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { INSTANCE, automationClient } from '../automation/client.mjs';
+import { writeBlockPart } from './block.mjs';
 import { createDriver } from './driver.mjs';
+import { hideTest } from './hide.mjs';
+import { buttonRadiiTest } from './buttonRadii.mjs';
 import { loftTest } from './loft.mjs';
 import { netTest } from './net.mjs';
 import { writeButtonsPart, writeTestPart } from './part.mjs';
@@ -21,6 +24,8 @@ import { recognizeTest } from './recognize.mjs';
 import { writeRoundedPart } from './roundedPart.mjs';
 import { roundingTest } from './rounding.mjs';
 import { sketchTest } from './sketch.mjs';
+import { solidTest } from './solid.mjs';
+import { writeTubPart } from './tub.mjs';
 
 /** Every user test by name; add one per tool. */
 const TESTS = {
@@ -28,11 +33,19 @@ const TESTS = {
   loft: loftTest,
   recognize: recognizeTest,
   sketch: sketchTest,
+  hide: hideTest,
+  solid: solidTest,
   rounding: roundingTest,
+  radii: buttonRadiiTest,
 };
 
 /** The part a test runs on, when it is not the plate with the boss. */
-const PARTS = { recognize: writeButtonsPart, rounding: writeRoundedPart };
+const PARTS = {
+  recognize: writeButtonsPart,
+  solid: writeTubPart,
+  rounding: writeBlockPart,
+  radii: writeRoundedPart,
+};
 
 /** A new project with a synthetic part as its scan, no tool open. */
 async function startOver(client, d, writePart) {

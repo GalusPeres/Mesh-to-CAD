@@ -3,7 +3,8 @@
 // 0.2 mm triangles on the buttons, like a scan. The plate's top has no triangles under
 // the buttons, as a scan has none inside the part.
 
-import { PART, plate, writeStl } from './part.mjs';
+import { PART, plate } from './part.mjs';
+import { writeBinaryStl } from './stl.mjs';
 
 /** Where the buttons are, in millimetres (the plate's top is z = 10). */
 export const ROUNDED = {
@@ -113,5 +114,5 @@ export function writeRoundedPart(file) {
   plateTop(triangles);
   for (const centre of ROUNDED.round.centres) roundButton(triangles, centre);
   inclinedButton(triangles);
-  return writeStl(file, triangles);
+  return writeBinaryStl(file, triangles, 'Mesh-to-CAD user test part');
 }
