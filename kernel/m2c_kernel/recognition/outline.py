@@ -29,6 +29,8 @@ from m2c_kernel.geometry import FloatArray
 
 type ShapeKind = Literal["circle", "slot", "roundedRect", "ringSegment", "profile"]
 
+RING_REACH = 3.0
+"""A ring arm's outer radius is at most this x the size of its contour."""
 ACCEPT_FACTOR = 4.0
 """A shape explains a contour when its RMS is below this x the noise (or the floor)."""
 ACCEPT_FLOOR_MM = 0.05
@@ -109,7 +111,7 @@ def rounded_rect_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArr
 
 
 def ring_segment_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArray:
-    """Signed distance to a ring arm with rounded corners (approximate at the corners).
+    """Signed distance to a ring arm with rounded corners.
 
     The arm lies between the radii `inner` and `outer` and between two straight gaps
     of width `gap` centred on the lines through the centre at `start` and
@@ -129,7 +131,11 @@ def ring_segment_distance(params: npt.ArrayLike, points: FloatArray) -> FloatArr
     from_start = -dx * np.sin(start) + dy * np.cos(start)
     from_end = dx * np.sin(end) - dy * np.cos(end)
     sides = np.maximum(half_gap + r - from_start, half_gap + r - from_end)
-    result: FloatArray = np.maximum(band, sides) - r
+    # Distance to the eroded arm: exact beyond a corner (sides and arcs meet at nearly
+    # right angles), then grown back by the corner radius.
+    outside = np.hypot(np.maximum(band, 0.0), np.maximum(sides, 0.0))
+    inside = np.minimum(np.maximum(band, sides), 0.0)
+    result: FloatArray = outside + inside - r
     return result
 
 
@@ -237,9 +243,28 @@ def fit_ring_segment(
     for gap, widen in ((0.0, 0.0), (0.2 * (outer - inner), 0.15)):
         start = [cx, cy, inner, outer, middle - sweep / 2 - widen, sweep + 2 * widen, gap, corner]
         fitted = _solve("ringSegment", start, points, scale)
+        if not _plausible_ring(fitted, points):
+            continue
         if best is None or fitted.rms < best.rms:
             best = fitted
     return best
+
+
+def _plausible_ring(ring: Outline, points: FloatArray) -> bool:
+    """A ring arm around a centre near the contour, not a straight band in disguise.
+
+    On a nearly straight contour the fit can run off to a huge radius and gap.
+    """
+    p = ring.named()
+    size = float(np.ptp(points, axis=0).max())
+    width = p["outer"] - p["inner"]
+    return bool(
+        p["inner"] > 0.0
+        and width > 0.0
+        and p["outer"] < RING_REACH * size
+        and 0.0 <= p["gap"] < p["outer"]
+        and 0.05 < p["sweep"] < np.pi
+    )
 
 
 def _ring_centre(points: FloatArray) -> tuple[float, float] | None:

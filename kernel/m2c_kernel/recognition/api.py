@@ -19,7 +19,13 @@ from m2c_kernel.geometry import FloatArray
 from m2c_kernel.recognition.intent import beautify
 from m2c_kernel.recognition.outline import Outline, outline_points
 from m2c_kernel.recognition.planes import BasePlane, base_planes
-from m2c_kernel.recognition.relief import Relief, find_reliefs, mesh_data
+from m2c_kernel.recognition.relief import (
+    Relief,
+    find_reliefs,
+    inside_contour,
+    mesh_data,
+    signed_area,
+)
 
 type IntArray = npt.NDArray[np.int64]
 
@@ -28,6 +34,8 @@ PLANE_SHARE = 0.01
 SAME_AXIS = 0.99
 SAME_PLACE_MM = 0.6
 SAME_SIZE = 0.1
+SAME_AREA = 2.0
+"""Contours of different shapes are the same feature within this area ratio."""
 
 
 @dataclass(frozen=True)
@@ -102,18 +110,42 @@ def _size(outline: Outline) -> float:
 def _same(planes: list[BasePlane], a: Feature, b: Feature) -> bool:
     if a.plane == b.plane or a.relief.kind != b.relief.kind:
         return False
-    if a.outline.kind != b.outline.kind:
-        return False
     point_a, axis_a = _axis_point(planes, a)
     point_b, axis_b = _axis_point(planes, b)
     if abs(float(axis_a @ axis_b)) < SAME_AXIS:
         return False
+    if a.outline.kind != b.outline.kind:
+        # Explained by different shapes (one a free profile): compare the contours.
+        return _overlap(planes, a, b)
     offset = point_b - point_a
     lateral = offset - (offset @ axis_a) * axis_a
     size_a, size_b = _size(a.outline), _size(b.outline)
     if float(np.linalg.norm(lateral)) > max(SAME_PLACE_MM, 0.05 * max(size_a, size_b)):
         return False
     return abs(size_a - size_b) <= SAME_SIZE * max(size_a, size_b, 1e-9)
+
+
+def _overlap(planes: list[BasePlane], a: Feature, b: Feature) -> bool:
+    """Whether the measured contours, seen along a's axis, cover about the same area."""
+    plane_a, plane_b = planes[a.plane], planes[b.plane]
+    contour_b = b.relief.contour
+    at = np.full(len(contour_b), b.relief.level)
+    seen = plane_a.to_plane(plane_b.from_plane(np.column_stack([contour_b, at])))[:, :2]
+    contour_a = a.relief.contour
+    area_a, area_b = abs(signed_area(contour_a)), abs(signed_area(seen))
+    if not 1.0 / SAME_AREA < area_b / max(area_a, 1e-9) < SAME_AREA:
+        return False
+    centre_a, centre_b = contour_a.mean(axis=0), seen.mean(axis=0)
+    return bool(
+        inside_contour(centre_b[None], contour_a)[0] and inside_contour(centre_a[None], seen)[0]
+    )
+
+
+def _preferred(a: Feature, b: Feature) -> bool:
+    """Whether a describes the feature better than b: a simple shape, else the deeper."""
+    if (a.outline.kind == "profile") != (b.outline.kind == "profile"):
+        return b.outline.kind == "profile"
+    return a.relief.height >= b.relief.height
 
 
 def _without_duplicates(planes: list[BasePlane], features: list[Feature]) -> list[Feature]:
@@ -124,9 +156,9 @@ def _without_duplicates(planes: list[BasePlane], features: list[Feature]) -> lis
             continue
         for j in range(i + 1, len(features)):
             if keep[j] and _same(planes, a, features[j]):
-                deeper = j if features[j].relief.height > a.relief.height else i
-                keep[i if deeper == j else j] = False
-                if deeper == j:
+                better = i if _preferred(a, features[j]) else j
+                keep[i if better == j else j] = False
+                if better == j:
                     break
     # A feature whose parent was dropped stands on the base plane again.
     new_index: dict[int, int] = {}

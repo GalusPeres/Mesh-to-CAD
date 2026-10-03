@@ -12,9 +12,11 @@ measurement uncertainty, then enforce them consistently) restores them:
    dimensions.
 3. Rows and columns: centres that agree in u (or v) share the mean value.
 4. Directions: slots and rectangles nearly parallel to a plane axis become parallel.
-5. Heights that agree become equal.
+5. Heights that agree become equal: first within a family of equal features (the
+   same button made several times has one height), then across families on the same
+   level when their heights agree closely.
 6. Lengths and heights are rounded to `ROUND_MM` where that stays within the
-   uncertainty.
+   uncertainty; a feature standing in a pocket stands on the pocket's rounded floor.
 
 Every step changes values by less than its tolerance, so the result still fits the
 scan.
@@ -39,6 +41,9 @@ SIZE_SHARE = 0.03
 """Dimensions within max(SIZE_MM, SIZE_SHARE x size) are taken as equal."""
 ANGLE_DEG = 3.0
 HEIGHT_MM = 0.12
+"""Equal features whose heights spread less than this share one height."""
+SHARED_HEIGHT_MM = 0.05
+"""Families whose heights differ less than this share one height."""
 ROUND_MM = 0.05
 TAU = 2.0 * np.pi
 
@@ -60,7 +65,12 @@ def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
     for axis in ("cx", "cy"):
         _align(outlines, axis, [i for i, kind in enumerate(kinds) if kind != "profile"])
     _directions(kinds, outlines)
-    heights = _equal_heights(reliefs)
+    heights = _equal_heights(reliefs, kinds, outlines)
+    # Parents come before their children (relief.py).
+    levels = [relief.level for relief in reliefs]
+    for i, relief in enumerate(reliefs):
+        if relief.parent is not None:
+            levels[i] = levels[relief.parent] - heights[relief.parent]
     for values, kind in zip(outlines, kinds, strict=True):
         for name in _LENGTHS[kind]:
             values[name] = _rounded(values[name])
@@ -70,9 +80,12 @@ def beautify(reliefs: Sequence[Relief]) -> list[Relief]:
             outline=Outline(
                 kind, tuple(values[name] for name in PARAMETERS[kind]), relief.outline.rms
             ),
+            level=level,
             height=height,
         )
-        for relief, values, kind, height in zip(reliefs, outlines, kinds, heights, strict=True)
+        for relief, values, kind, level, height in zip(
+            reliefs, outlines, kinds, levels, heights, strict=True
+        )
     ]
 
 
@@ -205,14 +218,34 @@ def _directions(kinds: Sequence[str], outlines: list[dict[str, float]]) -> None:
             values["angle"] = float(np.mod(snapped, np.pi))
 
 
-def _equal_heights(reliefs: Sequence[Relief]) -> list[float]:
+def _equal_heights(
+    reliefs: Sequence[Relief], kinds: Sequence[str], outlines: Sequence[dict[str, float]]
+) -> list[float]:
     heights = [relief.height for relief in reliefs]
-    families: dict[tuple[str, float], list[int]] = {}
+    levels: dict[tuple[str, float], list[int]] = {}
     for i, relief in enumerate(reliefs):
-        families.setdefault((relief.kind, round(relief.level, 3)), []).append(i)
-    for members in families.values():
-        for group in _runs([heights[i] for i in members], HEIGHT_MM):
-            indices = [members[k] for k in group]
+        levels.setdefault((relief.kind, round(relief.level, 3)), []).append(i)
+    for members in levels.values():
+        # Families: equal shape and size (equal sizes are identical by now).
+        families: dict[tuple[object, ...], list[int]] = {}
+        for i in members:
+            size = tuple(round(outlines[i][name], 3) for name in _LENGTHS[kinds[i]])
+            key = (kinds[i], size) if kinds[i] != "profile" else ("profile", i)
+            families.setdefault(key, []).append(i)
+        groups: list[list[int]] = []
+        for family in families.values():
+            values = [heights[i] for i in family]
+            if max(values) - min(values) < HEIGHT_MM:
+                groups.append(family)
+            else:
+                groups.extend([i] for i in family)
+        means = [float(np.mean([heights[i] for i in group])) for group in groups]
+        for group in groups:
+            mean = float(np.mean([heights[i] for i in group]))
+            for i in group:
+                heights[i] = mean
+        for run in _runs(means, SHARED_HEIGHT_MM):
+            indices = [i for k in run for i in groups[k]]
             mean = float(np.mean([heights[i] for i in indices]))
             for i in indices:
                 heights[i] = mean

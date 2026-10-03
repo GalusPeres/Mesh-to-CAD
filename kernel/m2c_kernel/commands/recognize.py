@@ -6,6 +6,10 @@ and design intent. Large scans are read from the reduced copy the segmentation a
 uses. The result carries the outlines in part coordinates for the viewport (a ring
 at the foot and one at the top of every feature) and the numbers for the panel and
 for automation clients.
+
+`recognize.build` turns chosen features of the last recognition into editable
+features (`recognition/build.py`): a plane, sketches and extrusions, added to a body
+or as new bodies, in one undoable step.
 """
 
 from __future__ import annotations
@@ -15,12 +19,15 @@ from typing import Literal
 
 import numpy as np
 
+from m2c_kernel.codes.document import ErrorCode as DocumentError
 from m2c_kernel.codes.regions import ErrorCode
+from m2c_kernel.document.ops import AddFeature, NewFeature, apply_ops
 from m2c_kernel.geometry import Vec3
 from m2c_kernel.protocol.errors import KernelError
 from m2c_kernel.protocol.registry import command
-from m2c_kernel.protocol.wire import F32Array, U32Array
+from m2c_kernel.protocol.wire import F32Array, RawObject, U32Array
 from m2c_kernel.recognition.api import Recognition, recognize
+from m2c_kernel.recognition.build import plan_features, plane_faces
 from m2c_kernel.recognition.outline import ShapeKind
 from m2c_kernel.segmentation.lod import LEVELS_OF_DETAIL
 from m2c_kernel.session.jobs import JobContext
@@ -61,7 +68,7 @@ class RecognizedFeature:
     parent: int | None
     """The pocket the feature stands in."""
     group: int
-    """Features of the same shape and size share a group number."""
+    """Features of the same shape, size, height and top share a group number (0, 1, ...)."""
     label: Vec3
     """Where to put the feature's label (top centre, part coordinates)."""
 
@@ -92,9 +99,83 @@ def recognize_run(ctx: JobContext, params: RecognizeParams) -> RecognizeResult:
     working = LEVELS_OF_DETAIL.get(mesh, scan.key, built.matrix, ctx)
     # Filled holes are not part of the scanned surface.
     faces = working.faces[~working.synthetic]
-    noise = scan.noise if scan.noise else DEFAULT_NOISE_MM
-    recognition = recognize(working.vertices, faces, float(noise), ctx.check_cancelled)
+    recognition = recognize(working.vertices, faces, _noise(scan.noise), ctx.check_cancelled)
+    _LAST.clear()
+    _LAST[mesh.key] = recognition
     return _result(recognition)
+
+
+_LAST: dict[str, Recognition] = {}
+"""The last recognition, by the key of the aligned mesh it was made on."""
+
+
+def _noise(noise: float | None) -> float:
+    return float(noise) if noise else DEFAULT_NOISE_MM
+
+
+@dataclass(frozen=True, kw_only=True)
+class BuildParams:
+    scan_key: str
+    base_revision: int
+    features: list[int]
+    """Indices into the features of the last `recognize.run`."""
+    target_body: str | None = None
+    """Body the bosses join and the pockets cut; None adds bosses as new bodies."""
+
+
+@dataclass(frozen=True)
+class BuildResult:
+    revision: int
+    added: list[str]
+    """Ids of the added features."""
+    skipped: list[int]
+    """Chosen features that were not built (free profiles; pockets without a body)."""
+
+
+@command("recognize.build", lane=True, exclusive=True)
+def recognize_build(ctx: JobContext, params: BuildParams) -> BuildResult:
+    """Build chosen features of the last recognition as plane, sketches and extrusions."""
+    session = ctx.session
+    document = session.document
+    if document.revision != params.base_revision:
+        raise KernelError(
+            DocumentError.STALE_REVISION,
+            {"head": document.revision, "base": params.base_revision},
+        )
+    scan = document.scan
+    if scan is None or params.scan_key != scan.key:
+        raise KernelError(ErrorCode.STALE_SCAN, {"scanKey": params.scan_key})
+    built = session.built(ctx).result
+    mesh = built.mesh
+    recognition = _LAST.get(mesh.key) if mesh is not None else None
+    if mesh is None or recognition is None:
+        raise KernelError(ErrorCode.STALE_SCAN, {"scanKey": params.scan_key})
+    count = len(recognition.features)
+    if not params.features or any(not 0 <= index < count for index in params.features):
+        raise KernelError(ErrorCode.EMPTY_SELECTION)
+    if params.target_body is not None and params.target_body not in built.bodies:
+        raise KernelError(DocumentError.UNKNOWN_FEATURE, {"feature": params.target_body})
+
+    real = ~mesh.synthetic
+    centroids = np.where(real[:, None], mesh.face_centroids, np.inf)
+    faces = [
+        plane_faces(plane, centroids, mesh.face_normals, _noise(scan.noise))
+        for plane in recognition.planes
+    ]
+    plan = plan_features(recognition, params.features, faces, document.next_id, params.target_body)
+    ops = [
+        AddFeature(
+            feature=NewFeature(
+                type=item.type,
+                params=RawObject(item.params, tuple(memoryview(b) for b in item.buffers)),
+            )
+        )
+        for item in plan.features
+    ]
+    applied = apply_ops(document, ops, session.feature_types, session.blobs)
+    snapshot = session.commit(applied.document, "recognize", ctx)
+    added = [feature.id for feature in applied.document.features[len(document.features) :]]
+    return BuildResult(revision=snapshot.revision, added=added, skipped=plan.skipped)
 
 
 def _vec3(values: np.ndarray) -> Vec3:
@@ -105,7 +186,7 @@ def _result(recognition: Recognition) -> RecognizeResult:
     groups: dict[tuple[object, ...], int] = {}
     features: list[RecognizedFeature] = []
     rings: list[np.ndarray] = []
-    for feature in recognition.features:
+    for index, feature in enumerate(recognition.features):
         relief = feature.relief
         outline = feature.outline
         values = outline.named()
@@ -114,7 +195,9 @@ def _result(recognition: Recognition) -> RecognizeResult:
             for name, value in values.items()
             if name not in ("cx", "cy", "angle", "start")
         )
-        key = (feature.plane, relief.kind, outline.kind, size, round(relief.height, 3))
+        # Free profiles differ from each other: each is its own group.
+        shape = (outline.kind, size) if outline.kind != "profile" else ("profile", index)
+        key = (feature.plane, relief.kind, relief.top, shape, round(relief.height, 3))
         group = groups.setdefault(key, len(groups))
         sign = 1.0 if relief.kind == "boss" else -1.0
         top = relief.level + sign * relief.height

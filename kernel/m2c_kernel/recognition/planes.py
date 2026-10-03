@@ -144,6 +144,10 @@ def _plane_along(
     facing = remaining & (normals @ direction > np.cos(np.radians(CONE_DEG)))
     if not np.any(facing):
         return None
+    # The sphere sample is a few degrees off the face; across a large face its levels
+    # would spread beyond the band. The faces' mean normal is close to the true one.
+    direction = (normals[facing] * areas[facing, None]).sum(axis=0)
+    direction /= np.linalg.norm(direction)
     offsets = centroids[facing] @ direction
     low, high = offsets.min(), offsets.max()
     count = max(int((high - low) / LEVEL_BIN_MM) + 1, 1)
@@ -157,11 +161,17 @@ def _plane_along(
     if normal @ direction < 0:
         normal = -normal
     tolerance = max(4.0 * noise, 0.05)
-    distance = np.abs((centroids - origin) @ normal)
     agree = normals @ normal > np.cos(np.radians(NORMAL_DEG))
-    inliers = np.flatnonzero(remaining & agree & (distance < tolerance))
-    if len(inliers) < 3:
-        return None
+    # Refit on all faces of the plane, then take them again with the refined plane.
+    for refit in (True, False):
+        distance = np.abs((centroids - origin) @ normal)
+        inliers = np.flatnonzero(remaining & agree & (distance < tolerance))
+        if len(inliers) < 3:
+            return None
+        if refit:
+            origin, normal, rms = robust_plane(vertices[np.unique(faces[inliers])], normal)
+            if normal @ direction < 0:
+                normal = -normal
     inlier_points = vertices[np.unique(faces[inliers])]
     centre = inlier_points.mean(axis=0)
     centre = centre - ((centre - origin) @ normal) * normal

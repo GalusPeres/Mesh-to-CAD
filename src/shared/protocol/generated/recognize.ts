@@ -38,10 +38,25 @@ export interface RecognizeResult {
   outlineOffsets: Uint32Array;
 }
 
+export interface BuildParams {
+  scanKey: string;
+  baseRevision: number;
+  features: number[];
+  targetBody?: string | null;
+}
+
+export interface BuildResult {
+  revision: number;
+  added: string[];
+  skipped: number[];
+}
+
 export interface RecognizeMethods {
   'recognize.run': { params: RecognizeParams; result: RecognizeResult };
+  'recognize.build': { params: BuildParams; result: BuildResult };
 }
 
 export const RECOGNIZE_METHODS = {
   'recognize.run': { lane: true, caller: 'renderer', exclusive: true },
+  'recognize.build': { lane: true, caller: 'renderer', exclusive: true },
 } as const satisfies Record<keyof RecognizeMethods, MethodInfo>;

@@ -35,8 +35,7 @@ def _cylinder(x: float, y: float, z: float, diameter: float, height: float) -> T
     return BRepPrimAPI_MakeCylinder(axis, diameter / 2.0, height).Shape()
 
 
-@cache
-def panel() -> Recognition:
+def panel_shape() -> TopoDS_Shape:
     """80 x 50 x 6 plate: two D8 x 2 buttons, a D12 x 3 recess with a D5 x 1.5 button in
     it, and two D6 through holes."""
     shape = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 80.0, 50.0, 6.0).Shape()
@@ -46,7 +45,12 @@ def panel() -> Recognition:
     shape = BRepAlgoAPI_Fuse(shape, _cylinder(55.0, 25.0, 3.0, 5.0, 1.5)).Shape()
     for x in (10.0, 70.0):
         shape = BRepAlgoAPI_Cut(shape, _cylinder(x, 10.0, -1.0, 6.0, 10.0)).Shape()
-    part = tessellate_part(shape, max_edge=0.8)
+    return shape
+
+
+@cache
+def panel() -> Recognition:
+    part = tessellate_part(panel_shape(), max_edge=0.8)
     rng = np.random.default_rng(7)
     normals = vertex_normals(part.vertices, part.faces)
     noisy = add_scanner_noise(part.vertices, normals, NOISE, rng)
@@ -100,6 +104,32 @@ def test_through_holes_are_found_once() -> None:
         assert hole.outline.kind == "circle"
         assert _diameter(hole) == pytest.approx(6.0, abs=0.1)
         assert hole.relief.height == pytest.approx(6.0, abs=0.15)
+
+
+def test_a_cad_export_is_read_like_a_dense_scan() -> None:
+    """CAD exports (and decimated scans) model a wall with triangles from foot to top
+    and a flat top with a few large ones: the same features, the same sizes."""
+    part = tessellate_part(panel_shape(), max_edge=1000.0)
+    found = recognize(part.vertices, part.faces, 0.01)
+    described = sorted(
+        (
+            f.relief.kind,
+            f.outline.kind,
+            round(_diameter(f), 2),
+            round(f.relief.height, 2),
+            f.relief.top,
+            f.relief.parent is not None,
+        )
+        for f in found.features
+    )
+    assert described == [
+        ("boss", "circle", 5.0, 1.5, "flat", True),
+        ("boss", "circle", 8.0, 2.0, "flat", False),
+        ("boss", "circle", 8.0, 2.0, "flat", False),
+        ("pocket", "circle", 6.0, 6.0, "through", False),
+        ("pocket", "circle", 6.0, 6.0, "through", False),
+        ("pocket", "circle", 12.0, 3.0, "flat", False),
+    ]
 
 
 def test_recognize_run_through_the_protocol(kernel: KernelProcess, tmp_path: Path) -> None:
