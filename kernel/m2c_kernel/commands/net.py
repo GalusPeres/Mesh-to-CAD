@@ -18,7 +18,6 @@ through `doc.apply` with a `freeformNet` feature.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Annotated
 
 import numpy as np
@@ -271,7 +270,7 @@ class PushPastResult:
 @command("net.pushPast", lane=True)
 def net_push_past(ctx: JobContext, params: PushPastParams) -> PushPastResult:
     """Push the net's open border past the given planes and bodies by `tolerance`."""
-    from m2c_kernel.cad.distance import signed_distance
+    from m2c_kernel.cad.distance import face_measures
     from m2c_kernel.cad.references import reference_plane
     from m2c_kernel.surfacing.push import Reference, plane_reference, push_past
     from m2c_kernel.surfacing.subdivision import limit_matrix
@@ -294,7 +293,7 @@ def net_push_past(ctx: JobContext, params: PushPastParams) -> PushPastResult:
         body = result.bodies.get(body_id)
         if body is None:
             raise KernelError(DocumentError.INPUT_UNAVAILABLE, {"feature": body_id})
-        references.append(Reference(body_id, partial(signed_distance, body.shape)))
+        references += [Reference(body_id, face) for face in face_measures(body.shape, params.reach)]
     fixed = None if params.fixed is None else np.asarray(params.fixed, dtype=bool)
     pushed = push_past(
         cage, quads, references, tolerance=params.tolerance, reach=params.reach, fixed=fixed

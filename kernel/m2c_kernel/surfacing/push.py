@@ -2,12 +2,14 @@
 
 Trimming against the faces then cuts cleanly instead of grazing along them.
 
-A border point of the net whose limit point lies within `reach` of a plane or body
-and not yet `tolerance` past it moves along that face's outward normal until it is.
-For a plane, outward is the side away from the bulk of the net; for a body, outside
-the body. The border control points are solved so that their limit points land
-exactly there (the border is a cubic B-spline of the border control points alone);
-the rest of the net stays, so its fit to the scan is kept, and pinned points hold.
+A border point of the net whose limit point lies within `reach` of a plane or of a
+face of a body and not yet `tolerance` past it moves along that face's outward normal
+until it is. For a plane, outward is the side away from the bulk of the net; for a
+face of a body, outside the body (`cad/distance.py`). Every face counts on its own, so
+a border near a corner passes both faces there. The border control points are solved
+so that their limit points land exactly there (the border is a cubic B-spline of the
+border control points alone); the rest of the net stays, so its fit to the scan is
+kept, and pinned points hold.
 """
 
 from __future__ import annotations
