@@ -4,13 +4,12 @@ import type { FeatureStatus } from '@shared/protocol/generated/document-results'
 
 import { shownStatus } from './featureState';
 
-const status = (codes: string[]): FeatureStatus =>
-  ({
-    state: codes.length ? 'warning' : 'ok',
-    issues: codes.map((code) => ({ code, params: {} })),
-    error: null,
-    stats: {},
-  }) as FeatureStatus;
+const status = (codes: string[]): FeatureStatus => ({
+  state: codes.length ? 'warning' : 'ok',
+  issues: codes.map((code) => ({ code, params: {} })),
+  error: null,
+  stats: {},
+});
 
 const net = { id: 'f2', suppressed: false };
 
